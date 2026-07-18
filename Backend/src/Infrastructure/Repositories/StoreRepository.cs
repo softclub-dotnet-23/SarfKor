@@ -15,4 +15,6 @@ public sealed class StoreRepository(AppDbContext dbContext) : IStoreRepository
 
     public Task<Store?> GetByIdAsync(int storeId, CancellationToken cancellationToken) =>
         dbContext.Stores.FirstOrDefaultAsync(s => s.Id == storeId, cancellationToken);
+
+    public void Add(Store store) => dbContext.Stores.Add(store);
 }

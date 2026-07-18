@@ -7,4 +7,5 @@ public interface IAuthService
     Task<AuthResult?> RegisterAsync(string email, string password, CancellationToken cancellationToken);
     Task<AuthResult?> LoginAsync(string email, string password, CancellationToken cancellationToken);
     Task<AuthResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken);
+    Task AssignRoleAsync(string userId, string role, CancellationToken cancellationToken);
 }

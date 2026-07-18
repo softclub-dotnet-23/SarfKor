@@ -11,4 +11,6 @@ public sealed class ReceiptRepository(AppDbContext dbContext) : IReceiptReposito
         dbContext.Receipts
             .Include(r => r.Lines)
             .FirstOrDefaultAsync(r => r.Id == receiptId, cancellationToken);
+
+    public void Add(Receipt receipt) => dbContext.Receipts.Add(receipt);
 }

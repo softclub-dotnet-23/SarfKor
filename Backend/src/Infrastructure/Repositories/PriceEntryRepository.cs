@@ -31,5 +31,8 @@ public sealed class PriceEntryRepository(AppDbContext dbContext) : IPriceEntryRe
             .OrderByDescending(p => p.RecordedAt)
             .FirstOrDefaultAsync(cancellationToken);
 
+    public Task<PriceEntry?> GetByIdAsync(int priceEntryId, CancellationToken cancellationToken) =>
+        dbContext.PriceEntries.FirstOrDefaultAsync(p => p.Id == priceEntryId, cancellationToken);
+
     public void Add(PriceEntry priceEntry) => dbContext.PriceEntries.Add(priceEntry);
 }

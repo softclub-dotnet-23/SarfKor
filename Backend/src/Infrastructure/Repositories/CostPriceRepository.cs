@@ -24,4 +24,6 @@ public sealed class CostPriceRepository(AppDbContext dbContext) : ICostPriceRepo
 
         return await entries.ToListAsync(cancellationToken);
     }
+
+    public void Add(CostPrice costPrice) => dbContext.CostPrices.Add(costPrice);
 }

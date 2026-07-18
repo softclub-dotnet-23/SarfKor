@@ -26,6 +26,12 @@ public sealed class SaleTransactionRepository(AppDbContext dbContext) : ISaleTra
                 && s.CreatedAt < to)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<SaleTransaction>> GetAllInRangeAsync(int storeId, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken) =>
+        await dbContext.SaleTransactions
+            .Include(s => s.Lines)
+            .Where(s => s.StoreId == storeId && s.CreatedAt >= from && s.CreatedAt < to)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<ProductSalesSummary>> GetTopSellingProductsAsync(int? storeId, int limit, CancellationToken cancellationToken)
     {
         var salesQuery = dbContext.SaleTransactions.Where(s => s.Status == SaleStatus.Completed);

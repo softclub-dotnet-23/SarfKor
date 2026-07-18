@@ -52,10 +52,10 @@ jobs:
       - name: Apply migrations to CI database
         run: >
           dotnet ef database update
-          --project Backend/Infrastructure/Infrastructure.csproj
-          --startup-project Backend/WebApi/WebApi.csproj
+          --project Backend/src/Infrastructure/Infrastructure.csproj
+          --startup-project Backend/src/WebApi/WebApi.csproj
           --configuration Release
           --no-build
 
       - name: Test
-        run: dotnet test Backend/Application.Tests/Application.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+        run: dotnet test Backend/tests/Application.Tests/Application.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"

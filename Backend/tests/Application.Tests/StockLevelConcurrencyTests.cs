@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Xunit;
 
-namespace Application.Tests.Integration;
+namespace Application.Tests;
 
 /// <summary>
 /// Требует реальный PostgreSQL (connection string из user-secrets, тот же UserSecretsId, что и у WebApi).

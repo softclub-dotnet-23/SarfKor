@@ -7,7 +7,7 @@ using Domain.ValueObjects;
 using Moq;
 using Xunit;
 
-namespace Application.Tests.Sales;
+namespace Application.Tests;
 
 public class VoidSaleCommandHandlerTests
 {

@@ -350,3 +350,37 @@
 - **Проверено локально перед пушем** (нет доступа к самому GitHub Actions из этой сессии, поэтому проверка — максимально приближенная к CI): `dotnet build Backend.slnx --configuration Release` — 0 ошибок; `dotnet test Application.Tests/Application.Tests.csproj --no-build --configuration Release` — **12/12 пройдено**, включая интеграционный тест (реальный локальный PostgreSQL сыграл роль CI-контейнера).
 
 **Не сделано**: сам workflow не запускался на реальном GitHub Actions в рамках этой сессии (нет прямого доступа) — первая проверка произойдёт при следующем `git push`; стоит проверить результат первого прогона и поправить при необходимости (версии `dotnet-ef`/`setup-dotnet` могут повести себя иначе на `ubuntu-latest`, чем локально на Windows). Тесты для остальных 15+ хендлеров по-прежнему не написаны.
+
+## 2026-07-17 (продолжение 2) — Реструктуризация каталогов: src/ и tests/
+
+По запросу пользователя все проекты сгруппированы по назначению: `Backend/{Application,Domain,Infrastructure,WebApi}` → `Backend/src/{...}` (тестовый проект уже был вынесен отдельно на предыдущем шаге в `Backend/Application.Tests`, теперь перемещён в `Backend/tests/Application.Tests`).
+
+- **Перемещение выполнено файл-за-файлом** (`git mv` на каждый отслеживаемый файл, не на директорию целиком) — прямой `git mv Application src/Application` падал с `Permission denied`: несколько фоновых `dotnet.exe`/MSBuild build-server процессов держали файл-хендлы внутри каталога (подтверждено через `tasklist`; `dotnet build-server shutdown` не полностью помогло). Файловая история Git сохранена для каждого файла.
+- **Найден и исправлен реальный побочный эффект перемещения**: у `Infrastructure.csproj` и `WebApi.csproj` после перемещения пропал целый блок `<ItemGroup>` с `<ProjectReference>` (скорее всего фоновый процесс в IDE — OmniSharp/C# Dev Kit — во время самого перемещения детектировал временно нерезолвящиеся ссылки на переехавшие проекты и тихо "почистил" их). Обнаружено сравнением текущего содержимого с последним закоммиченным (`git show <commit>:path`), не с `diff` напрямую — обычный `diff` через Git Bash ложно показывал построчные различия из-за CRLF/LF несовпадения между блобом и рабочим деревом, что едва не привело к ложной тревоге по всем 5 csproj-файлов. Оба файла восстановлены вручную с правильными относительными путями.
+- **Обновлены пути в трёх местах**, зависящих от структуры каталогов:
+  - `Backend.slnx` — все `<Project Path="...">` указывают на `src/...`/`tests/...`.
+  - `Backend/tests/Application.Tests/Application.Tests.csproj` — три `ProjectReference` изменены с `..\X\X.csproj` на `..\..\src\X\X.csproj` (тестовый проект теперь на один уровень глубже относительно `src/`, тогда как ссылки **между** `src`-проектами друг на друга не изменились — они переехали синхронно на одном уровне).
+  - `.github/workflows/backend-ci.yml` — пути к `Infrastructure.csproj`/`WebApi.csproj` (миграции) и `Application.Tests.csproj` (тесты) обновлены на `src/`/`tests/`.
+- **Проверено полностью после реструктуризации**: `dotnet build Backend.slnx` — 0 ошибок; `dotnet test tests/Application.Tests/Application.Tests.csproj` — **12/12 пройдено**; `dotnet ef migrations has-pending-model-changes` — модель и миграции по-прежнему синхронны (миграции физически переехали вместе с `Infrastructure`, EF Core их находит без проблем).
+
+**Не сделано**: изменения ещё не закоммичены — ждут явного запроса пользователя на commit/push (135+ файлов пришлось переместить, стоит дать пользователю проверить diff перед тем, как это уйдёт в git).
+
+## 2026-07-17 (продолжение 3) — Тестпокрытие расширено на все оставшиеся 17 handler'ов
+
+После честной оценки готовности (по запросу "Is Aplication and Domain 100% ready and correct") был назван конкретный пробел: только 2 из 19 handler'ов (`ProcessSale`, `VoidSale`) имели automated-тесты, остальные 17 проверялись только вручную (`curl`/`psql`) в прошлых сессиях — без защиты от регрессий. Закрыт этим шагом полностью — на каждый handler, у которого его не было, добавлен тестовый файл (все на моках, без БД, кроме уже существовавшего `StockLevelConcurrencyTests`).
+
+Добавлено 17 новых тестовых файлов в `Backend/tests/Application.Tests/` (плоско, без подпапок — согласно решению пользователя о структуре тестов):
+
+- **Identity** (`RegisterCommandHandlerTests`, `LoginCommandHandlerTests`, `RefreshTokenCommandHandlerTests`) — тонкие обёртки над `IAuthService`, тесты проверяют делегирование и null-сценарий (занятый email/неверный пароль/отозванный токен).
+- **Feedback** (`ModerateReportCommandHandlerTests`, `ReportOutOfStockCommandHandlerTests`) — NotFound/AlreadyModerated/Resolve/Reject с проверкой записи в `AuditLog` через `Mock.Verify`.
+- **Products** (`ModerateNewProductCommandHandlerTests`) — Approve реально создаёт `Product` и возвращает его Id; Reject — не создаёт.
+- **Receipts** (`VerifyReceiptCommandHandlerTests`) — 6 сценариев: NotFound/Forbidden/AlreadyProcessed/MissingStore/Verified (все позиции совпали)/Mismatched (хотя бы одна разошлась) — самый разветвлённый handler из всех непокрытых.
+- **Offers** (`PublishExpiringOfferCommandHandlerTests`), **Inventory** (`RecordStockReceiptCommandHandlerTests`) — стандартный паттерн StoreNotFound/Forbidden/ProductNotFound/успех, с проверкой конкретных вызовов репозиториев (`IncrementAsync`, `StockMovementType.Receipt`).
+- **Отчётность StorePartner** (`GetStockLevelQueryHandlerTests`, `GetDailySalesReportQueryHandlerTests`, `GetProfitReportQueryHandlerTests`, `GetStoreDashboardQueryHandlerTests`) — включая арифметику (`GetProfitReport`: явный тест на то, что отсутствующий `CostPrice` трактуется как 0, а не падает).
+- **Products/Pricing** (`ScanBarcodeQueryHandlerTests`, `CompareStoresForShoppingListQueryHandlerTests`, `GetTopSellingProductsQueryHandlerTests`, `SubmitPriceUpdateCommandHandlerTests`) — включая проверку сортировки по расстоянию (Haversine через `GeoDistance`) и по цене, и то, что `CompareStoresForShoppingList` исключает магазины с **неполным** совпадением товаров.
+
+Все 17 handler'ов и их зависимости (Domain entities, Abstractions-интерфейсы) прочитаны заново перед написанием тестов, а не по памяти из прошлых сессий — сигнатуры конструкторов/методов подтверждены чтением актуального кода.
+
+**Результат**: `dotnet build` — 0 ошибок; `dotnet test` — **65/65 пройдено** (12 старых + 53 новых), все тесты прошли с первого запуска, ни одной правки после написания не понадобилось.
+
+**Не сделано**: тесты для `AuthService`/`JwtTokenGenerator` (Infrastructure layer, не Application — вне текущего проекта тестов, потребует отдельный `Infrastructure.Tests` с реальным Identity/EF Core); изменения ещё не закоммичены.

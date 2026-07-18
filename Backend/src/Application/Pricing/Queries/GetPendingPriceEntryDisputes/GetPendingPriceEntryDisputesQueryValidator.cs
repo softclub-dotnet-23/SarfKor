@@ -1,0 +1,5 @@
+using FluentValidation;
+
+namespace Application.Pricing.Queries.GetPendingPriceEntryDisputes;
+
+public sealed class GetPendingPriceEntryDisputesQueryValidator : AbstractValidator<GetPendingPriceEntryDisputesQuery>;

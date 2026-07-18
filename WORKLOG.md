@@ -350,3 +350,266 @@
 - **Проверено локально перед пушем** (нет доступа к самому GitHub Actions из этой сессии, поэтому проверка — максимально приближенная к CI): `dotnet build Backend.slnx --configuration Release` — 0 ошибок; `dotnet test Application.Tests/Application.Tests.csproj --no-build --configuration Release` — **12/12 пройдено**, включая интеграционный тест (реальный локальный PostgreSQL сыграл роль CI-контейнера).
 
 **Не сделано**: сам workflow не запускался на реальном GitHub Actions в рамках этой сессии (нет прямого доступа) — первая проверка произойдёт при следующем `git push`; стоит проверить результат первого прогона и поправить при необходимости (версии `dotnet-ef`/`setup-dotnet` могут повести себя иначе на `ubuntu-latest`, чем локально на Windows). Тесты для остальных 15+ хендлеров по-прежнему не написаны.
+
+## 2026-07-17 (продолжение 2) — Реструктуризация каталогов: src/ и tests/
+
+По запросу пользователя все проекты сгруппированы по назначению: `Backend/{Application,Domain,Infrastructure,WebApi}` → `Backend/src/{...}` (тестовый проект уже был вынесен отдельно на предыдущем шаге в `Backend/Application.Tests`, теперь перемещён в `Backend/tests/Application.Tests`).
+
+- **Перемещение выполнено файл-за-файлом** (`git mv` на каждый отслеживаемый файл, не на директорию целиком) — прямой `git mv Application src/Application` падал с `Permission denied`: несколько фоновых `dotnet.exe`/MSBuild build-server процессов держали файл-хендлы внутри каталога (подтверждено через `tasklist`; `dotnet build-server shutdown` не полностью помогло). Файловая история Git сохранена для каждого файла.
+- **Найден и исправлен реальный побочный эффект перемещения**: у `Infrastructure.csproj` и `WebApi.csproj` после перемещения пропал целый блок `<ItemGroup>` с `<ProjectReference>` (скорее всего фоновый процесс в IDE — OmniSharp/C# Dev Kit — во время самого перемещения детектировал временно нерезолвящиеся ссылки на переехавшие проекты и тихо "почистил" их). Обнаружено сравнением текущего содержимого с последним закоммиченным (`git show <commit>:path`), не с `diff` напрямую — обычный `diff` через Git Bash ложно показывал построчные различия из-за CRLF/LF несовпадения между блобом и рабочим деревом, что едва не привело к ложной тревоге по всем 5 csproj-файлов. Оба файла восстановлены вручную с правильными относительными путями.
+- **Обновлены пути в трёх местах**, зависящих от структуры каталогов:
+  - `Backend.slnx` — все `<Project Path="...">` указывают на `src/...`/`tests/...`.
+  - `Backend/tests/Application.Tests/Application.Tests.csproj` — три `ProjectReference` изменены с `..\X\X.csproj` на `..\..\src\X\X.csproj` (тестовый проект теперь на один уровень глубже относительно `src/`, тогда как ссылки **между** `src`-проектами друг на друга не изменились — они переехали синхронно на одном уровне).
+  - `.github/workflows/backend-ci.yml` — пути к `Infrastructure.csproj`/`WebApi.csproj` (миграции) и `Application.Tests.csproj` (тесты) обновлены на `src/`/`tests/`.
+- **Проверено полностью после реструктуризации**: `dotnet build Backend.slnx` — 0 ошибок; `dotnet test tests/Application.Tests/Application.Tests.csproj` — **12/12 пройдено**; `dotnet ef migrations has-pending-model-changes` — модель и миграции по-прежнему синхронны (миграции физически переехали вместе с `Infrastructure`, EF Core их находит без проблем).
+
+**Не сделано**: изменения ещё не закоммичены — ждут явного запроса пользователя на commit/push (135+ файлов пришлось переместить, стоит дать пользователю проверить diff перед тем, как это уйдёт в git).
+
+## 2026-07-17 (продолжение 3) — Тестпокрытие расширено на все оставшиеся 17 handler'ов
+
+После честной оценки готовности (по запросу "Is Aplication and Domain 100% ready and correct") был назван конкретный пробел: только 2 из 19 handler'ов (`ProcessSale`, `VoidSale`) имели automated-тесты, остальные 17 проверялись только вручную (`curl`/`psql`) в прошлых сессиях — без защиты от регрессий. Закрыт этим шагом полностью — на каждый handler, у которого его не было, добавлен тестовый файл (все на моках, без БД, кроме уже существовавшего `StockLevelConcurrencyTests`).
+
+Добавлено 17 новых тестовых файлов в `Backend/tests/Application.Tests/` (плоско, без подпапок — согласно решению пользователя о структуре тестов):
+
+- **Identity** (`RegisterCommandHandlerTests`, `LoginCommandHandlerTests`, `RefreshTokenCommandHandlerTests`) — тонкие обёртки над `IAuthService`, тесты проверяют делегирование и null-сценарий (занятый email/неверный пароль/отозванный токен).
+- **Feedback** (`ModerateReportCommandHandlerTests`, `ReportOutOfStockCommandHandlerTests`) — NotFound/AlreadyModerated/Resolve/Reject с проверкой записи в `AuditLog` через `Mock.Verify`.
+- **Products** (`ModerateNewProductCommandHandlerTests`) — Approve реально создаёт `Product` и возвращает его Id; Reject — не создаёт.
+- **Receipts** (`VerifyReceiptCommandHandlerTests`) — 6 сценариев: NotFound/Forbidden/AlreadyProcessed/MissingStore/Verified (все позиции совпали)/Mismatched (хотя бы одна разошлась) — самый разветвлённый handler из всех непокрытых.
+- **Offers** (`PublishExpiringOfferCommandHandlerTests`), **Inventory** (`RecordStockReceiptCommandHandlerTests`) — стандартный паттерн StoreNotFound/Forbidden/ProductNotFound/успех, с проверкой конкретных вызовов репозиториев (`IncrementAsync`, `StockMovementType.Receipt`).
+- **Отчётность StorePartner** (`GetStockLevelQueryHandlerTests`, `GetDailySalesReportQueryHandlerTests`, `GetProfitReportQueryHandlerTests`, `GetStoreDashboardQueryHandlerTests`) — включая арифметику (`GetProfitReport`: явный тест на то, что отсутствующий `CostPrice` трактуется как 0, а не падает).
+- **Products/Pricing** (`ScanBarcodeQueryHandlerTests`, `CompareStoresForShoppingListQueryHandlerTests`, `GetTopSellingProductsQueryHandlerTests`, `SubmitPriceUpdateCommandHandlerTests`) — включая проверку сортировки по расстоянию (Haversine через `GeoDistance`) и по цене, и то, что `CompareStoresForShoppingList` исключает магазины с **неполным** совпадением товаров.
+
+Все 17 handler'ов и их зависимости (Domain entities, Abstractions-интерфейсы) прочитаны заново перед написанием тестов, а не по памяти из прошлых сессий — сигнатуры конструкторов/методов подтверждены чтением актуального кода.
+
+**Результат**: `dotnet build` — 0 ошибок; `dotnet test` — **65/65 пройдено** (12 старых + 53 новых), все тесты прошли с первого запуска, ни одной правки после написания не понадобилось.
+
+**Не сделано**: тесты для `AuthService`/`JwtTokenGenerator` (Infrastructure layer, не Application — вне текущего проекта тестов, потребует отдельный `Infrastructure.Tests` с реальным Identity/EF Core); изменения ещё не закоммичены.
+
+## 2026-07-18 — Загрузка чека (`UploadReceiptCommand`) + инцидент с потерей appsettings при реструктуризации
+
+### Инцидент: `appsettings.json`/`appsettings.Development.json` удалены при реструктуризации src/tests
+
+При зачистке старых пустых каталогов (`Application`, `Domain`, `Infrastructure`, `WebApi` — после того как все отслеживаемые git файлы уже были перемещены в `src/`) команда `rm -rf` затронула и `appsettings.json`/`appsettings.Development.json` — они не отслеживаются git (в `.gitignore`), поэтому цикл `git mv` по `git ls-files` их не перемещал, и они остались лежать в старой папке `WebApi/`, откуда `rm -rf` их безвозвратно удалил. Это повторение того же класса инцидента, что уже случался раньше в этом проекте (тогда — из-за `git checkout`/`merge`), на этот раз — из-за прямого `rm -rf` без предварительной проверки на нетрекаемые файлы.
+
+**Ущерб оценён и оказался нулевым**: `dotnet user-secrets list` подтвердил, что реальные значения (`ConnectionStrings:DefaultConnection` с настоящим паролем, `Jwt:Key`) целы — они хранятся вне рабочего дерева git (`%APPDATA%`), физическое удаление файлов в репозитории их не затрагивает. Сами `appsettings.json`/`appsettings.Development.json` по документированной истории (WORKLOG за 2026-07-17) никогда не содержали ничего, кроме плейсхолдеров (`Password=CHANGE_ME`, `CHANGE_ME_INSECURE_PLACEHOLDER_KEY`). Оба файла восстановлены вручную (структура `Logging`/`AllowedHosts` — из последней закоммиченной версии в git-истории до `git rm --cached`; секции `ConnectionStrings`/`Jwt`/`Cors` — реконструированы по чтению `Program.cs` и документации в WORKLOG, так как в git их committed-версии никогда не существовало). Восстановление подтверждено реальным запуском сервера (`dotnet run` поднялся и корректно прочитал секреты из `user-secrets`).
+
+**Урок на будущее**: перед любым `rm -rf` на каталог, который недавно был источником `git mv`, нужно явно проверить `find <каталог> -type f` (не полагаться на то, что "все файлы уже перемещены", если в `.gitignore` могут быть нетрекаемые, но при этом не мусорные файлы).
+
+### `UploadReceiptCommand` — закрыт пробел CLAUDE.md §2 "загрузка файлов" для чеков
+
+До этого момента `VerifyReceiptCommand` (реализован 2026-07-22) не имел входной точки — `Receipt` с реальным изображением ниоткуда не появлялся, кроме ручных вставок через `psql` в прошлых сессиях. Реализована загрузка: пользователь отправляет фото чека + вручную размеченные позиции (товар/количество/цена — OCR вне рамок этой задачи), сервер создаёт `Receipt` в статусе `Pending`, который затем можно проверить через уже существующий `VerifyReceiptCommand`.
+
+- **`Application/Receipts/Commands/UploadReceipt/`** — `UploadReceiptCommand` (UserId, StoreId?, ImageReference, Lines), валидатор (Lines не пусты, каждая позиция: Quantity>0, Price>0, Currency — 3 буквы), хендлер (создаёт `Receipt` + `ReceiptLineItem[]`, статус `Pending`).
+- **`IReceiptRepository`** дополнен методом `Add` (раньше был только `GetByIdAsync` — сверка чека была, а создания не было).
+- **Безопасность загрузки файла — все три требования CLAUDE.md §2 буквально**:
+  1. **Проверка типа файла по содержимому, а не по расширению/заголовку**: сервер читает первые 8 байт и сверяет с magic bytes JPEG (`FF D8 FF`) / PNG (`89 50 4E 47 0D 0A 1A 0A`) — `Content-Type`, присланный клиентом, полностью игнорируется как источник истины (его легко подделать).
+  2. **Ограничение размера**: 5 МБ, проверяется до чтения файла в память.
+  3. **Хранение вне веб-корня**: файл сохраняется в `ContentRootPath/App_Data/receipts/` (настраивается через `Storage:ReceiptsPath`), а не в `wwwroot` — у приложения даже нет `wwwroot` и не подключён `UseStaticFiles`, то есть загруженные файлы физически недоступны по HTTP ни при каких условиях.
+  4. **Имя файла на диске генерируется сервером** (`Guid.NewGuid() + расширение_по_magic_bytes`), клиентское имя файла нигде не используется — исключает path traversal и перезапись чужих файлов.
+- **Побочная находка при первом ручном тесте**: ASP.NET Core Minimal API начиная с .NET 8 автоматически требует antiforgery-middleware для любого эндпоинта, принимающего `IFormFile`/форму, даже если само приложение никогда не вызывало `AddAntiforgery()` — упало с `InvalidOperationException` при первом запросе. Исправлено явным `.DisableAntiforgery()` на эндпоинте — обоснованно, а не как обход защиты: сам CLAUDE.md §2 говорит "CSRF: antiforgery токены при cookie-сессиях; при JWT — строгая CORS-политика", а это API — чисто JWT Bearer без cookie-сессий, значит antiforgery здесь архитектурно не тот механизм защиты (CORS whitelist уже настроен отдельно, см. запись за 2026-07-23).
+- **Эндпоинт**: `POST /api/receipts/upload` (multipart/form-data: `file`, `storeId`, `linesJson`), `RequireAuthorization()` + `RequireRateLimiting("contributions")` (тот же лимит 20/час, что у `SubmitPriceUpdate`/`VerifyReceipt`/`ReportOutOfStock` — все пользовательские contribution-эндпоинты используют одну политику).
+- **Тест** (`UploadReceiptCommandHandlerTests`, на моках) — проверяет, что создаётся `Receipt` с правильными `UserId`/`StoreId`/`ImageReference`/статусом `Pending` и что позиции с `ProductId: null` (нераспознанный товар) и заполненным `RecognizedName` сохраняются корректно.
+- **Проверено вручную end-to-end** (`dotnet run` + `curl`, 4 сценария, не только билд):
+  1. Реальный JPEG (корректные magic bytes) → `200 {"receiptId":2}`; файл реально лежит на диске как `App_Data/receipts/<guid>.jpg` (проверено `find`), `wwwroot` у проекта не существует вовсе.
+  2. Текстовый файл с расширением `.jpg` и заголовком `Content-Type: image/jpeg` (подделка) → `400 "Unsupported file type"` — magic-byte проверка сработала, несмотря на то что клиент врал и в расширении, и в заголовке.
+  3. Файл 6 МБ → `400 "File is empty or exceeds the 5 MB limit"`.
+  4. Запрос без JWT → `401`.
+  5. Итоговая проверка целостности потока: `POST /api/receipts/2/verify` сразу после загрузки вернул `200` с корректным сравнением цены из чека (12.50) и текущей цены в БД (20.00) — `matches: false`, `outcome: Mismatched` — подтверждает, что весь путь Upload → Verify работает на реальных данных, а не только по отдельности.
+
+**Результат**: `dotnet build` — 0 ошибок; `dotnet test` — **66/66 пройдено** (65 + новый `UploadReceiptCommandHandlerTests`).
+
+**Не сделано (сознательно)**: аналогичная загрузка фото товара (`ProductImage`) — тот же паттерн, но для Admin/StorePartner, не реализована в этом заходе; OCR распознавания позиций чека нет (пользователь размечает вручную); удаление/ротация старых файлов на диске (retention policy) не продумана.
+
+## 2026-07-18 (продолжение) — Три реальных функциональных разрыва закрыты: CreateStore, SetCostPrice, GetExpiringOffers
+
+Честная ревизия (по вопросу "did you finish all cruds?") показала: проект намеренно не строится как generic CRUD по всем 55 Domain-сущностям (CLAUDE.md §6 — конкретный список use-case'ов, не спецификация CRUD), и 39 из 55 сущностей вообще не задействованы в Application layer — это осознанно **не** стало задачей (пользователь согласился не трогать спекулятивные сущности вроде `LoyaltyProgram`/`GiftCard`/`Supplier`, добавленные в давних сессиях без опоры на CLAUDE.md). Но среди используемых сущностей нашлись три места, где реально построенная функциональность оказывалась бесполезной без парной операции:
+
+1. **`Store` нельзя было создать через API** — все магазины во всех предыдущих сессиях заводились вручную через `psql`, у StorePartner не было самостоятельного онбординга.
+2. **`CostPrice` нельзя было установить через API** — `GetProfitReportQuery` (прибыль) существовал и работал, но данные для него класть было некуда, кроме прямых вставок в БД.
+3. **`ExpiringOffer` можно было только публиковать, но не прочитать** — `PublishExpiringOfferCommand` существовал, `GetExpiringOffersQuery` — нет; акция создавалась и была невидима навсегда.
+
+### `CreateStoreCommand`
+
+- `IStoreRepository` дополнен `Add`; `IAuthService` дополнен `AssignRoleAsync(userId, role, ct)` — реализован через `UserManager.IsInRoleAsync`/`AddToRoleAsync` (идемпотентно: повторный вызов не падает и не дублирует роль).
+- Хендлер создаёт `Store` с `OwnerUserId` из JWT-claim'а и **тут же присваивает роль `StorePartner`** — самостоятельный онбординг в одно действие: любой аутентифицированный `User` может завести магазин и стать партнёром.
+- **Известное и задокументированное ограничение JWT**: только что созданный магазин виден в БД сразу, но токен пользователя, которым он был создан, ещё содержит старый claim `role: User` — политика `RequireAuthorization("StorePartner")` на других эндпоинтах отклонит его с `403`, пока он не сделает `POST /api/auth/refresh` за новым токеном. Это не баг, а стандартное поведение JWT (роль в токене — снимок на момент выдачи), явно прокомментировано в коде хендлера.
+- `POST /api/stores` — `RequireAuthorization()` (любой залогиненный, не только `StorePartner` — иначе никто не смог бы создать первый магазин) + `RequireRateLimiting("contributions")`.
+
+### `SetCostPriceCommand`
+
+- `ICostPriceRepository` дополнен `Add`. Паттерн — append-only история, как у `PriceEntry` (не update-in-place): новая запись с `EffectiveFrom = UtcNow`, уже существующий `GetLatestForStoreAsync` (join по `MAX(EffectiveFrom)`) сам подхватывает самую свежую.
+- Тот же двухуровневый auth-паттерн, что и у `RecordStockReceiptCommand`: `Store.OwnerUserId == PerformedByUserId`, иначе `Forbidden` — себестоимость чужого магазина недоступна для записи (CLAUDE.md §4: `CostPrice` строго ограничена).
+- `POST /api/stock/cost-price` — `RequireAuthorization("StorePartner")`.
+
+### `GetExpiringOffersQuery`
+
+- `IExpiringOfferRepository` дополнен `GetActiveAsync(storeId?, asOf, ct)` — фильтр `ExpiresAt > asOf`, опционально по магазину.
+- Хендлер — тот же join-паттерн, что в `ScanBarcodeQuery`/`CompareStoresForShoppingListQuery`: подтягивает `Product`/`Store` по batch-`GetByIdsAsync`, считает расстояние через уже существующий `GeoDistance`, сортирует по расстоянию затем по сроку истечения. Публичный, без аутентификации — потребитель должен видеть акции без логина.
+- `GET /api/offers/expiring?storeId=&lat=&lng=` — `RequireRateLimiting("scan")` (та же политика, что у других публичных read-эндпоинтов).
+
+### Тесты и находка в процессе (не в проде — в собственном тесте)
+
+Три новых файла тестов (`CreateStoreCommandHandlerTests`, `SetCostPriceCommandHandlerTests`, `GetExpiringOffersQueryHandlerTests`). При первом прогоне упал `Handle_NoActiveOffers_ReturnsEmptyList` — `ArgumentNullException` в `ToDictionary`. Причина: тест мокировал `GetActiveAsync` на пустой список, но не мокировал `GetByIdsAsync`, и Moq по умолчанию возвращает `null` для нестабленных вызовов (а не пустую коллекцию) — хендлер получал `null.ToDictionary()`. Проверено, что это исключительно артефакт мока: реальные `ProductRepository`/`StoreRepository.GetByIdsAsync` используют `.ToListAsync()`, который на пустом запросе физически не может вернуть `null`. Тест исправлен явным мокированием `GetByIdsAsync` → `[]`.
+
+**Результат**: `dotnet build` — 0 ошибок; `dotnet test` — **74/74 пройдено**. Миграции не потребовались (все три use-case'а используют уже существующие таблицы).
+
+### Проверено вручную end-to-end (реальный `dotnet run` + `curl`, не только тесты)
+
+1. `POST /api/auth/register` → новый пользователь, роль `User`.
+2. `POST /api/stores` → `200 {"storeId":3}`.
+3. `POST /api/stock/cost-price` со старым (дорефрешевым) токеном → `403` — подтверждает задокументированное ограничение JWT.
+4. `POST /api/auth/refresh` → новый токен, JWT payload проверен вручную (base64-декод) — `"role":["User","StorePartner"]`, роль реально присвоилась в БД.
+5. `POST /api/stock/cost-price` с новым токеном, для своего магазина (id=3) → `200 {"outcome":0,"costPriceId":2}`.
+6. `POST /api/stock/cost-price` для **чужого** магазина (id=2, из прошлых сессий) → `403` — проверка владения сработала.
+7. `GET /api/offers/expiring` без `Authorization` заголовка → `200` — подтверждён публичный доступ.
+8. `POST /api/offers` (публикация акции для нового магазина) → `200 {"offerId":2}`.
+9. Повторный `GET /api/offers/expiring` → в списке появилась и старая акция из прошлых сессий (id=1, ещё не истекла), и только что опубликованная (id=2) — разрыв "write-only" подтверждённо закрыт.
+
+**Не сделано (сознательно)**: остальные 37 неиспользуемых Domain-сущностей (`LoyaltyProgram`, `GiftCard`, `Supplier`, `ShoppingList`, `Review` и т.д.) намеренно не тронуты — пользователь подтвердил, что строить для них CRUD без опоры на явную бизнес-потребность было бы повторением уже осознанной в этом проекте ошибки (спекулятивное расширение модели).
+
+## 2026-07-18 (продолжение 2) — Три пункта из "честной оценки готовности": HSTS, /health, детект аномалий кассира
+
+По запросу "do what need my project" — выбраны три конкретных, выполнимых в рамках кода пункта из ранее названного списка недоделанного (HTTPS/HSTS, мониторинг, мошенничество кассира), без затрагивания того, что требует бизнес-решения (платёжный провайдер, фискализация) или внешней инфраструктуры (полноценный APM/Grafana, нагрузочное тестирование).
+
+### HSTS в проде (закрыт пробел CLAUDE.md §2 "HTTPS everywhere, HSTS в проде")
+
+`app.UseHsts()` добавлен в `Program.cs` внутри `else`-ветки от `if (app.Environment.IsDevelopment())` — то есть строго вне Development, как того требует сам ASP.NET Core (HSTS на локальном HTTP-дев-сервере бессмыслен и мешает отладке). Без этого браузер не заставляли запоминать "только HTTPS для этого домена" — оставалась пусть узкая, но реальная возможность SSL-stripping между `UseHttpsRedirection()`-редиректами.
+
+### `GET /health` — фундамент для мониторинга (CLAUDE.md §10 "нужен дашборд состояния системы")
+
+Простой health-check без сторонних пакетов (сознательно не подключён `Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore` — лишняя зависимость на preview-стеке EF Core ради небольшого удобства не стоит риска несовместимости версий): эндпоинт напрямую вызывает `dbContext.Database.CanConnectAsync()`, возвращает `200 {"status":"healthy",...}` или `503`. Без аутентификации (стандартно для health-проб — их дёргают балансировщики/аптайм-мониторы, не люди) и без внутренних деталей в ответе (не течёт ничего, кроме факта "жив/не жив"). Сам полноценный дашборд (Grafana и т.п.) — по-прежнему вне охвата этой сессии, нужна внешняя инфраструктура, но теперь есть, что ему опрашивать.
+
+### `GetCashierAnomalyReportQuery` — первая эвристика против мошенничества кассира (CLAUDE.md §10 "алерты на аномальные паттерны отмен")
+
+- `ISaleTransactionRepository` дополнен `GetAllInRangeAsync` (в отличие от уже существующего `GetCompletedInRangeAsync` — берёт **и** `Completed`, **и** `Voided`, потому что для детекта аномалий важна именно доля отмен, а не только выручка).
+- Хендлер группирует все продажи магазина за период по `CashierUserId`, считает `VoidRate = VoidedSales / TotalSales`, помечает `IsAnomalous = true`, если **одновременно**: `VoidRate > 20%` **и** `TotalSales >= 5` — вторая часть условия принципиальна и явно закомментирована в коде: без минимального размера выборки один отменённый чек кассира-новичка (100% void rate на выборке из 1) даёт заведомо бессмысленный "красный флаг".
+- Явно закомментировано и в коде, и здесь: это **простейшая отправная эвристика**, а не откалиброванная модель — CLAUDE.md сам называет это направление нерешённым ("рассмотреть периодическую сверку... алерты на аномальные паттерны"), а не готовым к внедрению алгоритмом; порог 20%/выборка 5 не проверялись на реальных данных, потому что реальных данных о нормальном поведении кассиров пока не существует.
+- `GET /api/stores/{storeId}/reports/cashier-anomalies?from=&to=` — `RequireAuthorization("StorePartner")`, тот же паттерн владения, что у `GetProfitReport`/`GetDailySalesReport`.
+- **Тест на конкретно то, ради чего фича писалась** (`GetCashierAnomalyReportQueryHandlerTests`, 5 тестов): высокий void-rate с достаточной выборкой → `IsAnomalous: true`; высокий void-rate, но выборка меньше порога → `IsAnomalous: false` (не "плачет волк" на шуме); нормальный void-rate → не помечен.
+
+### Проверено вручную end-to-end (реальный `dotnet run` + `curl`)
+
+1. `GET /health` → `200 {"status":"healthy",...}`.
+2. Полный цикл: регистрация → `CreateStore` (id=4) → `SubmitPriceUpdate` → `RecordStockReceipt` → 2 продажи → `VoidSale` на одну из них → `GET /reports/cashier-anomalies` вернул **реальные вычисленные цифры**: `totalSales: 2, voidedSales: 1, voidRate: 0.5, isAnomalous: false` — 50% void rate, но `isAnomalous: false`, потому что выборка (2) меньше минимальной (5) — эвристика сработала ровно так, как задумана, не только в тесте на моках, но и на реальных данных из PostgreSQL.
+3. Запрос отчёта по чужому магазину (id=2) → `403` — проверка владения сработала.
+
+**Результат**: `dotnet build` — 0 ошибок; `dotnet test` — **79/79 пройдено**. Миграции не потребовались.
+
+**Не сделано (сознательно, вне охвата кода)**: полноценный мониторинг/alerting (Grafana/Prometheus и т.п. — нужна внешняя инфраструктура), нагрузочное тестирование (нужны инструменты вроде k6/JMeter и стенд, не только код), токенизация платежей (нерешённый вопрос выбора провайдера, CLAUDE.md §9), фискализация и PDPA (юридические вопросы, не код), CI на реальном GitHub Actions по-прежнему не подтверждён (нет доступа к `gh`/Actions API в этой среде).
+
+## 2026-07-18 (продолжение 3) — "Активируй все Entity" — Batch 1/9: справочники каталога
+
+По прямому запросу пользователя ("Hammai Entitihoro faol kun" — активируй все сущности) начата многозаходная работа по подключению оставшихся 39 неиспользуемых Domain-сущностей к Application/WebApi. Учитывая масштаб и явную рекомендацию не строить бездумный generic CRUD (согласовано с пользователем через `AskUserQuestion` — выбран вариант "настоящие бизнес-операции для каждой, качественно, пусть и долго"), работа разбита на 9 тематических батчей; ниже — первый.
+
+### Batch 1: `Brand`, `Category`, `TaxRate`, `Supplier`
+
+Эти четыре — общеплатформенные справочники, на которые уже ссылается `Product` (`CategoryId`, `BrandId`, `TaxRateId` — по внешнему ключу) и `StockMovement` (`SupplierId`), но создать запись в них раньше можно было только вручную через `psql` — тот же класс проблемы, что был у `Store`/`CostPrice` до предыдущего шага.
+
+- `Brand`/`Category`/`TaxRate` — создаются только `Admin` (курируемая централизованно таксономия, чтобы разные StorePartner не плодили дубликаты категорий); `Supplier` — создаётся любым `StorePartner` (поставщики — операционная договорённость конкретного партнёра, не платформенная таксономия).
+- `Category` поддерживает иерархию (`ParentCategoryId`) — `CreateCategoryCommand` явно проверяет существование родителя (`CategoryNotFound`, если ссылка на несуществующий id), а не полагается на FK-ограничение БД молча упасть.
+- Все четыре `Get*Query` — публичные списки без пагинации (объём справочников мал по своей природе), `GetSuppliers` — единственный из четырёх, что закрыт `RequireAuthorization("StorePartner")` (список поставщиков — операционная информация партнёров, не публичная витрина, в отличие от брендов/категорий/налоговых ставок, нужных фронтенду для дропдаунов при просмотре товаров).
+- Добавлены 4 репозитория (`IBrandRepository`, `ICategoryRepository`, `ITaxRateRepository`, `ISupplierRepository`) — `DbSet<T>` для всех четырёх уже существовали в `AppDbContext` с самого начала (Domain-сущности были, просто не задействованы), миграций не потребовалось.
+
+### Проверено вручную end-to-end
+
+Через `psql` тестовому пользователю выдана роль `Admin` (тот же приём, что применялся для `StorePartner` в прошлых сессиях):
+1. `POST /api/catalog/brands` (Admin) → `200 {"brandId":2}`; `GET /api/catalog/brands` (без токена) → оба бренда в списке.
+2. `POST /api/catalog/categories` без родителя → `200`; с несуществующим `parentCategoryId: 999` → `404`.
+3. `POST /api/catalog/tax-rates` (Admin) → `200`; `GET /api/catalog/tax-rates` (публично) → в списке.
+4. `POST /api/suppliers` от имени `Admin` (без роли `StorePartner`) → `403` — разделение ролей подтверждено; тот же запрос от `StorePartner` (после создания магазина и `refresh` за новой ролью — тот же паттерн JWT, что и в `CreateStore`) → `200`; `GET /api/suppliers` без токена → `401`.
+
+**Результат**: `dotnet build` — 0 ошибок; `dotnet test` — **85/85 пройдено** (+6 новых тестов на 4 handler'а create-команд).
+
+**Следующие батчи** (запланированы, не начаты): Consumer engagement (ShoppingList/Favorite/Review/PriceAlert/DeviceToken/Notification), Loyalty/CRM, Supply chain (PurchaseOrder/StockTransfer/ReorderRule/ProductBundle), POS extras (CashierShift/SaleReturn), Disputes, Identity/security (UserProfile/UserConsent/SecurityEvent/StoreEmployee), Promotion/Scan/Commission. `FiscalReceipt` сознательно остаётся нетронутым — CLAUDE.md §9 прямо называет фискализацию нерешённым юридическим блокером, реализация без ответа на этот вопрос была бы бесполезной или вредной (создала бы иллюзию готовности к реальным чекам).
+
+## 2026-07-18 (продолжение 4) — "Активируй все Entity" — Batch 2/9: consumer engagement
+
+### `ShoppingList`+`ShoppingListItem`, `Favorite`, `Review`+`ReviewReply`, `PriceAlert`, `DeviceToken`, `Notification`
+
+16 use-case'ов на 6 сущностей — по возможности реальные операции, не generic CRUD:
+
+- **ShoppingList**: `CreateShoppingListCommand`, `AddShoppingListItemCommand`/`RemoveShoppingListItemCommand` (оба с проверкой владения — список принадлежит только создавшему его пользователю), `GetShoppingListsQuery` (с вложенными позициями).
+- **Favorite**: `AddFavoriteCommand` идемпотентен (повторное добавление того же `(UserId, Type, EntityId)` возвращает существующий `Id`, не плодит дубликаты), `RemoveFavoriteCommand`, `GetFavoritesQuery`.
+- **Review/ReviewReply**: `SubmitReviewCommand` (рейтинг 1–5), `GetReviewsQuery` (публичный), `ReplyToReviewCommand` — единственный нетривиальный: ответить может только владелец магазина, к которому привязан отзыв (`Review.StoreId`); если у отзыва нет магазина (`StoreId == null`) — отвечать física некому, возвращается `Forbidden`, а не молчаливое разрешение.
+- **PriceAlert**: `CreatePriceAlertCommand`, `GetPriceAlertsQuery`, `DeactivatePriceAlertCommand` (с владением). Сам механизм триггера алерта при падении цены (фоновая задача, сверяющая `PriceAlert.TargetPrice` с новыми `PriceEntry`) — вне охвата этого батча, реализован только жизненный цикл записи.
+- **DeviceToken**: `RegisterDeviceTokenCommand` — идемпотентный upsert по значению токена (не по пользователю): один и тот же физический токен устройства при переустановке приложения/смене пользователя на одном устройстве обновляет существующую строку, а не накапливает дубликаты.
+- **Notification**: `GetNotificationsQuery`, `MarkNotificationAsReadCommand` (с владением). Ничего в системе пока не создаёт `Notification` автоматически (низкий остаток, падение цены и т.д. — будущая интеграция с уже существующими use-case'ами типа `RecordStockReceipt`/`SubmitPriceUpdate`); в этом батче сделан только API для чтения/квитирования уже созданных записей.
+
+### Два реальных бага, найденных ручной проверкой (не тестами и не билдом)
+
+1. **`DELETE /api/favorites` ронял весь процесс на старте** (`InvalidOperationException: Body was inferred but the method does not allow inferred body parameters`) — Minimal API в ASP.NET Core не разрешает неявно выводимое тело запроса (JSON body) для `MapDelete`, в отличие от `MapPost`/`MapPut`. Эндпоинт получал сложный DTO (`FavoriteRequest`) как тело, что для `DELETE` запрещено фреймворком. **Это падение — на старте приложения**, не на конкретном запросе: `dotnet build` прошёл чисто (0 ошибок), юнит-тесты прошли (116/116, они не касаются регистрации маршрутов), и только реальный `dotnet run` вскрыл проблему, потому что ASP.NET Core строит дерево эндпоинтов лениво при первом обращении к `EndpointDataSource` (тут — при инициализации `AuthorizationPolicyCache`). Исправлено: `type`/`entityId` теперь читаются из query-string (`DELETE /api/favorites?type=Product&entityId=5`), а не из тела.
+2. **Enum-поля в теле запроса принимали только числа, а не строки** (`{"type":"Product"}` падало с `JsonException`, потому что System.Text.Json по умолчанию сериализует enum как целое число) — это первый раз в проекте, когда клиент вообще передаёт enum-значение в теле запроса (`FavoriteRequest.Type`, `RegisterDeviceTokenRequest.Platform`), поэтому проблема не всплывала раньше. Исправлено глобально, а не точечно: `builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()))` — теперь **все** enum по всему API (включая уже существующие, если где-то появится похожий сценарий) сериализуются/десериализуются как читаемые строки (`"Product"`, `"Android"`), а не magic numbers.
+
+**Практический урок, дополняющий запись от 2026-07-22** ("EF Core не ловит ошибки трансляции LINQ на этапе сборки"): здесь та же категория проблемы, но на уровне маршрутизации ASP.NET Core — `dotnet build` и unit-тесты не гарантируют, что приложение вообще способно **запуститься**. Только реальный `dotnet run` + ручной прогон каждого нового эндпоинта ловит такие ошибки, что ещё раз подтверждает необходимость сквозной проверки, а не только "зелёных" тестов.
+
+### Проверено вручную end-to-end (все 16 эндпоинтов, включая оба найденных бага и их исправления)
+
+Полный цикл через `dotnet run` + `curl`: `CreateShoppingList` → `AddShoppingListItem` → `GetShoppingLists` (позиция реально вложена); `AddFavorite` со строковым enum → `GetFavorites` → повторный `AddFavorite` (тот же id, не дубликат) → `RemoveFavorite` через query-string → `GetFavorites` пуст; `SubmitReview` → `GetReviews` публично; `ReplyToReview` от не-владельца магазина → `403`; `CreatePriceAlert` → `GetPriceAlerts` → `DeactivatePriceAlert` → повторный `GetPriceAlerts` подтверждает `isActive: false`; `RegisterDeviceToken` со строковым enum `"Android"`; `GetNotifications` — пусто (ожидаемо, ничего пока не генерирует уведомления).
+
+**Результат**: `dotnet build` — 0 ошибок; `dotnet test` — **116/116 пройдено** (+31 новый тест на 16 handler'ов). Миграции не потребовались — все `DbSet<T>` для этих 6 сущностей существовали в `AppDbContext` с самого начала.
+
+**Не сделано (сознательно, вне охвата батча)**: автоматическое создание `Notification` при падении цены/низком остатке (нужна интеграция с существующими `SubmitPriceUpdate`/`RecordStockReceipt`, следующий логический шаг, но не часть "активации" самой сущности); удаление/список device-токенов (только регистрация); пагинация у `GetReviews`/`GetNotifications` (объём пока не требует).
+
+## 2026-07-18 (продолжение 5) — "Активируй все Entity" — Batch 3/9: Loyalty/CRM
+
+### `Customer`, `LoyaltyProgram`+`LoyaltyAccount`+`LoyaltyTransaction`, `GiftCard`, `StoreCredit`
+
+14 use-case'ов, самый архитектурно-нетривиальный батч из всех активированных сущностей — три уровня владения на цепочке `LoyaltyAccount → LoyaltyProgram → Store.OwnerUserId`.
+
+- **Customer**: `CreateCustomerCommand` идемпотентен по номеру телефона (общий реестр клиентов между магазинами — один и тот же человек может быть клиентом нескольких магазинов), `GetCustomerByPhoneQuery` — доступ только `StorePartner` (номер телефона — персональные данные, не публичный поиск).
+- **LoyaltyProgram**: `CreateLoyaltyProgramCommand` — один магазин, одна программа (`AlreadyExists`, если уже создана), владение через `Store.OwnerUserId`. `GetLoyaltyProgramQuery` — публичный (клиент должен видеть условия программы до участия).
+- **LoyaltyAccount/LoyaltyTransaction** — самое сложное место батча: `EarnLoyaltyPointsCommand`/`RedeemLoyaltyPointsCommand` проверяют владение не напрямую (у `LoyaltyAccount` нет `OwnerUserId`), а по цепочке `LoyaltyAccount.LoyaltyProgramId → LoyaltyProgram.StoreId → Store.OwnerUserId` — три последовательных запроса на чтение перед единственной записью. `RedeemLoyaltyPointsCommand` проверяет достаточность баланса **до** списания (`InsufficientPoints`, баланс не трогается) — тот же принцип, что у `TryDecrementAsync` для остатка склада, только без атомарного SQL UPDATE (здесь конкурентное списание баллов одним и тем же аккаунтом менее вероятно и не так критично, как продажа последней единицы товара, поэтому упрощённая read-then-write модель признана достаточной для этой сущности — в отличие от `StockLevel`, где race condition было ядром задачи).
+- **GiftCard** — единственная сущность из этого батча вообще без привязки к магазину или пользователю (сама структура `Domain.Payments.GiftCard` не имеет ни `StoreId`, ни `OwnerUserId` — так была спроектирована ещё на этапе Domain layer). Это осознанно не переделывалось (не в рамках "активации" — менять форму существующей сущности значило бы редизайн, а не активацию): `IssueGiftCardCommand` доступен любому `StorePartner`, `RedeemGiftCardCommand` — тоже любому, код генерируется сервером (`Guid`, 12 символов, не последовательный ID — не угадать перебором). Если/когда бизнес решит, что подарочные карты должны быть привязаны к конкретному магазину — это отдельная задача на изменение модели, не эта.
+- **StoreCredit** — в отличие от `GiftCard`, привязан к `(StoreId, CustomerId)` напрямую в самой сущности, поэтому владение проверяется напрямую через `Store.OwnerUserId`, без многоходовки. `IssueStoreCreditCommand` — upsert (первый выпуск создаёт строку, повторный увеличивает существующий баланс, а не создаёт вторую запись на того же клиента в том же магазине).
+
+### Проверено вручную end-to-end (все 14 эндпоинтов, реальные вычисления, не только билд)
+
+Полный сквозной сценарий через `dotnet run` + `curl`: `CreateStore` → `CreateCustomer` → `CreateLoyaltyProgram` → `EnrollCustomerInLoyalty` → `EarnLoyaltyPoints` (+50 → баланс 50) → `RedeemLoyaltyPoints` на 100 (больше баланса) → `409 "Insufficient points balance"` → `RedeemLoyaltyPoints` на 20 (валидно) → баланс 30 → `GetLoyaltyAccount` подтверждает 30. Отдельно: `IssueGiftCard` → `GetGiftCardBalance` (публично, без токена) → `RedeemGiftCard` 30 из 100 → остаток 70 → `RedeemGiftCard` с несуществующим кодом → `404`. Отдельно: `IssueStoreCredit` 15 → `GetStoreCreditBalance` подтверждает 15 → `RedeemStoreCredit` 5 → остаток 10.
+
+**Результат**: `dotnet build` — 0 ошибок с первой попытки (впервые за все три батча — сказался накопленный опыт с паттерном многоходовой проверки владения); `dotnet test` — **148/148 пройдено** (+32 новых теста на 14 handler'ов, включая явные тесты на многоходовую проверку `Forbidden` через `LoyaltyAccount → LoyaltyProgram → Store`). Миграции не потребовались.
+
+**Не сделано (сознательно)**: `LoyaltyTransaction`/история операций не выводится отдельным query (только текущий баланс через `GetLoyaltyAccountQuery`) — журнал операций как отдельная фича, не часть "активации" сущности; `GiftCard`/`StoreCredit` не интегрированы как способ оплаты в `ProcessSaleCommand` (это отдельная, более сложная задача — провести продажу частично гасить подарочной картой, требует изменения самого `ProcessSaleCommand`, не просто активации сущности).
+
+## 2026-07-18 (продолжение 6) — "Активируй все Entity" — Batch 4/9: Supply chain
+
+### `PurchaseOrder`+`PurchaseOrderLineItem`, `StockTransfer`, `ReorderRule`, `ProductBundle`+`ProductBundleItem`
+
+11 use-case'ов — первый батч, где сборка прошла с 0 ошибок с первой попытки (накопленный за три батча опыт с паттерном "владение через цепочку связей" начал окупаться). Два use-case'а здесь — не просто CRUD-обвязка, а реальная интеграция с уже существующей складской механикой:
+
+- **`ReceivePurchaseOrderCommand`** — приёмка заказа поставщику **реально увеличивает остаток**: для каждой строки заказа вызывается уже существующий `IStockLevelRepository.IncrementAsync` + пишется `StockMovement` (`Type = Receipt`, `SupplierId` заказа) — тот же паттерн, что у `RecordStockReceiptCommand`, но управляемый по строкам заказа, а не одной ручной операцией, и внутри `ExecuteInTransactionAsync` (несколько строк заказа = несколько складских операций, должны либо все пройти, либо ни одна). Жизненный цикл: `Draft → Submitted → Received` (`SubmitPurchaseOrderCommand`/`ReceivePurchaseOrderCommand` проверяют текущий статус перед переходом — попытка принять неотправленный заказ → `409 "not been submitted"`, проверено вручную).
+- **`InitiateStockTransferCommand`/`CompleteStockTransferCommand`** — межмагазинное перемещение товара, **оба конца обязаны принадлежать одному владельцу** (`FromStore.OwnerUserId == ToStore.OwnerUserId == PerformedByUserId`) — иначе кто угодно мог бы инициировать "перемещение" чужого товара себе. `Initiate` атомарно списывает остаток у источника через уже существующий `TryDecrementAsync` (та же защита от отрицательного остатка, что и в `ProcessSaleCommand`) и создаёт `StockTransfer` в статусе `InTransit`; `Complete` (дергает уже владелец **магазина-получателя**, не источника) зачисляет остаток через `IncrementAsync`. `StockMovementType` не имеет отдельного значения "Transfer" (только `Receipt/Sale/WriteOff/Correction` — решение, принятое ещё на этапе Domain layer) — использован `Correction` с текстовым `Reason` ("Stock transfer out/in to/from store N"), не редизайн enum ради одной операции.
+- **`GetReorderAlertsQuery`** — буквальная реализация CLAUDE.md §4 "алерт при низком остатке": пересекает активные `ReorderRule` магазина с текущими `StockLevel`, помечает товар, если `CurrentQuantity <= ThresholdQuantity` (включая случай, когда для товара вообще нет строки `StockLevel` — трактуется как 0, а не падает).
+- **`ProductBundle`** — простой набор товаров по фиксированной цене, без интеграции с `ProcessSaleCommand` (продать бандл одним щелчком — отдельная более сложная задача, аналогично `GiftCard`/`StoreCredit` из прошлого батча).
+
+### Проверено вручную end-to-end (полный цикл снабжения, реальные цифры, не только билд)
+
+Через `dotnet run` + `curl`: `CreateSupplier` → `CreatePurchaseOrder` (20 шт) → попытка `ReceivePurchaseOrder` **до** `Submit` → `409 "not been submitted"` → `SubmitPurchaseOrder` → `ReceivePurchaseOrder` → `GetStockLevel` подтвердил **реальные +20** на складе. Затем `InitiateStockTransfer` 7 шт между двумя магазинами одного владельца → остаток источника **13** (20−7, атомарно) → `CompleteStockTransfer` → остаток получателя **7** — подтверждено `GetStockLevel` на обоих складах, не предположение. `CreateReorderRule` с порогом 15 при фактическом остатке 13 → `GetReorderAlerts` **корректно вернул алерт** (13 ≤ 15) — не заглушка, реальное пересечение данных. `CreateProductBundle` → `GetProductBundles` (публично) вернул созданный бандл с товарами.
+
+**Результат**: `dotnet build` — 0 ошибок с первой попытки; `dotnet test` — **174/174 пройдено** (+26 новых тестов на 8 из 11 handler'ов — три тривиальных Get-list handler'а без ветвлений не тестировались отдельно, аналогично прошлым батчам). Миграции не потребовались.
+
+**Не сделано (сознательно)**: `CancelPurchaseOrderCommand`/`CancelStockTransferCommand` (откат резервирования при отмене) — сознательно вне охвата, чтобы не раздувать батч; при реальной эксплуатации это следующий логичный шаг. `ProductBundle`/`GiftCard`/`StoreCredit` как способ оплаты в кассе — по-прежнему не подключены к `ProcessSaleCommand`.
+
+## 2026-07-18 (продолжение 7) — "Активируй все Entity" — Batch 5/9: POS extras — и реальный баг, пойманный только ручной проверкой
+
+### `CashierShift`, `SaleReturn`+`ReturnLineItem`
+
+5 use-case'ов — самый маленький по числу файлов батч, но с двумя содержательно нетривиальными операциями:
+
+- **`CloseCashierShiftCommand`** — прямая реализация CLAUDE.md §10 "рассмотреть периодическую сверку остатка с фактическим", применённая к наличным, а не к складу: `ExpectedCash` вычисляется сервером (`OpeningCash` + сумма выручки по завершённым продажам этого кассира за время смены через уже существующий `GetAllInRangeAsync`), **не принимается от клиента** — кассир не может просто вписать число, при котором смена "сходится". Результат содержит `Discrepancy = ClosingCash - ExpectedCash`, доступный владельцу магазина для проверки на недостачу.
+- **`ProcessReturnCommand`** — частичный возврат (в отличие от `VoidSaleCommand`, который аннулирует продажу целиком): принимает конкретные позиции чека с количеством, восстанавливает остаток (`IncrementAsync` + `StockMovement` с `RelatedSaleTransactionId`), считает возврат по цене на момент продажи (`UnitPriceAtSale`, не текущей цене). **Защита от двойного возврата той же позиции** — перед проверкой суммируются уже сделанные возвраты по этой же строке чека (`ISaleReturnRepository.GetBySaleTransactionIdAsync`), и новый запрос не может превысить оставшееся количество (`ExceedsAvailableQuantity`, если превышает).
+
+### Найден и исправлен реальный баг — не тестами, а только ручной сквозной проверкой
+
+При проверке `CloseCashierShiftCommand` на реальном сервере: смена открыта с `OpeningCash = 100`, проведена продажа на `50`, ожидалось `ExpectedCash = 150` — сервер вернул **`100`** (продажа как будто не учлась). Причина: `SaleTransactionRepository.GetAllInRangeAsync` (добавлен в Batch 3 для `GetCashierAnomalyReportQuery`, которому позиции чека не нужны — только статус) **не делал `.Include(s => s.Lines)`**. `GetCashierAnomalyReportQuery` от этого не страдал (считает только count/void-статус), но `CloseCashierShiftCommand` суммирует `l.UnitPriceAtSale * l.Quantity` по `Lines` — пустая (не загруженная) коллекция навигации молча дала сумму `0`.
+
+**Почему это не поймали 187 прошедших юнит-тестов**: тест `CloseCashierShiftCommandHandlerTests` мокирует `ISaleTransactionRepository.GetAllInRangeAsync` напрямую и **сам** кладёт в `SaleTransaction.Lines` нужные данные при подготовке мока — мок ничего не знает о `.Include()` в реальном EF Core запросе и не может обнаружить его отсутствие. Это тот же класс проблемы, что и запись от 2026-07-22 ("EF Core не ловит ошибки трансляции LINQ на этапе сборки") и от Batch 2 ("`dotnet build`/юнит-тесты не гарантируют, что маршрут вообще зарегистрируется") — третий отдельный пример за сессию, когда **только реальный `dotnet run` против реальной БД** вскрывает то, что билд и моки видят как исправное.
+
+Исправлено: `.Include(s => s.Lines)` добавлен в `GetAllInRangeAsync` — безопасно для обоих потребителей (`GetCashierAnomalyReportQuery` игнорирует лишние загруженные строки, `CloseCashierShiftCommand` теперь их получает).
+
+### Проверено вручную end-to-end (включая обнаружение и исправление бага, не только билд)
+
+`OpenCashierShift` (100 TJS) → `ProcessSale` (5 шт × 10 = 50) → `CloseCashierShift` при заявленных 150 → **до исправления**: `expectedCash: 100, discrepancy: 50` (баг подтверждён на реальных данных) → **после исправления**: `expectedCash: 150, discrepancy: 0`. Отдельно: `ProcessReturn` 2 из 5 шт → остаток `+2` подтверждён; попытка вернуть ещё 4 (осталось только 3) → `409 "exceeds what's available"`; возврат оставшихся ровно 3 → `200`; `GetReturnsForSale` показал обе частичные записи с верным `refundAmount` каждая.
+
+**Результат**: `dotnet build` — 0 ошибок; `dotnet test` — **187/187 пройдено** (+13 новых тестов). Миграции не потребовались.
+
+**Не сделано (сознательно)**: `CashierShift` не привязана к отдельной роли "кассир" (её всё ещё нет — CLAUDE.md §9); фото/подпись при закрытии смены (реальные POS иногда это требуют) — вне охвата.

@@ -5,6 +5,7 @@ namespace Domain.Sales;
 public class SaleTransaction : Entity
 {
     public int StoreId { get; set; }
+    public int? CustomerId { get; set; }
     public required string CashierUserId { get; set; }
     public required string IdempotencyKey { get; set; }
     public SaleStatus Status { get; set; }

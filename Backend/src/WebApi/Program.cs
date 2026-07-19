@@ -18,13 +18,21 @@ using Application.Engagement.Commands.AddFavorite;
 using Application.Engagement.Commands.RemoveFavorite;
 using Application.Engagement.Queries.GetFavorites;
 using Application.Feedback.Commands.ModerateReport;
+using Application.Feedback.Commands.RaiseReportDispute;
 using Application.Feedback.Commands.ReplyToReview;
 using Application.Feedback.Commands.ReportOutOfStock;
+using Application.Feedback.Commands.ResolveReportDispute;
 using Application.Feedback.Commands.SubmitReview;
+using Application.Feedback.Queries.GetPendingReportDisputes;
 using Application.Feedback.Queries.GetReviews;
 using Application.Identity.Commands.Login;
+using Application.Identity.Commands.RecordUserConsent;
 using Application.Identity.Commands.RefreshToken;
 using Application.Identity.Commands.Register;
+using Application.Identity.Commands.UpdateUserProfile;
+using Application.Identity.Queries.GetSecurityEvents;
+using Application.Identity.Queries.GetUserConsents;
+using Application.Identity.Queries.GetUserProfile;
 using Application.Inventory.Commands.CompleteStockTransfer;
 using Application.Inventory.Commands.CreatePurchaseOrder;
 using Application.Inventory.Commands.CreateReorderRule;
@@ -51,7 +59,9 @@ using Application.Notifications.Commands.MarkNotificationAsRead;
 using Application.Notifications.Commands.RegisterDeviceToken;
 using Application.Notifications.Queries.GetNotifications;
 using Application.Notifications.Queries.GetPriceAlerts;
+using Application.Offers.Commands.CreatePromotion;
 using Application.Offers.Commands.PublishExpiringOffer;
+using Application.Offers.Queries.GetActivePromotions;
 using Application.Offers.Queries.GetExpiringOffers;
 using Application.Payments.Commands.IssueGiftCard;
 using Application.Payments.Commands.IssueStoreCredit;
@@ -59,9 +69,14 @@ using Application.Payments.Commands.RedeemGiftCard;
 using Application.Payments.Commands.RedeemStoreCredit;
 using Application.Payments.Queries.GetGiftCardBalance;
 using Application.Payments.Queries.GetStoreCreditBalance;
+using Application.Pricing.Commands.RaisePriceEntryDispute;
+using Application.Pricing.Commands.ResolvePriceEntryDispute;
 using Application.Pricing.Commands.SubmitPriceUpdate;
+using Application.Pricing.Queries.GetPendingPriceEntryDisputes;
 using Application.Products.Commands.ModerateNewProduct;
+using Application.Products.Commands.RecordScan;
 using Application.Products.Queries.CompareStoresForShoppingList;
+using Application.Products.Queries.GetMostScannedProducts;
 using Application.Products.Queries.GetTopSellingProducts;
 using Application.Products.Queries.ScanBarcode;
 using Application.Receipts.Commands.UploadReceipt;
@@ -70,9 +85,11 @@ using Application.Sales.Commands.CloseCashierShift;
 using Application.Sales.Commands.OpenCashierShift;
 using Application.Sales.Commands.ProcessReturn;
 using Application.Sales.Commands.ProcessSale;
+using Application.Sales.Commands.RecordCommission;
 using Application.Sales.Commands.VoidSale;
 using Application.Sales.Queries.GetCashierAnomalyReport;
 using Application.Sales.Queries.GetCashierShifts;
+using Application.Sales.Queries.GetCommissionsForSale;
 using Application.Sales.Queries.GetDailySalesReport;
 using Application.Sales.Queries.GetProfitReport;
 using Application.Sales.Queries.GetReturnsForSale;
@@ -80,8 +97,11 @@ using Application.ShoppingLists.Commands.AddShoppingListItem;
 using Application.ShoppingLists.Commands.CreateShoppingList;
 using Application.ShoppingLists.Commands.RemoveShoppingListItem;
 using Application.ShoppingLists.Queries.GetShoppingLists;
+using Application.Stores.Commands.AddStoreEmployee;
 using Application.Stores.Commands.CreateStore;
+using Application.Stores.Commands.RemoveStoreEmployee;
 using Application.Stores.Queries.GetStoreDashboard;
+using Application.Stores.Queries.GetStoreEmployees;
 using FluentValidation;
 using Infrastructure;
 using Infrastructure.Persistence;
@@ -228,11 +248,20 @@ app.MapPost("/api/auth/register", async (
 .WithName("Register");
 
 app.MapPost("/api/auth/login", async (
-    LoginCommand command,
+    LoginRequest request,
+    HttpContext httpContext,
     ICommandHandler<LoginCommand, Application.Abstractions.AuthResult?> handler,
     IValidator<LoginCommand> validator,
     CancellationToken cancellationToken) =>
 {
+    // IP/user agent come from the connection itself, never from the request body — a client
+    // claiming a false IP would otherwise poison the SecurityEvent audit trail.
+    var command = new LoginCommand(
+        request.Email,
+        request.Password,
+        httpContext.Connection.RemoteIpAddress?.ToString(),
+        httpContext.Request.Headers.UserAgent.ToString());
+
     var validationResult = await validator.ValidateAsync(command, cancellationToken);
     if (!validationResult.IsValid)
         return Results.ValidationProblem(validationResult.ToDictionary());
@@ -259,6 +288,113 @@ app.MapPost("/api/auth/refresh", async (
 .RequireRateLimiting("login")
 .WithName("RefreshToken");
 
+// Self-service identity: profile, consent, security event history. All three are scoped to the
+// caller's own JWT-derived UserId — there is no "view someone else's" variant of any of them.
+
+app.MapPut("/api/me/profile", async (
+    UpdateUserProfileRequest request,
+    ClaimsPrincipal user,
+    ICommandHandler<UpdateUserProfileCommand, UpdateUserProfileResult> handler,
+    IValidator<UpdateUserProfileCommand> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var command = new UpdateUserProfileCommand(userId, request.DisplayName, request.AvatarReference, request.PreferredLanguage);
+
+    var validationResult = await validator.ValidateAsync(command, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    return Results.Ok(await handler.Handle(command, cancellationToken));
+})
+.RequireAuthorization()
+.WithName("UpdateUserProfile");
+
+app.MapGet("/api/me/profile", async (
+    ClaimsPrincipal user,
+    IQueryHandler<GetUserProfileQuery, GetUserProfileResult> handler,
+    IValidator<GetUserProfileQuery> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var query = new GetUserProfileQuery(userId);
+    var validationResult = await validator.ValidateAsync(query, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    return Results.Ok(await handler.Handle(query, cancellationToken));
+})
+.RequireAuthorization()
+.WithName("GetUserProfile");
+
+app.MapPut("/api/me/consents", async (
+    RecordUserConsentRequest request,
+    ClaimsPrincipal user,
+    ICommandHandler<RecordUserConsentCommand, RecordUserConsentResult> handler,
+    IValidator<RecordUserConsentCommand> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var command = new RecordUserConsentCommand(userId, request.Type, request.IsGranted);
+
+    var validationResult = await validator.ValidateAsync(command, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    return Results.Ok(await handler.Handle(command, cancellationToken));
+})
+.RequireAuthorization()
+.WithName("RecordUserConsent");
+
+app.MapGet("/api/me/consents", async (
+    ClaimsPrincipal user,
+    IQueryHandler<GetUserConsentsQuery, GetUserConsentsResult> handler,
+    IValidator<GetUserConsentsQuery> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var query = new GetUserConsentsQuery(userId);
+    var validationResult = await validator.ValidateAsync(query, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    return Results.Ok(await handler.Handle(query, cancellationToken));
+})
+.RequireAuthorization()
+.WithName("GetUserConsents");
+
+app.MapGet("/api/me/security-events", async (
+    ClaimsPrincipal user,
+    IQueryHandler<GetSecurityEventsQuery, GetSecurityEventsResult> handler,
+    IValidator<GetSecurityEventsQuery> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var query = new GetSecurityEventsQuery(userId);
+    var validationResult = await validator.ValidateAsync(query, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    return Results.Ok(await handler.Handle(query, cancellationToken));
+})
+.RequireAuthorization()
+.WithName("GetSecurityEvents");
+
 app.MapPost("/api/stores", async (
     CreateStoreRequest request,
     ClaimsPrincipal user,
@@ -283,6 +419,94 @@ app.MapPost("/api/stores", async (
 .RequireRateLimiting("contributions")
 .WithName("CreateStore");
 
+app.MapPost("/api/stores/{storeId:int}/employees", async (
+    int storeId,
+    AddStoreEmployeeRequest request,
+    ClaimsPrincipal user,
+    ICommandHandler<AddStoreEmployeeCommand, AddStoreEmployeeResult> handler,
+    IValidator<AddStoreEmployeeCommand> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var command = new AddStoreEmployeeCommand(storeId, request.EmployeeUserId, request.Role, userId);
+
+    var validationResult = await validator.ValidateAsync(command, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    var result = await handler.Handle(command, cancellationToken);
+    return result.Outcome switch
+    {
+        AddStoreEmployeeOutcome.Added => Results.Ok(result),
+        AddStoreEmployeeOutcome.StoreNotFound => Results.NotFound("Store not found."),
+        AddStoreEmployeeOutcome.Forbidden => Results.Forbid(),
+        AddStoreEmployeeOutcome.AlreadyEmployed => Results.Conflict("This user is already an employee of this store."),
+        _ => Results.Problem()
+    };
+})
+.RequireAuthorization("StorePartner")
+.WithName("AddStoreEmployee");
+
+app.MapDelete("/api/store-employees/{storeEmployeeId:int}", async (
+    int storeEmployeeId,
+    ClaimsPrincipal user,
+    ICommandHandler<RemoveStoreEmployeeCommand, RemoveStoreEmployeeResult> handler,
+    IValidator<RemoveStoreEmployeeCommand> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var command = new RemoveStoreEmployeeCommand(storeEmployeeId, userId);
+
+    var validationResult = await validator.ValidateAsync(command, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    var result = await handler.Handle(command, cancellationToken);
+    return result.Outcome switch
+    {
+        RemoveStoreEmployeeOutcome.Removed => Results.Ok(result),
+        RemoveStoreEmployeeOutcome.NotFound => Results.NotFound(),
+        RemoveStoreEmployeeOutcome.Forbidden => Results.Forbid(),
+        _ => Results.Problem()
+    };
+})
+.RequireAuthorization("StorePartner")
+.WithName("RemoveStoreEmployee");
+
+app.MapGet("/api/stores/{storeId:int}/employees", async (
+    int storeId,
+    ClaimsPrincipal user,
+    IQueryHandler<GetStoreEmployeesQuery, GetStoreEmployeesResult> handler,
+    IValidator<GetStoreEmployeesQuery> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var query = new GetStoreEmployeesQuery(storeId, userId);
+    var validationResult = await validator.ValidateAsync(query, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    var result = await handler.Handle(query, cancellationToken);
+    return result.Outcome switch
+    {
+        GetStoreEmployeesOutcome.Found => Results.Ok(result),
+        GetStoreEmployeesOutcome.StoreNotFound => Results.NotFound(),
+        GetStoreEmployeesOutcome.Forbidden => Results.Forbid(),
+        _ => Results.Problem()
+    };
+})
+.RequireAuthorization("StorePartner")
+.WithName("GetStoreEmployees");
+
 app.MapGet("/api/products/scan/{barcode}", async (
     string barcode,
     double? lat,
@@ -302,6 +526,47 @@ app.MapGet("/api/products/scan/{barcode}", async (
 })
 .RequireRateLimiting("scan")
 .WithName("ScanBarcode");
+
+app.MapPost("/api/scans", async (
+    RecordScanRequest request,
+    ClaimsPrincipal user,
+    ICommandHandler<RecordScanCommand, RecordScanResult> handler,
+    IValidator<RecordScanCommand> validator,
+    CancellationToken cancellationToken) =>
+{
+    // Recording a scan is deliberately separate from ScanBarcodeQuery — a query stays read-only,
+    // and an anonymous shopper can still scan without an account (UserId stays null for them).
+    var command = new RecordScanCommand(request.ProductId, user.FindFirstValue(ClaimTypes.NameIdentifier), request.StoreId);
+
+    var validationResult = await validator.ValidateAsync(command, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    var result = await handler.Handle(command, cancellationToken);
+    return result.Outcome switch
+    {
+        RecordScanOutcome.Recorded => Results.Ok(result),
+        RecordScanOutcome.ProductNotFound => Results.NotFound(),
+        _ => Results.Problem()
+    };
+})
+.RequireRateLimiting("scan")
+.WithName("RecordScan");
+
+app.MapGet("/api/products/most-scanned", async (
+    int? limit,
+    IQueryHandler<GetMostScannedProductsQuery, GetMostScannedProductsResult> handler,
+    IValidator<GetMostScannedProductsQuery> validator,
+    CancellationToken cancellationToken) =>
+{
+    var query = new GetMostScannedProductsQuery(limit ?? 10);
+    var validationResult = await validator.ValidateAsync(query, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    return Results.Ok(await handler.Handle(query, cancellationToken));
+})
+.WithName("GetMostScannedProducts");
 
 app.MapPost("/api/prices", async (
     SubmitPriceUpdateRequest request,
@@ -326,6 +591,73 @@ app.MapPost("/api/prices", async (
 .RequireAuthorization()
 .RequireRateLimiting("contributions")
 .WithName("SubmitPriceUpdate");
+
+app.MapPost("/api/price-entries/{priceEntryId:int}/dispute", async (
+    int priceEntryId,
+    RaiseDisputeRequest request,
+    ClaimsPrincipal user,
+    ICommandHandler<RaisePriceEntryDisputeCommand, RaisePriceEntryDisputeResult> handler,
+    IValidator<RaisePriceEntryDisputeCommand> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var command = new RaisePriceEntryDisputeCommand(priceEntryId, userId, request.Reason);
+
+    var validationResult = await validator.ValidateAsync(command, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    var result = await handler.Handle(command, cancellationToken);
+    return result.Outcome switch
+    {
+        RaisePriceEntryDisputeOutcome.Raised => Results.Ok(result),
+        RaisePriceEntryDisputeOutcome.PriceEntryNotFound => Results.NotFound(),
+        _ => Results.Problem()
+    };
+})
+.RequireAuthorization()
+.WithName("RaisePriceEntryDispute");
+
+app.MapPost("/api/admin/price-entry-disputes/{disputeId:int}/resolve", async (
+    int disputeId,
+    ResolveDisputeRequest request,
+    ClaimsPrincipal user,
+    ICommandHandler<ResolvePriceEntryDisputeCommand, ResolvePriceEntryDisputeResult> handler,
+    IValidator<ResolvePriceEntryDisputeCommand> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var command = new ResolvePriceEntryDisputeCommand(disputeId, request.Uphold, userId);
+
+    var validationResult = await validator.ValidateAsync(command, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    var result = await handler.Handle(command, cancellationToken);
+    return result.Outcome switch
+    {
+        ResolvePriceEntryDisputeOutcome.Upheld => Results.Ok(result),
+        ResolvePriceEntryDisputeOutcome.Dismissed => Results.Ok(result),
+        ResolvePriceEntryDisputeOutcome.NotFound => Results.NotFound(),
+        ResolvePriceEntryDisputeOutcome.AlreadyResolved => Results.Conflict("This dispute has already been resolved."),
+        _ => Results.Problem()
+    };
+})
+.RequireAuthorization("Admin")
+.WithName("ResolvePriceEntryDispute");
+
+app.MapGet("/api/admin/price-entry-disputes/pending", async (
+    IQueryHandler<GetPendingPriceEntryDisputesQuery, GetPendingPriceEntryDisputesResult> handler,
+    CancellationToken cancellationToken) =>
+    Results.Ok(await handler.Handle(new GetPendingPriceEntryDisputesQuery(), cancellationToken)))
+.RequireAuthorization("Admin")
+.WithName("GetPendingPriceEntryDisputes");
 
 app.MapPost("/api/sales", async (
     ProcessSaleRequest request,
@@ -390,6 +722,64 @@ app.MapPost("/api/sales/{id:int}/void", async (
 })
 .RequireAuthorization("StorePartner")
 .WithName("VoidSale");
+
+app.MapPost("/api/sales/{saleTransactionId:int}/commission", async (
+    int saleTransactionId,
+    RecordCommissionRequest request,
+    ClaimsPrincipal user,
+    ICommandHandler<RecordCommissionCommand, RecordCommissionResult> handler,
+    IValidator<RecordCommissionCommand> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var command = new RecordCommissionCommand(saleTransactionId, request.Amount, request.Currency, userId);
+
+    var validationResult = await validator.ValidateAsync(command, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    var result = await handler.Handle(command, cancellationToken);
+    return result.Outcome switch
+    {
+        RecordCommissionOutcome.Recorded => Results.Ok(result),
+        RecordCommissionOutcome.SaleNotFound => Results.NotFound(),
+        RecordCommissionOutcome.Forbidden => Results.Forbid(),
+        _ => Results.Problem()
+    };
+})
+.RequireAuthorization("StorePartner")
+.WithName("RecordCommission");
+
+app.MapGet("/api/sales/{saleTransactionId:int}/commissions", async (
+    int saleTransactionId,
+    ClaimsPrincipal user,
+    IQueryHandler<GetCommissionsForSaleQuery, GetCommissionsForSaleResult> handler,
+    IValidator<GetCommissionsForSaleQuery> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var query = new GetCommissionsForSaleQuery(saleTransactionId, userId);
+    var validationResult = await validator.ValidateAsync(query, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    var result = await handler.Handle(query, cancellationToken);
+    return result.Outcome switch
+    {
+        GetCommissionsForSaleOutcome.Found => Results.Ok(result),
+        GetCommissionsForSaleOutcome.SaleNotFound => Results.NotFound(),
+        GetCommissionsForSaleOutcome.Forbidden => Results.Forbid(),
+        _ => Results.Problem()
+    };
+})
+.RequireAuthorization("StorePartner")
+.WithName("GetCommissionsForSale");
 
 // Cashier shifts and partial returns. No separate "cashier" sub-role exists yet (CLAUDE.md §9
 // open question) — for now the store owner opens/closes their own shifts and processes returns.
@@ -815,6 +1205,74 @@ app.MapPost("/api/reports/out-of-stock", async (
 .RequireRateLimiting("contributions")
 .WithName("ReportOutOfStock");
 
+app.MapPost("/api/reports/{reportId:int}/dispute", async (
+    int reportId,
+    RaiseDisputeRequest request,
+    ClaimsPrincipal user,
+    ICommandHandler<RaiseReportDisputeCommand, RaiseReportDisputeResult> handler,
+    IValidator<RaiseReportDisputeCommand> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var command = new RaiseReportDisputeCommand(reportId, userId, request.Reason);
+
+    var validationResult = await validator.ValidateAsync(command, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    var result = await handler.Handle(command, cancellationToken);
+    return result.Outcome switch
+    {
+        RaiseReportDisputeOutcome.Raised => Results.Ok(result),
+        RaiseReportDisputeOutcome.ReportNotFound => Results.NotFound(),
+        RaiseReportDisputeOutcome.Forbidden => Results.Forbid(),
+        _ => Results.Problem()
+    };
+})
+.RequireAuthorization("StorePartner")
+.WithName("RaiseReportDispute");
+
+app.MapPost("/api/admin/report-disputes/{disputeId:int}/resolve", async (
+    int disputeId,
+    ResolveDisputeRequest request,
+    ClaimsPrincipal user,
+    ICommandHandler<ResolveReportDisputeCommand, ResolveReportDisputeResult> handler,
+    IValidator<ResolveReportDisputeCommand> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var command = new ResolveReportDisputeCommand(disputeId, request.Uphold, userId);
+
+    var validationResult = await validator.ValidateAsync(command, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    var result = await handler.Handle(command, cancellationToken);
+    return result.Outcome switch
+    {
+        ResolveReportDisputeOutcome.Upheld => Results.Ok(result),
+        ResolveReportDisputeOutcome.Dismissed => Results.Ok(result),
+        ResolveReportDisputeOutcome.NotFound => Results.NotFound(),
+        ResolveReportDisputeOutcome.AlreadyResolved => Results.Conflict("This dispute has already been resolved."),
+        _ => Results.Problem()
+    };
+})
+.RequireAuthorization("Admin")
+.WithName("ResolveReportDispute");
+
+app.MapGet("/api/admin/report-disputes/pending", async (
+    IQueryHandler<GetPendingReportDisputesQuery, GetPendingReportDisputesResult> handler,
+    CancellationToken cancellationToken) =>
+    Results.Ok(await handler.Handle(new GetPendingReportDisputesQuery(), cancellationToken)))
+.RequireAuthorization("Admin")
+.WithName("GetPendingReportDisputes");
+
 app.MapPost("/api/receipts/{id:int}/verify", async (
     int id,
     ClaimsPrincipal user,
@@ -944,6 +1402,52 @@ app.MapPost("/api/offers", async (
 })
 .RequireAuthorization("StorePartner")
 .WithName("PublishExpiringOffer");
+
+app.MapPost("/api/promotions", async (
+    CreatePromotionRequest request,
+    ClaimsPrincipal user,
+    ICommandHandler<CreatePromotionCommand, CreatePromotionResult> handler,
+    IValidator<CreatePromotionCommand> validator,
+    CancellationToken cancellationToken) =>
+{
+    var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (userId is null)
+        return Results.Unauthorized();
+
+    var command = new CreatePromotionCommand(
+        request.StoreId, request.ProductId, request.CategoryId,
+        request.DiscountType, request.DiscountValue, request.StartsAt, request.EndsAt, userId);
+
+    var validationResult = await validator.ValidateAsync(command, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    var result = await handler.Handle(command, cancellationToken);
+    return result.Outcome switch
+    {
+        CreatePromotionOutcome.Created => Results.Ok(result),
+        CreatePromotionOutcome.StoreNotFound => Results.NotFound("Store not found."),
+        CreatePromotionOutcome.Forbidden => Results.Forbid(),
+        _ => Results.Problem()
+    };
+})
+.RequireAuthorization("StorePartner")
+.WithName("CreatePromotion");
+
+app.MapGet("/api/stores/{storeId:int}/promotions/active", async (
+    int storeId,
+    IQueryHandler<GetActivePromotionsQuery, GetActivePromotionsResult> handler,
+    IValidator<GetActivePromotionsQuery> validator,
+    CancellationToken cancellationToken) =>
+{
+    var query = new GetActivePromotionsQuery(storeId);
+    var validationResult = await validator.ValidateAsync(query, cancellationToken);
+    if (!validationResult.IsValid)
+        return Results.ValidationProblem(validationResult.ToDictionary());
+
+    return Results.Ok(await handler.Handle(query, cancellationToken));
+})
+.WithName("GetActivePromotions");
 
 app.MapGet("/api/offers/expiring", async (
     int? storeId,
@@ -2188,6 +2692,22 @@ static async Task<string?> DetectImageExtensionAsync(IFormFile file, Cancellatio
     return null;
 }
 
+internal sealed record RecordScanRequest(int ProductId, int? StoreId);
+internal sealed record CreatePromotionRequest(
+    int StoreId,
+    int? ProductId,
+    int? CategoryId,
+    Domain.Offers.PromotionDiscountType DiscountType,
+    decimal DiscountValue,
+    DateTimeOffset StartsAt,
+    DateTimeOffset EndsAt);
+internal sealed record RecordCommissionRequest(decimal Amount, string Currency);
+internal sealed record LoginRequest(string Email, string Password);
+internal sealed record UpdateUserProfileRequest(string DisplayName, string? AvatarReference, string PreferredLanguage);
+internal sealed record RecordUserConsentRequest(Domain.Identity.ConsentType Type, bool IsGranted);
+internal sealed record AddStoreEmployeeRequest(string EmployeeUserId, Domain.Stores.StoreEmployeeRole Role);
+internal sealed record RaiseDisputeRequest(string Reason);
+internal sealed record ResolveDisputeRequest(bool Uphold);
 internal sealed record OpenCashierShiftRequest(int StoreId, decimal OpeningCash, string Currency);
 internal sealed record CloseCashierShiftRequest(decimal ClosingCash);
 internal sealed record ProcessReturnRequest(IReadOnlyList<Application.Sales.Commands.ProcessReturn.ProcessReturnLineInput> Lines, string Reason);

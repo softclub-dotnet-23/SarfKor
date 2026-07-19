@@ -59,6 +59,13 @@ public static class DependencyInjection
         services.AddScoped<ISaleReturnRepository, SaleReturnRepository>();
         services.AddScoped<IPriceEntryDisputeRepository, PriceEntryDisputeRepository>();
         services.AddScoped<IReportDisputeRepository, ReportDisputeRepository>();
+        services.AddScoped<ISecurityEventRepository, SecurityEventRepository>();
+        services.AddScoped<IUserProfileRepository, UserProfileRepository>();
+        services.AddScoped<IUserConsentRepository, UserConsentRepository>();
+        services.AddScoped<IStoreEmployeeRepository, StoreEmployeeRepository>();
+        services.AddScoped<IScanRepository, ScanRepository>();
+        services.AddScoped<IPromotionRepository, PromotionRepository>();
+        services.AddScoped<ICommissionRepository, CommissionRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddSingleton<JwtTokenGenerator>();

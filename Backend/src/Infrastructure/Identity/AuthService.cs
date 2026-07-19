@@ -1,5 +1,6 @@
 using Application.Abstractions;
 using Domain.Identity;
+using Domain.Security;
 using Microsoft.AspNetCore.Identity;
 
 namespace Infrastructure.Identity;
@@ -8,6 +9,7 @@ public sealed class AuthService(
     UserManager<ApplicationUser> userManager,
     JwtTokenGenerator tokenGenerator,
     IRefreshTokenRepository refreshTokenRepository,
+    ISecurityEventRepository securityEventRepository,
     IUnitOfWork unitOfWork) : IAuthService
 {
     private const string DefaultRole = "User";
@@ -26,13 +28,31 @@ public sealed class AuthService(
         return result;
     }
 
-    public async Task<AuthResult?> LoginAsync(string email, string password, CancellationToken cancellationToken)
+    public async Task<AuthResult?> LoginAsync(string email, string password, string? ipAddress, string? userAgent, CancellationToken cancellationToken)
     {
         var user = await userManager.FindByEmailAsync(email);
-        if (user is null || !await userManager.CheckPasswordAsync(user, password))
-            return null;
+        var succeeded = user is not null && await userManager.CheckPasswordAsync(user, password);
 
-        var result = await IssueTokenPairAsync(user);
+        // Recorded for both outcomes — a string of LoginFailed events for the same account is
+        // exactly the anomaly signal CLAUDE.md §10 asks for ("алерты на аномальные паттерны").
+        // user can be null on a failed attempt (unknown email) — UserId falls back to the
+        // attempted email so the event is still attributable to something searchable.
+        securityEventRepository.Add(new SecurityEvent
+        {
+            UserId = user?.Id ?? email,
+            Type = succeeded ? SecurityEventType.LoginSucceeded : SecurityEventType.LoginFailed,
+            IpAddress = ipAddress,
+            UserAgent = userAgent,
+            OccurredAt = DateTimeOffset.UtcNow
+        });
+
+        if (!succeeded)
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return null;
+        }
+
+        var result = await IssueTokenPairAsync(user!);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return result;
     }

@@ -7,5 +7,9 @@ public enum ProcessSaleOutcome
     Forbidden,
     ProductNotFound,
     PriceNotFound,
-    InsufficientStock
+    InsufficientStock,
+    GiftCardNotFound,
+    GiftCardNotUsable,
+    CustomerNotFound,
+    BundleNotFound
 }

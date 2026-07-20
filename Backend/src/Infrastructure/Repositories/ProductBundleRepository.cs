@@ -7,6 +7,9 @@ namespace Infrastructure.Repositories;
 
 public sealed class ProductBundleRepository(AppDbContext dbContext) : IProductBundleRepository
 {
+    public Task<ProductBundle?> GetByIdAsync(int productBundleId, CancellationToken cancellationToken) =>
+        dbContext.ProductBundles.Include(b => b.Items).FirstOrDefaultAsync(b => b.Id == productBundleId, cancellationToken);
+
     public async Task<IReadOnlyList<ProductBundle>> GetByStoreIdAsync(int storeId, CancellationToken cancellationToken) =>
         await dbContext.ProductBundles.Include(b => b.Items).Where(b => b.StoreId == storeId).ToListAsync(cancellationToken);
 

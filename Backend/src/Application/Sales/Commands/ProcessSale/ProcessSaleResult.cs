@@ -5,4 +5,7 @@ public sealed record ProcessSaleResult(
     int? SaleTransactionId,
     decimal? TotalAmount,
     string? Currency,
-    int? FailedProductId);
+    int? FailedProductId,
+    decimal? GiftCardAmountApplied = null,
+    decimal? AmountDue = null,
+    decimal? StoreCreditAmountApplied = null);

@@ -10,6 +10,9 @@ public sealed class ProductRepository(AppDbContext dbContext) : IProductReposito
     public Task<Product?> GetByBarcodeAsync(string barcode, CancellationToken cancellationToken) =>
         dbContext.Products.FirstOrDefaultAsync(p => p.Barcode.Value == barcode, cancellationToken);
 
+    public Task<Product?> GetByIdAsync(int productId, CancellationToken cancellationToken) =>
+        dbContext.Products.FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
+
     public Task<bool> ExistsAsync(int productId, CancellationToken cancellationToken) =>
         dbContext.Products.AnyAsync(p => p.Id == productId, cancellationToken);
 

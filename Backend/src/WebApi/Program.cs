@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Application;
 using Application.Sales.Commands.ProcessSale;
 using Infrastructure;
+using Infrastructure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
@@ -91,6 +92,40 @@ using (var scope = app.Services.CreateScope())
     {
         if (!await roleManager.RoleExistsAsync(role))
             await roleManager.CreateAsync(new IdentityRole(role));
+    }
+
+    // Bootstraps the first Admin account from configuration (Admin:Email / Admin:Password —
+    // user-secrets in dev, environment variables in prod per CLAUDE.md §2, never hardcoded here).
+    // There is no public endpoint that grants the Admin role, so without this seeder the
+    // moderation/admin surface would be permanently unreachable on a fresh database.
+    var adminEmail = builder.Configuration["Admin:Email"];
+    var adminPassword = builder.Configuration["Admin:Password"];
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    if (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword))
+    {
+        logger.LogWarning("Admin:Email / Admin:Password are not configured — skipping admin account seeding.");
+    }
+    else
+    {
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
+        if (adminUser is null)
+        {
+            adminUser = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
+            var createResult = await userManager.CreateAsync(adminUser, adminPassword);
+            if (!createResult.Succeeded)
+            {
+                logger.LogError(
+                    "Failed to seed admin account {AdminEmail}: {Errors}",
+                    adminEmail, string.Join("; ", createResult.Errors.Select(e => e.Description)));
+                adminUser = null;
+            }
+        }
+
+        if (adminUser is not null && !await userManager.IsInRoleAsync(adminUser, "Admin"))
+            await userManager.AddToRoleAsync(adminUser, "Admin");
     }
 }
 

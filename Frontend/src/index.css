@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+
+  --color-brand: #2f6feb;
+  --color-brand-dark: #1f56c9;
+  --color-brand-light: #eaf1ff;
+  --color-accent-green: #1fa971;
+  --color-ink: #0b0f19;
+  --color-ink-soft: #11162a;
+
+  --shadow-soft: 0 1px 2px rgba(11, 15, 25, 0.04), 0 12px 32px -12px rgba(11, 15, 25, 0.12);
+  --shadow-lift: 0 8px 16px -4px rgba(11, 15, 25, 0.08), 0 24px 48px -16px rgba(11, 15, 25, 0.18);
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-ring: pulse-ring 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-14px);
+    }
+  }
+  @keyframes pulse-ring {
+    0% {
+      transform: scale(0.9);
+      opacity: 0.55;
+    }
+    70% {
+      transform: scale(1.6);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1.6);
+      opacity: 0;
+    }
+  }
+}
+
+:root {
+  --bg-app: #ffffff;
+  --bg-section: #f6f7fb;
+  --bg-card: #ffffff;
+  --bg-inverse: #0b0f19;
+  --text-primary: #0b0f19;
+  --text-secondary: #5b6270;
+  --border-subtle: rgba(11, 15, 25, 0.08);
+  color-scheme: light;
+}
+
+.dark {
+  --bg-app: #08090f;
+  --bg-section: #0d0f18;
+  --bg-card: #12141e;
+  --bg-inverse: #f6f7fb;
+  --text-primary: #f5f6fa;
+  --text-secondary: #9095a6;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  color-scheme: dark;
+}
+
+* {
+  scrollbar-width: thin;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background-color 0.4s ease, color 0.4s ease;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--color-brand);
+  color: white;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+html.theme-wipe::view-transition-group(root) {
+  animation-duration: 0.85s;
+}
+/* Admin panel — separate token set (dark-first product UI, distinct from the
+   light-first marketing site) but driven by the exact same .dark class the
+   public site's ThemeToggle already flips, so both surfaces stay in sync. */
+.admin-shell {
+  --admin-sidebar: #f7f8fa;
+  --admin-content: #f1f2f5;
+  --admin-card: #ffffff;
+  --admin-border: rgba(15, 23, 42, 0.08);
+  --admin-text: #0f1115;
+  --admin-text-secondary: rgba(15, 17, 21, 0.58);
+  --admin-text-tertiary: rgba(15, 17, 21, 0.4);
+  --admin-hover: rgba(15, 23, 42, 0.045);
+  --admin-accent: #0284c7;
+  --admin-accent-soft: rgba(2, 132, 199, 0.1);
+  --admin-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 16px 32px -16px rgba(15, 23, 42, 0.12);
+  color-scheme: light;
+}
+
+.dark .admin-shell {
+  --admin-sidebar: #0d0d0d;
+  --admin-content: #111111;
+  --admin-card: #1a1a1a;
+  --admin-border: rgba(255, 255, 255, 0.06);
+  --admin-text: #ffffff;
+  --admin-text-secondary: rgba(255, 255, 255, 0.5);
+  --admin-text-tertiary: rgba(255, 255, 255, 0.35);
+  --admin-hover: rgba(255, 255, 255, 0.05);
+  --admin-accent: #38bdf8;
+  --admin-accent-soft: rgba(56, 189, 248, 0.12);
+  --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 20px 40px -20px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+@keyframes admin-pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px rgba(56, 189, 248, 0.25);
+  }
+}
+@keyframes admin-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+html.theme-wipe::view-transition-old(root) {
+  animation: none;
+  z-index: 0;
+}
+html.theme-wipe::view-transition-new(root) {
+  z-index: 1;
+  animation: vt-reveal 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes vt-reveal {
+  from {
+    clip-path: circle(0px at var(--vt-x) var(--vt-y));
+  }
+  to {
+    clip-path: circle(var(--vt-r) at var(--vt-x) var(--vt-y));
+  }
+}

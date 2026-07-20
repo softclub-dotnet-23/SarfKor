@@ -9,6 +9,14 @@ export interface DecodedToken {
   exp: number
 }
 
+// The backend (Infrastructure/Identity/JwtTokenGenerator) adds role claims via
+// System.Security.Claims.ClaimTypes.Role, whose string value is this long XML
+// namespace URI, not the short "role" — .NET does not shorten it on
+// serialization. Reading only `.role` silently returns [] for every real
+// token, which made hasRole('StorePartner') always false and sent users back
+// to the onboarding screen right after successfully creating a store.
+const ROLE_CLAIM_URI = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
+
 export function decodeJwt(token: string): DecodedToken | null {
   try {
     const payload = token.split('.')[1]
@@ -20,8 +28,8 @@ export function decodeJwt(token: string): DecodedToken | null {
 }
 
 export function rolesFromToken(token: string): string[] {
-  const decoded = decodeJwt(token)
-  const role = decoded?.role
+  const decoded = decodeJwt(token) as Record<string, unknown> | null
+  const role = decoded?.role ?? decoded?.[ROLE_CLAIM_URI]
   if (!role) return []
-  return Array.isArray(role) ? role : [role]
+  return Array.isArray(role) ? (role as string[]) : [role as string]
 }

@@ -35,13 +35,18 @@ export function LineChart({ data }: LineChartProps) {
   const values = data.map((d) => d.value)
   const maxV = Math.max(...values) * 1.15
   const minV = Math.min(...values) * 0.7
+  // A brand-new store has zero revenue every day this week, so maxV === minV
+  // (both 0) — without this fallback the normalized-position division below
+  // is 0/0 = NaN for every point, which React then feeds straight into SVG
+  // path/circle coordinates and the whole chart silently fails to render.
+  const range = maxV - minV || 1
   const w = 660
   const h = 220
   const px = 42
   const py = 12
   const pts = values.map((v, i) => ({
     x: px + (i / (values.length - 1)) * (w - px * 2),
-    y: py + (1 - (v - minV) / (maxV - minV)) * (h - py * 2),
+    y: py + (1 - (v - minV) / range) * (h - py * 2),
   }))
 
   let pathD = `M ${pts[0].x} ${pts[0].y}`

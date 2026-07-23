@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using Application.Common;
 using Application.Products.Commands.RecordScan;
+using Application.Products.Commands.SubmitNewProduct;
 using Application.Products.Queries.CompareStoresForShoppingList;
 using Application.Products.Queries.GetMostScannedProducts;
 using Application.Products.Queries.GetTopSellingProducts;
 using Application.Products.Queries.ScanBarcode;
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -111,5 +113,39 @@ public sealed class ProductsController : ControllerBase
 
         var result = await handler.Handle(query, cancellationToken);
         return Ok(result);
+    }
+
+    // Scanning an unrecognized barcode is the only way anyone finds out a product isn't in the
+    // catalog yet — this is the missing other half of that flow (ModerateNewProductCommand could
+    // approve/reject a submission, but nothing ever created one).
+    [HttpPost("submissions")]
+    [Authorize]
+    [EnableRateLimiting("contributions")]
+    public async Task<IActionResult> SubmitNewProduct(
+        SubmitNewProductRequest request,
+        [FromServices] ICommandHandler<SubmitNewProductCommand, SubmitNewProductResult> handler,
+        [FromServices] IValidator<SubmitNewProductCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new SubmitNewProductCommand(request.Barcode, request.Name, request.CategoryId, request.BrandId, request.CountryOfOrigin, userId);
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            SubmitNewProductOutcome.Submitted => Ok(result),
+            SubmitNewProductOutcome.DuplicateBarcode => Conflict("A product with this barcode already exists."),
+            SubmitNewProductOutcome.DuplicatePendingSubmission => Conflict("A submission for this barcode is already pending moderation."),
+            SubmitNewProductOutcome.CategoryNotFound => NotFound("Category not found."),
+            SubmitNewProductOutcome.BrandNotFound => NotFound("Brand not found."),
+            _ => Problem()
+        };
     }
 }

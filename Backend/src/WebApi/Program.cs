@@ -207,4 +207,5 @@ public sealed record RecordStockReceiptRequest(int StoreId, int ProductId, int Q
 public sealed record ReportOutOfStockRequest(int ProductId, int? StoreId, string Description);
 public sealed record PublishExpiringOfferRequest(int StoreId, int ProductId, decimal OriginalPrice, decimal DiscountedPrice, string Currency, DateTimeOffset ExpiresAt);
 public sealed record ModerateNewProductRequest(bool Approve, string? Reason);
+public sealed record SubmitNewProductRequest(string Barcode, string Name, int CategoryId, int BrandId, string CountryOfOrigin);
 public sealed record ModerateReportRequest(bool Resolve, string? Reason);

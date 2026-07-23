@@ -1,0 +1,185 @@
+// Thin fetch wrapper for the real Sarfkor backend (Backend/src/WebApi).
+//
+// Base URL comes from VITE_API_BASE_URL (see .env.example) — defaults to the
+// backend's documented local http profile (Backend/src/WebApi/Properties/
+// launchSettings.json). The backend's CORS policy is config-driven and reads
+// allowed origins from `Cors:AllowedOrigins`, not hardcoded — that must
+// include this dev server's origin (e.g. http://localhost:5173) on the
+// backend side or every request here will fail as a CORS error in the
+// browser regardless of what this code does.
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:5135'
+
+const ACCESS_TOKEN_KEY = 'sarfkor-access-token'
+const REFRESH_TOKEN_KEY = 'sarfkor-refresh-token'
+
+export interface AuthTokens {
+  accessToken: string
+  refreshToken: string
+}
+
+export function getTokens(): AuthTokens | null {
+  const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY)
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+  if (!accessToken || !refreshToken) return null
+  return { accessToken, refreshToken }
+}
+
+export function setTokens(tokens: AuthTokens) {
+  localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken)
+  localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken)
+}
+
+export function clearTokens() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+}
+
+export class ApiError extends Error {
+  status: number
+  body?: unknown
+
+  constructor(status: number, message: string, body?: unknown) {
+    super(message)
+    this.status = status
+    this.body = body
+    this.name = 'ApiError'
+  }
+}
+
+// The access token expires in 15 minutes (server-side constant) and the
+// refresh token is single-use/rotated on every call. If two requests 401 at
+// the same moment, they must share one refresh attempt — a second call with
+// the same (now-consumed) refresh token would just fail — so concurrent
+// refreshes are collapsed into a single in-flight promise.
+let refreshPromise: Promise<AuthTokens | null> | null = null
+
+async function refreshTokens(): Promise<AuthTokens | null> {
+  const current = getTokens()
+  if (!current) return null
+
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: current.refreshToken }),
+        })
+        if (!res.ok) {
+          clearTokens()
+          return null
+        }
+        const data = (await res.json()) as { accessToken: string; refreshToken: string }
+        const next = { accessToken: data.accessToken, refreshToken: data.refreshToken }
+        setTokens(next)
+        return next
+      } catch {
+        clearTokens()
+        return null
+      } finally {
+        refreshPromise = null
+      }
+    })()
+  }
+  return refreshPromise
+}
+
+interface ApiFetchOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  body?: unknown
+  query?: Record<string, string | number | boolean | undefined | null | (string | number)[]>
+  auth?: boolean // defaults to true — set false for anonymous endpoints
+  /** Skip JSON body parsing/serialization (used for multipart uploads). */
+  raw?: RequestInit
+}
+
+function buildUrl(path: string, query?: ApiFetchOptions['query']) {
+  const url = new URL(path, API_BASE_URL)
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value === undefined || value === null) continue
+      if (Array.isArray(value)) {
+        for (const item of value) url.searchParams.append(key, String(item))
+      } else {
+        url.searchParams.set(key, String(value))
+      }
+    }
+  }
+  return url.toString()
+}
+
+/**
+ * Calls the backend and returns the parsed JSON body. Handles JWT attach +
+ * one transparent refresh-and-retry on a 401. Throws ApiError for any
+ * non-2xx response (after the retry, if a retry was attempted).
+ */
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const { method = 'GET', body, query, auth = true } = options
+
+  const doFetch = async (): Promise<Response> => {
+    const headers: Record<string, string> = {}
+    if (body !== undefined) headers['Content-Type'] = 'application/json'
+    if (auth) {
+      const tokens = getTokens()
+      if (tokens) headers['Authorization'] = `Bearer ${tokens.accessToken}`
+    }
+    return fetch(buildUrl(path, query), {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+  }
+
+  let res = await doFetch()
+
+  if (res.status === 401 && auth && getTokens()) {
+    const refreshed = await refreshTokens()
+    if (refreshed) {
+      res = await doFetch()
+    }
+  }
+
+  if (!res.ok) {
+    let parsedBody: unknown
+    try {
+      parsedBody = await res.json()
+    } catch {
+      // no JSON body
+    }
+    const message =
+      (parsedBody && typeof parsedBody === 'object' && 'title' in parsedBody
+        ? String((parsedBody as { title?: unknown }).title)
+        : undefined) ?? `${res.status} ${res.statusText}`
+    throw new ApiError(res.status, message, parsedBody)
+  }
+
+  if (res.status === 204) return undefined as T
+  const text = await res.text()
+  return text ? (JSON.parse(text) as T) : (undefined as T)
+}
+
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const headers: Record<string, string> = {}
+  const tokens = getTokens()
+  if (tokens) headers['Authorization'] = `Bearer ${tokens.accessToken}`
+
+  let res = await fetch(buildUrl(path), { method: 'POST', headers, body: formData })
+  if (res.status === 401 && tokens) {
+    const refreshed = await refreshTokens()
+    if (refreshed) {
+      headers['Authorization'] = `Bearer ${refreshed.accessToken}`
+      res = await fetch(buildUrl(path), { method: 'POST', headers, body: formData })
+    }
+  }
+  if (!res.ok) {
+    let parsedBody: unknown
+    try {
+      parsedBody = await res.json()
+    } catch {
+      // no JSON body
+    }
+    throw new ApiError(res.status, `${res.status} ${res.statusText}`, parsedBody)
+  }
+  const text = await res.text()
+  return text ? (JSON.parse(text) as T) : (undefined as T)
+}

@@ -66,7 +66,11 @@ export function LoginPage() {
       setError(result.error)
       return
     }
-    const from = (location.state as { from?: Location })?.from?.pathname ?? '/admin'
+    // Deep-link redirects (state.from, set when a guard bounced an unauthenticated visit) always
+    // win; otherwise send Admins to the moderation console — /admin would just bounce them to
+    // the store-onboarding screen, since Admin has nothing to do with owning a store.
+    const from =
+      (location.state as { from?: Location })?.from?.pathname ?? (result.roles.includes('Admin') ? '/console' : '/admin')
     navigate(from, { replace: true })
   }
 

@@ -7,8 +7,10 @@ import { ThemeProvider } from './theme/ThemeProvider'
 import { AuthProvider } from './auth/AuthContext'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireStore } from './auth/RequireStore'
+import { RequireAdmin } from './auth/RequireAdmin'
 import { LoginPage } from './auth/LoginPage'
 import { AdminLayout } from './admin/AdminLayout'
+import { ConsoleLayout } from './admin/ConsoleLayout'
 import { StoreOnboardingPage } from './admin/pages/StoreOnboardingPage'
 import { DashboardPage } from './admin/pages/DashboardPage'
 import { PosPage } from './admin/pages/PosPage'
@@ -16,6 +18,7 @@ import { InventoryPage } from './admin/pages/InventoryPage'
 import { StaffPage } from './admin/pages/StaffPage'
 import { ReportsPage } from './admin/pages/ReportsPage'
 import { SettingsPage } from './admin/pages/SettingsPage'
+import { ConsolePage } from './admin/pages/ConsolePage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -35,6 +38,13 @@ createRoot(document.getElementById('root')!).render(
                   <Route path="staff" element={<StaffPage />} />
                   <Route path="reports" element={<ReportsPage />} />
                   <Route path="settings" element={<SettingsPage />} />
+                </Route>
+              </Route>
+            </Route>
+            <Route path="/console" element={<RequireAuth />}>
+              <Route element={<RequireAdmin />}>
+                <Route element={<ConsoleLayout />}>
+                  <Route index element={<ConsolePage />} />
                 </Route>
               </Route>
             </Route>

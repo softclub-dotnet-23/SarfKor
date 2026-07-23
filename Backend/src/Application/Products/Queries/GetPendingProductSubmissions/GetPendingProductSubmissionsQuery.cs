@@ -1,0 +1,3 @@
+namespace Application.Products.Queries.GetPendingProductSubmissions;
+
+public sealed record GetPendingProductSubmissionsQuery;

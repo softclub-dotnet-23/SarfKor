@@ -1,0 +1,5 @@
+using FluentValidation;
+
+namespace Application.Products.Queries.GetPendingProductSubmissions;
+
+public sealed class GetPendingProductSubmissionsQueryValidator : AbstractValidator<GetPendingProductSubmissionsQuery>;

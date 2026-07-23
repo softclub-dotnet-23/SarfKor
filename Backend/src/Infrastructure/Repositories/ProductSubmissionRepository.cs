@@ -9,4 +9,7 @@ public sealed class ProductSubmissionRepository(AppDbContext dbContext) : IProdu
 {
     public Task<ProductSubmission?> GetByIdAsync(int productSubmissionId, CancellationToken cancellationToken) =>
         dbContext.ProductSubmissions.FirstOrDefaultAsync(p => p.Id == productSubmissionId, cancellationToken);
+
+    public async Task<IReadOnlyList<ProductSubmission>> GetPendingAsync(CancellationToken cancellationToken) =>
+        await dbContext.ProductSubmissions.Where(p => p.Status == ProductSubmissionStatus.Pending).ToListAsync(cancellationToken);
 }

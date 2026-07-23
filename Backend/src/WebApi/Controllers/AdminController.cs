@@ -3,9 +3,11 @@ using Application.Common;
 using Application.Feedback.Commands.ModerateReport;
 using Application.Feedback.Commands.ResolveReportDispute;
 using Application.Feedback.Queries.GetPendingReportDisputes;
+using Application.Feedback.Queries.GetPendingReports;
 using Application.Pricing.Commands.ResolvePriceEntryDispute;
 using Application.Pricing.Queries.GetPendingPriceEntryDisputes;
 using Application.Products.Commands.ModerateNewProduct;
+using Application.Products.Queries.GetPendingProductSubmissions;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -115,6 +117,18 @@ public sealed class AdminController : ControllerBase
             _ => Problem()
         };
     }
+
+    [HttpGet("products/pending")]
+    public async Task<IActionResult> GetPendingProductSubmissions(
+        [FromServices] IQueryHandler<GetPendingProductSubmissionsQuery, GetPendingProductSubmissionsResult> handler,
+        CancellationToken cancellationToken) =>
+        Ok(await handler.Handle(new GetPendingProductSubmissionsQuery(), cancellationToken));
+
+    [HttpGet("reports/pending")]
+    public async Task<IActionResult> GetPendingReports(
+        [FromServices] IQueryHandler<GetPendingReportsQuery, GetPendingReportsResult> handler,
+        CancellationToken cancellationToken) =>
+        Ok(await handler.Handle(new GetPendingReportsQuery(), cancellationToken));
 
     [HttpPost("reports/{reportId:int}/moderate")]
     public async Task<IActionResult> ModerateReport(

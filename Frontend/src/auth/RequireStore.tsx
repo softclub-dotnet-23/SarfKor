@@ -17,6 +17,13 @@ export function RequireStore() {
   }
 
   if (!hasRole('StorePartner') || storeId === null) {
+    // A platform Admin has no reason to own a store — CLAUDE.md §7 scopes
+    // that role to moderation, not the storefront cabinet — so route them
+    // to their own surface instead of funneling every non-store account
+    // into "create a store."
+    if (hasRole('Admin')) {
+      return <Navigate to="/admin/moderation" replace />
+    }
     return <Navigate to="/admin/onboarding" replace />
   }
 

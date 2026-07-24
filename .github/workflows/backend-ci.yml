@@ -50,12 +50,19 @@ jobs:
         run: dotnet tool install --global dotnet-ef --version 10.0.0-preview.7.25380.108
 
       - name: Apply migrations to CI database
+        # No --no-build here: with it, dotnet-ef has to reconstruct the build
+        # output path itself from --configuration/TFM, and on Linux the
+        # preview EF tooling (10.0.0-preview.x) does that with a literal
+        # backslash instead of the platform separator, producing a path like
+        # bin\Release\net10.0\WebApi.deps.json that can never resolve
+        # (dotnet/efcore#36142). Letting it build itself sidesteps the bug —
+        # it gets the real output path straight from that build, not a
+        # guessed one — at the cost of one redundant build in CI.
         run: >
           dotnet ef database update
           --project Backend/src/Infrastructure/Infrastructure.csproj
           --startup-project Backend/src/WebApi/WebApi.csproj
           --configuration Release
-          --no-build
 
       - name: Test
         run: dotnet test Backend/tests/Application.Tests/Application.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"

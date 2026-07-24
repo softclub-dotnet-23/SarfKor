@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { Card } from '../components/Card'
 import { AdminModal } from '../components/AdminModal'
-import { PackageIcon, AlertIcon, ReportIcon, CheckIcon, XIcon, ClockIcon } from '../components/icons'
+import { PackageIcon, AlertIcon, ReportIcon, CheckIcon, XIcon, ClockIcon, SettingsIcon } from '../components/icons'
 import {
   adminApi,
   ApiError,
@@ -12,14 +12,16 @@ import {
   type PriceEntryDispute,
   type ReportDispute,
 } from '../../lib/api'
+import { CatalogTab } from './CatalogTab'
 
-type Tab = 'submissions' | 'reports' | 'price-disputes' | 'report-disputes'
+type Tab = 'submissions' | 'reports' | 'price-disputes' | 'report-disputes' | 'catalog'
 
 const TABS: { id: Tab; label: string; icon: typeof PackageIcon }[] = [
   { id: 'submissions', label: 'Заявки на товары', icon: PackageIcon },
   { id: 'reports', label: 'Жалобы', icon: AlertIcon },
   { id: 'price-disputes', label: 'Споры о ценах', icon: ReportIcon },
   { id: 'report-disputes', label: 'Споры о жалобах', icon: ReportIcon },
+  { id: 'catalog', label: 'Справочники', icon: SettingsIcon },
 ]
 
 function fmtDate(iso: string) {
@@ -183,6 +185,7 @@ export function ConsolePage() {
     reports: reports?.length ?? 0,
     'price-disputes': priceDisputes?.length ?? 0,
     'report-disputes': reportDisputes?.length ?? 0,
+    catalog: 0,
   }
 
   return (
@@ -353,6 +356,8 @@ export function ConsolePage() {
           )}
         </Card>
       )}
+
+      {tab === 'catalog' && <CatalogTab />}
 
       <AdminModal open={!!rejectTarget} onClose={() => setRejectTarget(null)} title="Причина отклонения (необязательно)">
         <div className="flex flex-col gap-4">

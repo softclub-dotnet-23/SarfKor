@@ -209,3 +209,7 @@ public sealed record PublishExpiringOfferRequest(int StoreId, int ProductId, dec
 public sealed record ModerateNewProductRequest(bool Approve, string? Reason);
 public sealed record SubmitNewProductRequest(string Barcode, string Name, int CategoryId, int BrandId, string CountryOfOrigin);
 public sealed record ModerateReportRequest(bool Resolve, string? Reason);
+public sealed record UpdateBrandRequest(string Name);
+public sealed record UpdateCategoryRequest(string Name, int? ParentCategoryId);
+public sealed record UpdateTaxRateRequest(string Name, decimal Percentage, int? CategoryId);
+public sealed record UpdateSupplierRequest(string Name, string? ContactPhone, string? ContactEmail);

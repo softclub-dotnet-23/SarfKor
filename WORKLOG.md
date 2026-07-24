@@ -843,3 +843,34 @@ Playwright-сценарий: `/login` → переключение на «Зар
 Логин под сидированным Admin-аккаунтом → **реально попадает на `/console`** (не `/admin`). Вкладка "Жалобы" показывает реальный pending-репорт из БД (тип, товар, магазин, описание, дата — всё совпадает). Клик "Разрешить" → реальный `POST /api/admin/reports/2/moderate` → `200` → элемент пропадает из списка; отдельным `curl`-запросом подтверждено, что `GET /api/admin/reports/pending` после этого возвращает пустой список — значит модерация прошла по-настоящему на сервере, а не просто визуально скрылась. Обратная проверка guard'а: обычный `User` логинится → попадает на `/admin/onboarding`; при прямом переходе на `/console` — редиректится обратно на `/admin/onboarding` (через `RequireAdmin` → `/admin` → `RequireStore`), `/console` для не-Admin недостижим ни одним путём. `npx tsc -b` — 0 ошибок; `npm run lint` — только 2 предсуществовавших предупреждения, не связанных с новыми файлами. `dotnet build`/`dotnet test` — 0 ошибок, 236/236.
 
 **Не сделано (сознательно, не запрошено)**: `ConsolePage` не показывает историю уже обработанных решений (только текущую pending-очередь) — если понадобится аудит прошлых модераций, для этого уже есть `AuditLog` на бэкенде, но отдельного эндпоинта его чтения нет.
+
+## 2026-07-24 (продолжение) — Полный CRUD для Category/Brand/TaxRate/Supplier
+
+Пользователь спросил "как добавить категорию товара и остальные CRUD'ы". Проверка показала: на бэкенде существовали только Create + List для всех четырёх справочников (Category/Brand/TaxRate — Admin-курируемые, Supplier — StorePartner-управляемый) — ни Update, ни Delete не было нигде, и ни одного экрана в Frontend для управления ими тоже не было. Пользователь выбрал: сразу полный CRUD (не только Create+List), с UI в Admin console (Category/Brand/TaxRate) и в кабинете StorePartner (Supplier).
+
+### Backend — 8 новых команд (Update + Delete × 4 сущности)
+
+Ключевое архитектурное решение: `Category`/`Brand`/`TaxRate`/`Supplier` — **слабые ссылки** (обычные `int`-колонки без EF-навигации, без FK на уровне БД — уже устоявшийся в проекте паттерн). Значит `Delete` может молча оставить "битые" ссылки у `Product`/`StockMovement`/`PurchaseOrder`/`ReorderRule`. Вместо повторения паттерна "слабая ссылка = не проверяем" (как для мелких листовых сущностей типа `Report.ProductId`), для этих четырёх — платформенных справочников, на которые массово ссылаются другие таблицы, — решено проверять использование перед удалением:
+
+- `ICategoryRepository`/`IBrandRepository`/`ITaxRateRepository`/`ISupplierRepository` получили `GetByIdAsync`, `IsInUseAsync`, `Remove`.
+- `IsInUseAsync` реализован в Infrastructure-слое прямыми запросами к связанным таблицам: Category → `Product.CategoryId` + `TaxRate.CategoryId` + `Category.ParentCategoryId` (дочерние категории); Brand → `Product.BrandId`; TaxRate → `Product.TaxRateId`; Supplier → `StockMovement.SupplierId` + `PurchaseOrder.SupplierId` + `ReorderRule.PreferredSupplierId`.
+- `UpdateCategoryCommand` дополнительно проверяет `SelfReference` (категория не может быть своим же родителем) и `ParentCategoryNotFound`.
+- `UpdateTaxRateCommand` проверяет `CategoryNotFound`, если указана новая `CategoryId`.
+- Все `Delete*Command` возвращают `InUse` (409), а не молча удаляют или падают с ошибкой БД.
+
+### WebApi — `PUT`/`DELETE` эндпоинты
+
+`CatalogController`: `PUT/DELETE /api/catalog/brands/{id}`, `.../categories/{id}`, `.../tax-rates/{id}` (все `[Authorize("Admin")]`, как и существующие `POST`). `SuppliersController`: `PUT/DELETE /api/suppliers/{id}` (`[Authorize("StorePartner")]`).
+
+### Frontend
+
+- `lib/api/catalog.ts` (новый) — полный клиент для Brand/Category/TaxRate CRUD.
+- `lib/api/suppliers.ts` (новый) — полный клиент для Supplier CRUD.
+- `admin/pages/CatalogTab.tsx` (новый) — три секции (Бренды/Категории/Налоговые ставки) с инлайн-редактированием (клик на карандаш → поля становятся редактируемыми на месте, без модалки) и формой добавления снизу. Добавлен как 5-я вкладка "Справочники" в уже существующий `/console`.
+- `admin/pages/SuppliersSection.tsx` (новый) — тот же паттерн для поставщиков, встроен в `SettingsPage` (кабинет StorePartner) между "Уведомления" и "Аккаунт".
+
+### Проверено вручную end-to-end (реальный сервер + реальный браузер, Playwright)
+
+Через `curl`: создание/переименование/удаление бренда — 200; попытка удалить `BrandId=2` (Coca-Cola, реально используется сидированным товаром) → **`409` "This brand is still referenced by one or more products."**; та же проверка для категории (`Beverages`, тоже в использовании) → 409; self-reference на категории (parentCategoryId = свой же id) → 409; обновление несуществующего бренда → 404. Через Playwright (реальный браузер): вход под Admin → вкладка "Справочники" → создание бренда "PW Test Brand" → инлайн-редактирование в "PW Test Brand RENAMED" → удаление — все три шага отражены в UI и подтверждены визуально скриншотами. Вход под `demo.partner` (StorePartner, владеет магазином #27) → `/admin/settings` → создание/удаление поставщика "PW Test Supplier" — работает, встроено в общий экран настроек магазина без нареканий.
+
+**Результат**: `dotnet build`/`dotnet test` — 0 ошибок, **259/259 пройдено** (+23 новых теста: по 3-4 на каждую из 8 команд — not-found, use-case-специфичные проверки типа `InUse`/`SelfReference`/`ParentCategoryNotFound`, успешный путь). `npx tsc -b` — 0 ошибок; `npm run lint` — только 2 предсуществовавших предупреждения.

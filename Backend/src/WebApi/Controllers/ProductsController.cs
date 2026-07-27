@@ -96,7 +96,7 @@ public sealed class ProductsController : ControllerBase
     [HttpGet("compare-basket")]
     [EnableRateLimiting("scan")]
     public async Task<IActionResult> CompareBasket(
-        int[] productIds,
+        [FromQuery] int[] productIds,
         double? lat,
         double? lng,
         [FromServices] IQueryHandler<CompareStoresForShoppingListQuery, CompareStoresForShoppingListResult> handler,

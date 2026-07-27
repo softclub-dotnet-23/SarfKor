@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Card } from '../components/Card'
-import { ClockIcon, ShieldIcon, AlertIcon } from '../components/icons'
+import { AdminModal } from '../components/AdminModal'
+import { ClockIcon, ShieldIcon, AlertIcon, UsersIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
-import { storesApi, salesApi, ApiError, type CashierShift, type CashierAnomaly } from '../../lib/api'
+import { storesApi, salesApi, ApiError, type CashierShift, type CashierAnomaly, type StoreEmployee } from '../../lib/api'
 import { daysAgo, today } from '../lib/dates'
 
 const ROLE_ACCESS: { role: string; access: string[] }[] = [
@@ -20,37 +21,110 @@ function fmt(n: number) {
   return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+const ADD_EMPLOYEE_ERRORS: Record<string, string> = {
+  EmployeeNotFound: 'Нет пользователя с таким email — попросите кассира сначала зарегистрироваться в приложении',
+  AlreadyEmployed: 'Этот пользователь уже добавлен в этот магазин',
+  Forbidden: 'Добавлять сотрудников может только владелец магазина',
+  StoreNotFound: 'Магазин не найден',
+}
+
 export function StaffPage() {
   const { storeId, user } = useAuth()
   const [shifts, setShifts] = useState<CashierShift[] | null>(null)
   const [anomalies, setAnomalies] = useState<CashierAnomaly[]>([])
+  const [anomaliesForbidden, setAnomaliesForbidden] = useState(false)
+  const [employees, setEmployees] = useState<StoreEmployee[]>([])
+  const [employeesForbidden, setEmployeesForbidden] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const [addOpen, setAddOpen] = useState(false)
+  const [addEmail, setAddEmail] = useState('')
+  const [addBusy, setAddBusy] = useState(false)
+  const [addError, setAddError] = useState('')
+  const [removingId, setRemovingId] = useState<number | null>(null)
+
+  async function loadEmployees() {
+    if (!storeId) return
+    try {
+      const res = await storesApi.getStoreEmployees(storeId)
+      setEmployees(res.employees ?? [])
+      setEmployeesForbidden(false)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setEmployeesForbidden(true)
+      }
+    }
+  }
 
   useEffect(() => {
     if (!storeId) return
     let cancelled = false
     async function load() {
       try {
-        const [shiftsRes, anomaliesRes] = await Promise.all([
-          salesApi.getCashierShifts(storeId!),
-          storesApi.getCashierAnomalies(storeId!, daysAgo(29), today()),
-        ])
+        const shiftsRes = await salesApi.getCashierShifts(storeId!)
         if (cancelled) return
         setShifts(shiftsRes.shifts ?? [])
-        setAnomalies(anomaliesRes.cashiers ?? [])
       } catch (err) {
         if (cancelled) return
         setError(err instanceof ApiError ? err.message : 'Не удалось загрузить данные о сотрудниках')
-      } finally {
-        if (!cancelled) setLoading(false)
       }
+
+      try {
+        const anomaliesRes = await storesApi.getCashierAnomalies(storeId!, daysAgo(29), today())
+        if (cancelled) return
+        setAnomalies(anomaliesRes.cashiers ?? [])
+      } catch (err) {
+        if (cancelled) return
+        if (err instanceof ApiError && err.status === 403) setAnomaliesForbidden(true)
+      }
+
+      await loadEmployees()
+      if (!cancelled) setLoading(false)
     }
     load()
     return () => {
       cancelled = true
     }
   }, [storeId])
+
+  function openAddForm() {
+    setAddEmail('')
+    setAddError('')
+    setAddOpen(true)
+  }
+
+  async function confirmAddEmployee() {
+    if (!storeId || !addEmail.trim() || addBusy) return
+    setAddBusy(true)
+    setAddError('')
+    try {
+      const res = await storesApi.addStoreEmployee(storeId, addEmail.trim())
+      if (res.outcome !== 'Added') {
+        setAddError(ADD_EMPLOYEE_ERRORS[res.outcome] ?? 'Не удалось добавить сотрудника')
+        return
+      }
+      setAddOpen(false)
+      await loadEmployees()
+    } catch (err) {
+      setAddError(err instanceof ApiError ? err.message : 'Не удалось добавить сотрудника')
+    } finally {
+      setAddBusy(false)
+    }
+  }
+
+  async function removeEmployee(storeEmployeeId: number) {
+    if (removingId) return
+    setRemovingId(storeEmployeeId)
+    try {
+      await storesApi.removeStoreEmployee(storeEmployeeId)
+      await loadEmployees()
+    } catch {
+      // Best-effort — a stale list refreshes on the next load anyway.
+    } finally {
+      setRemovingId(null)
+    }
+  }
 
   if (loading) {
     return <div className="py-24 text-center text-[color:var(--admin-text-tertiary)]">Загружаем данные…</div>

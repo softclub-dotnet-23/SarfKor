@@ -29,3 +29,20 @@ export function getTopSellingProducts(storeId?: number, limit = 10) {
     { query: { storeId, limit }, auth: false },
   )
 }
+
+export interface SubmitNewProductRequest {
+  barcode: string
+  name: string
+  categoryId: number
+  brandId: number
+  countryOfOrigin: string
+}
+
+// Submits an unrecognized barcode for Admin moderation (see /console) -- does not create the
+// Product directly. Any authenticated user can submit; approval is what actually creates it.
+export function submitNewProduct(req: SubmitNewProductRequest) {
+  return apiFetch<{ outcome: string; productSubmissionId?: number }>('/api/products/submissions', {
+    method: 'POST',
+    body: req,
+  })
+}

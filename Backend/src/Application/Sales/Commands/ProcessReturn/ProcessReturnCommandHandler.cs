@@ -8,6 +8,7 @@ namespace Application.Sales.Commands.ProcessReturn;
 public sealed class ProcessReturnCommandHandler(
     ISaleTransactionRepository saleTransactionRepository,
     IStoreRepository storeRepository,
+    IStoreEmployeeRepository storeEmployeeRepository,
     ISaleReturnRepository saleReturnRepository,
     IStockLevelRepository stockLevelRepository,
     IStockMovementRepository stockMovementRepository,
@@ -20,7 +21,11 @@ public sealed class ProcessReturnCommandHandler(
             return new ProcessReturnResult(ProcessReturnOutcome.SaleNotFound, null, null, null);
 
         var store = await storeRepository.GetByIdAsync(sale.StoreId, cancellationToken);
-        if (store is null || store.OwnerUserId != command.PerformedByUserId)
+        if (store is null)
+            return new ProcessReturnResult(ProcessReturnOutcome.Forbidden, null, null, null);
+
+        if (store.OwnerUserId != command.PerformedByUserId
+            && !await storeEmployeeRepository.IsEmployeeAsync(store.Id, command.PerformedByUserId, cancellationToken))
             return new ProcessReturnResult(ProcessReturnOutcome.Forbidden, null, null, null);
 
         if (sale.Status != SaleStatus.Completed)

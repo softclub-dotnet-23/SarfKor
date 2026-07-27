@@ -5,6 +5,7 @@ namespace Application.Stores.Queries.GetStoreDashboard;
 
 public sealed class GetStoreDashboardQueryHandler(
     IStoreRepository storeRepository,
+    IStoreEmployeeRepository storeEmployeeRepository,
     ISaleTransactionRepository saleTransactionRepository,
     IStockLevelRepository stockLevelRepository) : IQueryHandler<GetStoreDashboardQuery, GetStoreDashboardResult>
 {
@@ -14,7 +15,8 @@ public sealed class GetStoreDashboardQueryHandler(
         if (store is null)
             return new GetStoreDashboardResult(GetStoreDashboardOutcome.StoreNotFound, null, null, null, null);
 
-        if (store.OwnerUserId != query.RequestedByUserId)
+        if (store.OwnerUserId != query.RequestedByUserId
+            && !await storeEmployeeRepository.IsEmployeeAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
             return new GetStoreDashboardResult(GetStoreDashboardOutcome.Forbidden, null, null, null, null);
 
         var todayStart = new DateTimeOffset(DateTime.UtcNow.Date, TimeSpan.Zero);

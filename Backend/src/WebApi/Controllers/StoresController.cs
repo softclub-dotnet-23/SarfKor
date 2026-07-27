@@ -55,7 +55,7 @@ public sealed class StoresController : ControllerBase
         if (userId is null)
             return Unauthorized();
 
-        var command = new AddStoreEmployeeCommand(storeId, request.EmployeeUserId, request.Role, userId);
+        var command = new AddStoreEmployeeCommand(storeId, request.EmployeeEmail, request.Role, userId);
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -68,6 +68,7 @@ public sealed class StoresController : ControllerBase
             AddStoreEmployeeOutcome.StoreNotFound => NotFound("Store not found."),
             AddStoreEmployeeOutcome.Forbidden => Forbid(),
             AddStoreEmployeeOutcome.AlreadyEmployed => Conflict("This user is already an employee of this store."),
+            AddStoreEmployeeOutcome.EmployeeNotFound => NotFound("No registered user found with this email."),
             _ => Problem()
         };
     }

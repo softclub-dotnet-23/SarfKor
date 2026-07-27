@@ -14,10 +14,17 @@ public class RedeemStoreCreditCommandHandlerTests
     private const int CustomerId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<IStoreCreditRepository> _storeCreditRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    private RedeemStoreCreditCommandHandler CreateHandler() => new(_storeRepository.Object, _storeCreditRepository.Object, _unitOfWork.Object);
+    public RedeemStoreCreditCommandHandlerTests() =>
+        _storeEmployeeRepository
+            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+    private RedeemStoreCreditCommandHandler CreateHandler() =>
+        new(_storeRepository.Object, _storeEmployeeRepository.Object, _storeCreditRepository.Object, _unitOfWork.Object);
 
     private static RedeemStoreCreditCommand ValidCommand() => new(StoreId, CustomerId, 10, OwnerId);
 

@@ -6,6 +6,7 @@ namespace Application.Inventory.Commands.RecordStockReceipt;
 
 public sealed class RecordStockReceiptCommandHandler(
     IStoreRepository storeRepository,
+    IStoreEmployeeRepository storeEmployeeRepository,
     IProductRepository productRepository,
     IStockLevelRepository stockLevelRepository,
     IStockMovementRepository stockMovementRepository,
@@ -17,7 +18,8 @@ public sealed class RecordStockReceiptCommandHandler(
         if (store is null)
             return new RecordStockReceiptResult(RecordStockReceiptOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != command.PerformedByUserId)
+        if (store.OwnerUserId != command.PerformedByUserId
+            && !await storeEmployeeRepository.IsEmployeeAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new RecordStockReceiptResult(RecordStockReceiptOutcome.Forbidden, null);
 
         if (!await productRepository.ExistsAsync(command.ProductId, cancellationToken))

@@ -17,6 +17,7 @@ public class VoidSaleCommandHandlerTests
 
     private readonly Mock<ISaleTransactionRepository> _saleTransactionRepository = new();
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<IStockLevelRepository> _stockLevelRepository = new();
     private readonly Mock<IStockMovementRepository> _stockMovementRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -30,11 +31,16 @@ public class VoidSaleCommandHandlerTests
         _storeRepository
             .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+
+        _storeEmployeeRepository
+            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
     }
 
     private VoidSaleCommandHandler CreateHandler() => new(
         _saleTransactionRepository.Object,
         _storeRepository.Object,
+        _storeEmployeeRepository.Object,
         _stockLevelRepository.Object,
         _stockMovementRepository.Object,
         _unitOfWork.Object);

@@ -14,6 +14,7 @@ public class RecordStockReceiptCommandHandlerTests
     private const int ProductId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<IProductRepository> _productRepository = new();
     private readonly Mock<IStockLevelRepository> _stockLevelRepository = new();
     private readonly Mock<IStockMovementRepository> _stockMovementRepository = new();
@@ -24,10 +25,14 @@ public class RecordStockReceiptCommandHandlerTests
         _unitOfWork
             .Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<CancellationToken, Task>>(), It.IsAny<CancellationToken>()))
             .Returns<Func<CancellationToken, Task>, CancellationToken>((action, ct) => action(ct));
+        _storeEmployeeRepository
+            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
     }
 
     private RecordStockReceiptCommandHandler CreateHandler() => new(
         _storeRepository.Object,
+        _storeEmployeeRepository.Object,
         _productRepository.Object,
         _stockLevelRepository.Object,
         _stockMovementRepository.Object,

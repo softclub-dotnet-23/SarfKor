@@ -13,10 +13,17 @@ public class GetReorderAlertsQueryHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<IReorderRuleRepository> _reorderRuleRepository = new();
     private readonly Mock<IStockLevelRepository> _stockLevelRepository = new();
 
-    private GetReorderAlertsQueryHandler CreateHandler() => new(_storeRepository.Object, _reorderRuleRepository.Object, _stockLevelRepository.Object);
+    public GetReorderAlertsQueryHandlerTests() =>
+        _storeEmployeeRepository
+            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+    private GetReorderAlertsQueryHandler CreateHandler() =>
+        new(_storeRepository.Object, _storeEmployeeRepository.Object, _reorderRuleRepository.Object, _stockLevelRepository.Object);
 
     private void SetupOwnedStore() =>
         _storeRepository

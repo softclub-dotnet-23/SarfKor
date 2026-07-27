@@ -18,13 +18,20 @@ public class RedeemLoyaltyPointsCommandHandlerTests
     private readonly Mock<ILoyaltyProgramRepository> _loyaltyProgramRepository = new();
     private readonly Mock<ILoyaltyTransactionRepository> _loyaltyTransactionRepository = new();
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+
+    public RedeemLoyaltyPointsCommandHandlerTests() =>
+        _storeEmployeeRepository
+            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
 
     private RedeemLoyaltyPointsCommandHandler CreateHandler() => new(
         _loyaltyAccountRepository.Object,
         _loyaltyProgramRepository.Object,
         _loyaltyTransactionRepository.Object,
         _storeRepository.Object,
+        _storeEmployeeRepository.Object,
         _unitOfWork.Object);
 
     private void SetupAccountAndOwnership(int balance)

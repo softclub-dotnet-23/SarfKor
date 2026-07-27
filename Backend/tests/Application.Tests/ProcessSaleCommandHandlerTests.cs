@@ -21,6 +21,7 @@ public class ProcessSaleCommandHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<IProductRepository> _productRepository = new();
     private readonly Mock<IPriceEntryRepository> _priceEntryRepository = new();
     private readonly Mock<IPromotionRepository> _promotionRepository = new();
@@ -47,10 +48,15 @@ public class ProcessSaleCommandHandlerTests
         _promotionRepository
             .Setup(r => r.GetActiveByStoreIdAsync(StoreId, It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
+
+        _storeEmployeeRepository
+            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
     }
 
     private ProcessSaleCommandHandler CreateHandler() => new(
         _storeRepository.Object,
+        _storeEmployeeRepository.Object,
         _productRepository.Object,
         _priceEntryRepository.Object,
         _promotionRepository.Object,
@@ -94,6 +100,28 @@ public class ProcessSaleCommandHandlerTests
             CancellationToken.None);
 
         Assert.Equal(ProcessSaleOutcome.Forbidden, result.Outcome);
+    }
+
+    [Fact]
+    public async Task Handle_RegisteredCashierNotOwner_IsAllowedToProcessSale()
+    {
+        const string cashierId = "cashier-1";
+        _storeEmployeeRepository
+            .Setup(r => r.IsEmployeeAsync(StoreId, cashierId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
+        _priceEntryRepository
+            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PriceEntry { ProductId = 1, StoreId = StoreId, Price = new Money(10, "TJS") });
+        _stockLevelRepository.Setup(r => r.TryDecrementAsync(1, StoreId, 1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var handler = CreateHandler();
+
+        var result = await handler.Handle(
+            new ProcessSaleCommand(StoreId, cashierId, "key-cashier", "TJS", [new ProcessSaleLine(1, 1)]),
+            CancellationToken.None);
+
+        Assert.Equal(ProcessSaleOutcome.Completed, result.Outcome);
     }
 
     [Fact]

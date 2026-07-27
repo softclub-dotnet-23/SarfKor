@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card } from '../components/Card'
 import { AdminModal } from '../components/AdminModal'
 import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, TrashIcon } from '../components/icons'
@@ -44,7 +44,7 @@ export function StaffPage() {
   const [addError, setAddError] = useState('')
   const [removingId, setRemovingId] = useState<number | null>(null)
 
-  async function loadEmployees() {
+  const loadEmployees = useCallback(async () => {
     if (!storeId) return
     try {
       const res = await storesApi.getStoreEmployees(storeId)
@@ -55,7 +55,7 @@ export function StaffPage() {
         setEmployeesForbidden(true)
       }
     }
-  }
+  }, [storeId])
 
   useEffect(() => {
     if (!storeId) return
@@ -86,7 +86,7 @@ export function StaffPage() {
     return () => {
       cancelled = true
     }
-  }, [storeId])
+  }, [storeId, loadEmployees])
 
   function openAddForm() {
     setAddEmail('')
@@ -293,41 +293,47 @@ export function StaffPage() {
         <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
           Аномальным считается кассир с необычно высокой долей отмен продаж — эта метрика считается на бэкенде.
         </p>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] border-collapse text-left text-[13px]">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
-                <th className="pb-3 font-semibold">Кассир</th>
-                <th className="pb-3 font-semibold">Продаж</th>
-                <th className="pb-3 font-semibold">Отмен</th>
-                <th className="pb-3 font-semibold">% отмен</th>
-                <th className="pb-3 font-semibold" />
-              </tr>
-            </thead>
-            <tbody>
-              {anomalies.map((a) => (
-                <tr key={a.cashierUserId} className="border-t border-[color:var(--admin-border)]">
-                  <td className="py-3 pr-3 font-semibold text-[color:var(--admin-text)]">{shortId(a.cashierUserId, user?.userId)}</td>
-                  <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{a.totalSales}</td>
-                  <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{a.voidedSales}</td>
-                  <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{(a.voidRate * 100).toFixed(1)}%</td>
-                  <td className="py-3">
-                    {a.isAnomalous && (
-                      <span className="rounded-full bg-[#f8717122] px-2.5 py-1 text-[11px] font-semibold text-[#f87171]">Аномалия</span>
-                    )}
-                  </td>
+        {anomaliesForbidden ? (
+          <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">
+            Эта метрика видна только владельцу магазина
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] border-collapse text-left text-[13px]">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
+                  <th className="pb-3 font-semibold">Кассир</th>
+                  <th className="pb-3 font-semibold">Продаж</th>
+                  <th className="pb-3 font-semibold">Отмен</th>
+                  <th className="pb-3 font-semibold">% отмен</th>
+                  <th className="pb-3 font-semibold" />
                 </tr>
-              ))}
-              {anomalies.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-10 text-center text-[color:var(--admin-text-tertiary)]">
-                    Нет продаж за последние 30 дней
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {anomalies.map((a) => (
+                  <tr key={a.cashierUserId} className="border-t border-[color:var(--admin-border)]">
+                    <td className="py-3 pr-3 font-semibold text-[color:var(--admin-text)]">{shortId(a.cashierUserId, user?.userId)}</td>
+                    <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{a.totalSales}</td>
+                    <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{a.voidedSales}</td>
+                    <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{(a.voidRate * 100).toFixed(1)}%</td>
+                    <td className="py-3">
+                      {a.isAnomalous && (
+                        <span className="rounded-full bg-[#f8717122] px-2.5 py-1 text-[11px] font-semibold text-[#f87171]">Аномалия</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {anomalies.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-[color:var(--admin-text-tertiary)]">
+                      Нет продаж за последние 30 дней
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       <Card className="p-5">

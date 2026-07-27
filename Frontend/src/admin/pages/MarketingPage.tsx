@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import { Card } from '../components/Card'
 import { TagIcon, PercentIcon, ClockIcon, AlertIcon, CheckIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { StarIcon } from '../../components/icons'
@@ -20,7 +20,7 @@ import { getReviews, replyToReview, type Review } from '../../lib/api/reviews'
 
 type Tab = 'promotions' | 'bundles' | 'offers' | 'replies'
 
-const TABS: { key: Tab; label: string; icon: (props: { width: number; height: number }) => JSX.Element }[] = [
+const TABS: { key: Tab; label: string; icon: (props: { width: number; height: number }) => ReactElement }[] = [
   { key: 'promotions', label: 'Акции', icon: (p) => <PercentIcon {...p} /> },
   { key: 'bundles', label: 'Наборы товаров', icon: (p) => <TagIcon {...p} /> },
   { key: 'offers', label: 'Скоро истекает', icon: (p) => <ClockIcon {...p} /> },

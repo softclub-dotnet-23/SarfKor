@@ -43,7 +43,10 @@ public sealed class ProcessSaleCommandHandler(
             // already applied and committed, so we don't know or re-derive them here; only the
             // idempotent total is guaranteed correct on replay.
             var existingTotal = existing.Lines.Sum(l => l.UnitPriceAtSale.Amount * l.Quantity);
-            return new ProcessSaleResult(ProcessSaleOutcome.Completed, existing.Id, existingTotal, existing.Currency, null);
+            var existingLines = existing.Lines
+                .Select(l => new ProcessSaleLineResultDto(l.Id, l.ProductId, l.Quantity, l.UnitPriceAtSale.Amount))
+                .ToList();
+            return new ProcessSaleResult(ProcessSaleOutcome.Completed, existing.Id, existingTotal, existing.Currency, null, Lines: existingLines);
         }
 
         var activePromotions = await promotionRepository.GetActiveByStoreIdAsync(command.StoreId, DateTimeOffset.UtcNow, cancellationToken);
@@ -211,9 +214,12 @@ public sealed class ProcessSaleCommandHandler(
         }
 
         var amountDue = total - (giftCardAmountApplied ?? 0m) - (storeCreditAmountApplied ?? 0m);
+        var lines = saleTransaction!.Lines
+            .Select(l => new ProcessSaleLineResultDto(l.Id, l.ProductId, l.Quantity, l.UnitPriceAtSale.Amount))
+            .ToList();
         return new ProcessSaleResult(
-            ProcessSaleOutcome.Completed, saleTransaction!.Id, total, command.Currency, null,
-            giftCardAmountApplied, amountDue, storeCreditAmountApplied);
+            ProcessSaleOutcome.Completed, saleTransaction.Id, total, command.Currency, null,
+            giftCardAmountApplied, amountDue, storeCreditAmountApplied, lines);
     }
 
     /// <summary>Product-specific promotion wins over category-wide, which wins over store-wide.</summary>

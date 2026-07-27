@@ -8,39 +8,6 @@ import { SunIcon, MoonIcon } from '../../components/icons'
 import { StoreIcon, BellIcon, KeyIcon, CheckIcon } from '../components/icons'
 
 const DAILY_GOAL_KEY = 'sarfkor-daily-goal'
-const NOTIFY_KEY = 'sarfkor-notify-prefs'
-
-interface NotifyPrefs {
-  lowStock: boolean
-  dailyReport: boolean
-  voids: boolean
-}
-
-function loadNotifyPrefs(): NotifyPrefs {
-  try {
-    return { lowStock: true, dailyReport: true, voids: false, ...JSON.parse(localStorage.getItem(NOTIFY_KEY) ?? '{}') }
-  } catch {
-    return { lowStock: true, dailyReport: true, voids: false }
-  }
-}
-
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
-      style={{ background: checked ? 'var(--admin-accent)' : 'var(--admin-border)' }}
-    >
-      <span
-        className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"
-        style={{ transform: checked ? 'translateX(22px)' : 'translateX(2px)' }}
-      />
-    </button>
-  )
-}
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme()
@@ -49,13 +16,7 @@ export function SettingsPage() {
   const navigate = useNavigate()
 
   const [dailyGoal, setDailyGoal] = useState(() => Number(localStorage.getItem(DAILY_GOAL_KEY)) || 150)
-  const [notify, setNotify] = useState<NotifyPrefs>(loadNotifyPrefs)
   const [saved, setSaved] = useState(false)
-
-  function persistNotify(next: NotifyPrefs) {
-    setNotify(next)
-    localStorage.setItem(NOTIFY_KEY, JSON.stringify(next))
-  }
 
   function handleSave(e: FormEvent) {
     e.preventDefault()
@@ -150,31 +111,16 @@ export function SettingsPage() {
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Уведомления</span>
         </div>
         <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-          Бэкенд пока не отправляет уведомления — переключатели сохраняются только в этом браузере как заготовка под будущую фичу
+          Бэкенд сам решает, когда создавать уведомления (низкий остаток, снижение цены, рассмотренная жалоба,
+          новая акция с истекающим сроком) — настройки того, какие типы получать, бэкенд пока не поддерживает.
         </p>
-        <div className="flex flex-col divide-y divide-[color:var(--admin-border)]">
-          <div className="flex items-center justify-between py-3.5">
-            <div>
-              <div className="text-[13px] font-semibold text-[color:var(--admin-text)]">Низкий остаток товара</div>
-              <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">Уведомлять, когда остаток ниже минимума</div>
-            </div>
-            <Toggle checked={notify.lowStock} onChange={(v) => persistNotify({ ...notify, lowStock: v })} />
-          </div>
-          <div className="flex items-center justify-between py-3.5">
-            <div>
-              <div className="text-[13px] font-semibold text-[color:var(--admin-text)]">Ежедневный отчёт</div>
-              <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">Присылать сводку продаж в конце дня</div>
-            </div>
-            <Toggle checked={notify.dailyReport} onChange={(v) => persistNotify({ ...notify, dailyReport: v })} />
-          </div>
-          <div className="flex items-center justify-between py-3.5">
-            <div>
-              <div className="text-[13px] font-semibold text-[color:var(--admin-text)]">Отмены и возвраты</div>
-              <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">Уведомлять о каждой отменённой продаже</div>
-            </div>
-            <Toggle checked={notify.voids} onChange={(v) => persistNotify({ ...notify, voids: v })} />
-          </div>
-        </div>
+        <button
+          onClick={() => navigate('/app/notifications')}
+          className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-hover)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--admin-text)] hover:bg-[color:var(--admin-border)]"
+        >
+          <BellIcon width={15} height={15} />
+          Посмотреть уведомления
+        </button>
       </Card>
 
       <Card className="p-6">

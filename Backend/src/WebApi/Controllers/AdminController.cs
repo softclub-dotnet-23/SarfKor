@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Application.Auditing.Queries.GetRecentAuditLogs;
 using Application.Common;
 using Application.Feedback.Commands.ModerateReport;
 using Application.Feedback.Commands.ResolveReportDispute;
@@ -157,5 +158,21 @@ public sealed class AdminController : ControllerBase
             ModerateReportOutcome.AlreadyModerated => Conflict("This report has already been moderated."),
             _ => Problem()
         };
+    }
+
+    [HttpGet("audit-logs/recent")]
+    public async Task<IActionResult> GetRecentAuditLogs(
+        [FromQuery] int count,
+        [FromServices] IQueryHandler<GetRecentAuditLogsQuery, GetRecentAuditLogsResult> handler,
+        [FromServices] IValidator<GetRecentAuditLogsQuery> validator,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetRecentAuditLogsQuery(count == 0 ? 20 : count);
+
+        var validationResult = await validator.ValidateAsync(query, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        return Ok(await handler.Handle(query, cancellationToken));
     }
 }

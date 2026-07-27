@@ -75,3 +75,27 @@ export interface ReorderAlert {
 export function getReorderAlerts(storeId: number) {
   return apiFetch<{ outcome: string; alerts?: ReorderAlert[] }>(`/api/stores/${storeId}/reorder-alerts`)
 }
+
+export type StoreEmployeeRole = 'Owner' | 'Cashier'
+
+export interface StoreEmployee {
+  storeEmployeeId: number
+  userId: string
+  role: StoreEmployeeRole
+  addedAt: string
+}
+
+export function addStoreEmployee(storeId: number, employeeUserId: string, role: StoreEmployeeRole) {
+  return apiFetch<{ outcome: string; storeEmployeeId?: number }>(`/api/stores/${storeId}/employees`, {
+    method: 'POST',
+    body: { employeeUserId, role },
+  })
+}
+
+export function removeStoreEmployee(storeEmployeeId: number) {
+  return apiFetch<{ outcome: string }>(`/api/store-employees/${storeEmployeeId}`, { method: 'DELETE' })
+}
+
+export function getStoreEmployees(storeId: number) {
+  return apiFetch<{ outcome: string; employees?: StoreEmployee[] }>(`/api/stores/${storeId}/employees`)
+}

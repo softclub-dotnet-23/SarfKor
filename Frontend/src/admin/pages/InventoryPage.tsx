@@ -4,6 +4,7 @@ import { AdminModal } from '../components/AdminModal'
 import { SearchIcon, PlusIcon, AlertIcon, TruckIcon, BarcodeIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { inventoryApi, productsApi, storesApi, ApiError, type StockLevel, type ReorderAlert } from '../../lib/api'
+import { createReorderRule } from '../../lib/api/reorderRules'
 
 const NAME_CACHE_KEY = 'sarfkor-product-names'
 
@@ -52,6 +53,14 @@ export function InventoryPage() {
   const [costBusy, setCostBusy] = useState(false)
   const [costError, setCostError] = useState('')
   const [costDone, setCostDone] = useState(false)
+
+  const [ruleOpen, setRuleOpen] = useState(false)
+  const [ruleProductId, setRuleProductId] = useState('')
+  const [ruleThreshold, setRuleThreshold] = useState('5')
+  const [ruleReorderQty, setRuleReorderQty] = useState('20')
+  const [ruleSupplierId, setRuleSupplierId] = useState('')
+  const [ruleBusy, setRuleBusy] = useState(false)
+  const [ruleError, setRuleError] = useState('')
 
   const load = useCallback(async () => {
     if (!storeId) return
@@ -156,6 +165,37 @@ export function InventoryPage() {
     }
   }
 
+  async function confirmCreateRule() {
+    if (!storeId || ruleBusy) return
+    const productId = Number(ruleProductId)
+    const thresholdQuantity = Number(ruleThreshold)
+    const reorderQuantity = Number(ruleReorderQty)
+    if (!productId || productId <= 0 || !thresholdQuantity || thresholdQuantity < 0 || !reorderQuantity || reorderQuantity <= 0) {
+      setRuleError('Проверьте товар, порог и количество пополнения')
+      return
+    }
+    const preferredSupplierId = ruleSupplierId.trim() ? Number(ruleSupplierId) : undefined
+    setRuleBusy(true)
+    setRuleError('')
+    try {
+      const result = await createReorderRule(storeId, productId, thresholdQuantity, reorderQuantity, preferredSupplierId)
+      if (result.outcome !== 'Created') {
+        setRuleError(result.outcome === 'Forbidden' ? 'Нет доступа к этому магазину' : 'Магазин не найден')
+        return
+      }
+      setRuleOpen(false)
+      setRuleProductId('')
+      setRuleThreshold('5')
+      setRuleReorderQty('20')
+      setRuleSupplierId('')
+      await load()
+    } catch (err) {
+      setRuleError(err instanceof ApiError ? err.message : 'Не удалось создать правило пополнения')
+    } finally {
+      setRuleBusy(false)
+    }
+  }
+
   if (loading) {
     return <div className="py-24 text-center text-[color:var(--admin-text-tertiary)]">Загружаем склад…</div>
   }
@@ -179,8 +219,21 @@ export function InventoryPage() {
           <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-text)]">{stock?.length ?? 0}</div>
         </Card>
         <Card className="p-5">
-          <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Требуют пополнения</div>
-          <div className="mt-2 text-[26px] font-extrabold text-[#fbbf24]">{alerts.length}</div>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Требуют пополнения</div>
+              <div className="mt-2 text-[26px] font-extrabold text-[#fbbf24]">{alerts.length}</div>
+            </div>
+            <button
+              onClick={() => {
+                setRuleOpen(true)
+                setRuleError('')
+              }}
+              className="mt-1 shrink-0 rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
+            >
+              + Правило пополнения
+            </button>
+          </div>
         </Card>
         <Card className="p-5">
           <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Всего единиц</div>
@@ -400,6 +453,71 @@ export function InventoryPage() {
             {costError && <div className="text-[12px] font-medium text-[#f87171]">{costError}</div>}
           </div>
         )}
+      </AdminModal>
+
+      <AdminModal open={ruleOpen} onClose={() => setRuleOpen(false)} title="Создать правило пополнения">
+        <div className="flex flex-col gap-4">
+          <p className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">
+            Когда остаток товара опустится ниже порога, магазин попадёт в список «Требуют пополнения» с
+            рекомендованным количеством для заказа.
+          </p>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">ID товара</span>
+            <input
+              type="number"
+              min={1}
+              value={ruleProductId}
+              onChange={(e) => setRuleProductId(e.target.value)}
+              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+            />
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Порог (мин. остаток)</span>
+              <input
+                type="number"
+                min={0}
+                value={ruleThreshold}
+                onChange={(e) => setRuleThreshold(e.target.value)}
+                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Кол-во пополнения</span>
+              <input
+                type="number"
+                min={1}
+                value={ruleReorderQty}
+                onChange={(e) => setRuleReorderQty(e.target.value)}
+                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+              />
+            </label>
+          </div>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">ID предпочитаемого поставщика (необязательно)</span>
+            <input
+              type="number"
+              min={1}
+              value={ruleSupplierId}
+              onChange={(e) => setRuleSupplierId(e.target.value)}
+              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+            />
+          </label>
+
+          {ruleError && <div className="text-[12px] font-medium text-[#f87171]">{ruleError}</div>}
+
+          <button
+            onClick={confirmCreateRule}
+            disabled={ruleBusy || !ruleProductId}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+          >
+            <PlusIcon width={16} height={16} />
+            {ruleBusy ? 'Создаём…' : 'Создать правило'}
+          </button>
+        </div>
       </AdminModal>
     </div>
   )

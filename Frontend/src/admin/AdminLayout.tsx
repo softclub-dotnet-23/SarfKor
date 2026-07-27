@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { LogoMark } from '../components/Logo'
 import { useTheme } from '../theme/ThemeProvider'
@@ -18,12 +18,18 @@ import {
   LogOutIcon,
   SearchIcon,
   BellIcon,
+  TruckIcon,
+  CashIcon,
+  TagIcon,
 } from './components/icons'
 
 const NAV_ITEMS = [
   { to: '/admin', label: 'Дашборд', icon: GridIcon, end: true },
   { to: '/admin/pos', label: 'Касса', icon: RegisterIcon },
   { to: '/admin/inventory', label: 'Склад', icon: PackageIcon },
+  { to: '/admin/supply', label: 'Поставки', icon: TruckIcon },
+  { to: '/admin/customers', label: 'Клиенты', icon: CashIcon },
+  { to: '/admin/marketing', label: 'Маркетинг', icon: TagIcon },
   { to: '/admin/staff', label: 'Сотрудники', icon: UsersIcon },
   { to: '/admin/reports', label: 'Отчёты', icon: ReportIcon },
   { to: '/admin/settings', label: 'Настройки', icon: SettingsIcon },
@@ -33,7 +39,10 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   '/admin': { title: 'Дашборд', subtitle: 'Обзор магазина за сегодня' },
   '/admin/pos': { title: 'Касса', subtitle: 'Сканируйте штрихкод и оформляйте продажи' },
   '/admin/inventory': { title: 'Склад', subtitle: 'Остатки и приход товаров' },
-  '/admin/staff': { title: 'Сотрудники', subtitle: 'Кассовые смены' },
+  '/admin/supply': { title: 'Поставки', subtitle: 'Поставщики, заказы и перемещения между магазинами' },
+  '/admin/customers': { title: 'Клиенты', subtitle: 'Клиенты, лояльность, подарочные карты и магазинный кредит' },
+  '/admin/marketing': { title: 'Маркетинг', subtitle: 'Акции, наборы товаров, скоро истекает и ответы на отзывы' },
+  '/admin/staff': { title: 'Сотрудники', subtitle: 'Сотрудники магазина и кассовые смены' },
   '/admin/reports': { title: 'Отчёты', subtitle: 'Выручка, прибыль и динамика продаж' },
   '/admin/settings': { title: 'Настройки', subtitle: 'Магазин, профиль и безопасность' },
 }
@@ -126,6 +135,7 @@ export function AdminLayout() {
   const { runThemeTransition } = useThemeTransition()
   const isDark = theme === 'dark'
   const location = useLocation()
+  const navigate = useNavigate()
   const { user, logout } = useAuth()
   const page = PAGE_TITLES[location.pathname] ?? PAGE_TITLES['/admin']
   const initial = user?.email?.charAt(0).toUpperCase() ?? '?'
@@ -228,6 +238,7 @@ export function AdminLayout() {
           </div>
 
           <button
+            onClick={() => navigate('/app/notifications')}
             aria-label="Уведомления"
             className="relative grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]"
           >

@@ -14,11 +14,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddControllers();
-builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
-
 // Enums serialize/deserialize as their string name ("Product", "Android") instead of a raw
 // integer — matters for every request DTO that carries an enum field, so it belongs globally.
+// Controllers ([ApiController]) read Mvc.JsonOptions for both request-body model binding and
+// response serialization — ConfigureHttpJsonOptions below only reaches Minimal API endpoints
+// (there are none here), so without this call every enum-carrying request body 400s even
+// though responses (which apparently fall back to the Http.Json options) look fine.
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
+
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 

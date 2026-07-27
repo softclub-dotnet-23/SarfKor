@@ -315,6 +315,25 @@ export function MailIcon(props: IconProps) {
   )
 }
 
+export function TagIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12.59 2.59 20 10a2 2 0 0 1 0 2.83l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10Z" />
+      <circle cx="6.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+export function PercentIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <line x1="19" y1="5" x2="5" y2="19" />
+      <circle cx="6.5" cy="6.5" r="2.5" />
+      <circle cx="17.5" cy="17.5" r="2.5" />
+    </svg>
+  )
+}
+
 export function PhoneIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

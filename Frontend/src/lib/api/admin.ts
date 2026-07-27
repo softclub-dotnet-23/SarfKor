@@ -80,3 +80,65 @@ export function moderateReport(reportId: number, resolve: boolean, reason?: stri
     { method: 'POST', body: { resolve, reason } },
   )
 }
+
+export interface Brand {
+  brandId: number
+  name: string
+}
+
+export function getBrands() {
+  return apiFetch<{ brands: Brand[] }>('/api/catalog/brands')
+}
+
+export function createBrand(name: string) {
+  return apiFetch<{ brandId: number }>('/api/catalog/brands', { method: 'POST', body: { name } })
+}
+
+export interface Category {
+  categoryId: number
+  name: string
+  parentCategoryId?: number
+}
+
+export function getCategories() {
+  return apiFetch<{ categories: Category[] }>('/api/catalog/categories')
+}
+
+export function createCategory(name: string, parentCategoryId?: number) {
+  return apiFetch<{ outcome: 'Created' | 'ParentCategoryNotFound'; categoryId?: number }>('/api/catalog/categories', {
+    method: 'POST',
+    body: { name, parentCategoryId },
+  })
+}
+
+export interface TaxRate {
+  taxRateId: number
+  name: string
+  percentage: number
+  categoryId?: number
+}
+
+export function getTaxRates() {
+  return apiFetch<{ taxRates: TaxRate[] }>('/api/catalog/tax-rates')
+}
+
+export function createTaxRate(name: string, percentage: number, categoryId?: number) {
+  return apiFetch<{ taxRateId: number }>('/api/catalog/tax-rates', {
+    method: 'POST',
+    body: { name, percentage, categoryId },
+  })
+}
+
+export interface AuditLogEntry {
+  auditLogId: number
+  performedByUserId: string
+  action: string
+  entityType: string
+  entityId: number
+  details?: string
+  occurredAt: string
+}
+
+export function getRecentAuditLogs(count = 20) {
+  return apiFetch<{ logs: AuditLogEntry[] }>('/api/admin/audit-logs/recent', { query: { count } })
+}

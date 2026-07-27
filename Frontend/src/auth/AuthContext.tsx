@@ -7,7 +7,7 @@ export interface AuthUser {
   roles: string[]
 }
 
-type AuthResult = { ok: true } | { ok: false; error: string }
+type AuthResult = { ok: true; roles: string[] } | { ok: false; error: string }
 
 interface AuthContextValue {
   user: AuthUser | null
@@ -96,8 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const result = await authApi.login(email, password)
           setTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
-          setUser(userFromAccessToken(result.accessToken))
-          return { ok: true }
+          const nextUser = userFromAccessToken(result.accessToken)
+          setUser(nextUser)
+          return { ok: true, roles: nextUser?.roles ?? [] }
         } catch (err) {
           return { ok: false, error: friendlyAuthError(err, 'Не удалось войти') }
         }
@@ -106,8 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const result = await authApi.register(email, password)
           setTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
-          setUser(userFromAccessToken(result.accessToken))
-          return { ok: true }
+          const nextUser = userFromAccessToken(result.accessToken)
+          setUser(nextUser)
+          return { ok: true, roles: nextUser?.roles ?? [] }
         } catch (err) {
           return { ok: false, error: friendlyAuthError(err, 'Не удалось зарегистрироваться') }
         }

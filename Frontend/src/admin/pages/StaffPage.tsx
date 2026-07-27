@@ -1,8 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Card } from '../components/Card'
-import { ClockIcon, ShieldIcon, AlertIcon } from '../components/icons'
+import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
-import { storesApi, salesApi, ApiError, type CashierShift, type CashierAnomaly } from '../../lib/api'
+import {
+  storesApi,
+  salesApi,
+  ApiError,
+  type CashierShift,
+  type CashierAnomaly,
+  type StoreEmployee,
+  type StoreEmployeeRole,
+} from '../../lib/api'
 import { daysAgo, today } from '../lib/dates'
 
 const ROLE_ACCESS: { role: string; access: string[] }[] = [
@@ -18,6 +26,161 @@ function shortId(id: string, myId?: string) {
 
 function fmt(n: number) {
   return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function EmployeesSection() {
+  const { storeId, user } = useAuth()
+  const [employees, setEmployees] = useState<StoreEmployee[] | null>(null)
+  const [error, setError] = useState('')
+  const [employeeUserId, setEmployeeUserId] = useState('')
+  const [role, setRole] = useState<StoreEmployeeRole>('Cashier')
+  const [busy, setBusy] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [removingId, setRemovingId] = useState<number | null>(null)
+
+  const load = useCallback(async () => {
+    if (!storeId) return
+    setError('')
+    try {
+      const res = await storesApi.getStoreEmployees(storeId)
+      if (res.outcome === 'Found') {
+        setEmployees(res.employees ?? [])
+      } else {
+        setError(res.outcome === 'Forbidden' ? 'Нет доступа к сотрудникам этого магазина' : 'Магазин не найден')
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить список сотрудников')
+    }
+  }, [storeId])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  async function handleAdd(e: FormEvent) {
+    e.preventDefault()
+    if (!storeId || !employeeUserId.trim() || busy) return
+    setBusy(true)
+    setFormError('')
+    try {
+      const res = await storesApi.addStoreEmployee(storeId, employeeUserId.trim(), role)
+      if (res.outcome === 'Added') {
+        setEmployeeUserId('')
+        setRole('Cashier')
+        await load()
+      } else if (res.outcome === 'AlreadyEmployed') {
+        setFormError('Этот пользователь уже числится сотрудником магазина')
+      } else if (res.outcome === 'Forbidden') {
+        setFormError('Нет доступа к этому магазину')
+      } else {
+        setFormError('Магазин не найден')
+      }
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Не удалось добавить сотрудника')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleRemove(storeEmployeeId: number) {
+    setRemovingId(storeEmployeeId)
+    setError('')
+    try {
+      const res = await storesApi.removeStoreEmployee(storeEmployeeId)
+      if (res.outcome === 'Removed') {
+        await load()
+      } else if (res.outcome === 'Forbidden') {
+        setError('Нет доступа для удаления этого сотрудника')
+      } else {
+        setError('Сотрудник не найден')
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось удалить сотрудника')
+    } finally {
+      setRemovingId(null)
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <ShieldIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
+        <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Сотрудники магазина</span>
+      </div>
+
+      <form onSubmit={handleAdd} className="mb-4 flex flex-col gap-2.5 sm:flex-row sm:items-end">
+        <label className="flex flex-1 flex-col gap-1.5">
+          <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">ID пользователя</span>
+          <input
+            value={employeeUserId}
+            onChange={(e) => setEmployeeUserId(e.target.value)}
+            placeholder="Идентификатор аккаунта сотрудника"
+            className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Роль</span>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as StoreEmployeeRole)}
+            className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+          >
+            <option value="Cashier">Кассир</option>
+            <option value="Owner">Владелец</option>
+          </select>
+        </label>
+        <button
+          type="submit"
+          disabled={busy || !employeeUserId.trim()}
+          className="flex items-center justify-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+        >
+          <PlusIcon width={14} height={14} />
+          {busy ? 'Добавляем…' : 'Добавить'}
+        </button>
+      </form>
+      {formError && <div className="mb-3 text-[12px] font-medium text-[#f87171]">{formError}</div>}
+      <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
+        Пока в бэкенде нет поиска пользователей по email — добавить можно только по точному идентификатору аккаунта
+        (userId).
+      </p>
+
+      {error && <div className="mb-3 text-[12px] font-medium text-[#f87171]">{error}</div>}
+
+      <div className="flex flex-col gap-2.5">
+        {employees === null && !error && (
+          <div className="py-6 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Загрузка…</div>
+        )}
+        {employees?.map((emp) => (
+          <div
+            key={emp.storeEmployeeId}
+            className="flex items-center justify-between gap-3 rounded-[14px] bg-[color:var(--admin-hover)] p-3.5"
+          >
+            <div className="min-w-0">
+              <div className="truncate text-[13px] font-semibold text-[color:var(--admin-text)]">
+                {emp.userId === user?.userId ? 'Вы' : emp.userId}
+              </div>
+              <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
+                {emp.role === 'Owner' ? 'Владелец' : 'Кассир'} · с {new Date(emp.addedAt).toLocaleDateString('ru-RU')}
+              </div>
+            </div>
+            <button
+              onClick={() => handleRemove(emp.storeEmployeeId)}
+              disabled={removingId === emp.storeEmployeeId}
+              aria-label="Удалить сотрудника"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[#f8717122] hover:text-[#f87171] disabled:opacity-50"
+            >
+              <TrashIcon width={14} height={14} />
+            </button>
+          </div>
+        ))}
+        {employees?.length === 0 && (
+          <div className="py-6 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">
+            В магазине пока нет добавленных сотрудников
+          </div>
+        )}
+      </div>
+    </Card>
+  )
 }
 
 export function StaffPage() {
@@ -83,6 +246,8 @@ export function StaffPage() {
           <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-text)]">{anomalies.length}</div>
         </Card>
       </div>
+
+      <EmployeesSection />
 
       <Card className="p-5">
         <div className="mb-4 flex items-center gap-2">

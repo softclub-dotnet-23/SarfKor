@@ -1,0 +1,842 @@
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode, type SVGProps } from 'react'
+import { Card } from '../components/Card'
+import { TruckIcon, PlusIcon, TrashIcon, RefreshIcon, PhoneIcon, MailIcon, AlertIcon } from '../components/icons'
+import { useAuth } from '../../auth/AuthContext'
+import { ApiError } from '../../lib/api/client'
+import { createSupplier, getSuppliers, type Supplier } from '../../lib/api/suppliers'
+import {
+  createPurchaseOrder,
+  submitPurchaseOrder,
+  receivePurchaseOrder,
+  getPurchaseOrders,
+  type PurchaseOrder,
+  type PurchaseOrderLine,
+} from '../../lib/api/purchaseOrders'
+import {
+  initiateStockTransfer,
+  completeStockTransfer,
+  getStockTransfers,
+  type StockTransfer,
+} from '../../lib/api/stockTransfers'
+
+/* ---------- small icons not present in the shared admin icon set ---------- */
+
+function DocumentIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+      <path d="M14 2v6h6" />
+      <path d="M9 13h6M9 17h6" />
+    </svg>
+  )
+}
+
+function SwapIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="m17 2 4 4-4 4" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <path d="m7 22-4-4 4-4" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </svg>
+  )
+}
+
+/* ---------- shared helpers ---------- */
+
+function fmtDateTime(iso: string) {
+  return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+function describeSubmitOutcome(outcome: 'NotFound' | 'Forbidden' | 'NotDraft' | 'Submitted'): string {
+  switch (outcome) {
+    case 'NotFound':
+      return 'Заказ не найден'
+    case 'Forbidden':
+      return 'Нет доступа к этому заказу'
+    case 'NotDraft':
+      return 'Заказ уже отправлен или обработан'
+    default:
+      return 'Не удалось отправить заказ поставщику'
+  }
+}
+
+function describeReceiveOutcome(outcome: 'NotFound' | 'Forbidden' | 'NotSubmitted' | 'Received'): string {
+  switch (outcome) {
+    case 'NotFound':
+      return 'Заказ не найден'
+    case 'Forbidden':
+      return 'Нет доступа к этому заказу'
+    case 'NotSubmitted':
+      return 'Заказ ещё не отправлен поставщику'
+    default:
+      return 'Не удалось оприходовать заказ'
+  }
+}
+
+function describeInitiateTransferOutcome(
+  outcome: 'FromStoreNotFound' | 'ToStoreNotFound' | 'Forbidden' | 'InsufficientStock' | 'Initiated',
+): string {
+  switch (outcome) {
+    case 'FromStoreNotFound':
+      return 'Магазин-источник не найден'
+    case 'ToStoreNotFound':
+      return 'Магазин назначения не найден'
+    case 'Forbidden':
+      return 'Нет доступа к этому магазину'
+    case 'InsufficientStock':
+      return 'Недостаточно товара на складе-источнике'
+    default:
+      return 'Не удалось инициировать перемещение'
+  }
+}
+
+function describeCompleteTransferOutcome(outcome: 'NotFound' | 'Forbidden' | 'NotInTransit' | 'Completed'): string {
+  switch (outcome) {
+    case 'NotFound':
+      return 'Перемещение не найдено'
+    case 'Forbidden':
+      return 'Нет доступа к этому перемещению'
+    case 'NotInTransit':
+      return 'Перемещение не находится в пути'
+    default:
+      return 'Не удалось завершить перемещение'
+  }
+}
+
+const PO_STATUS_LABEL: Record<PurchaseOrder['status'], string> = {
+  Draft: 'Черновик',
+  Submitted: 'Отправлен',
+  Received: 'Оприходован',
+  Cancelled: 'Отменён',
+}
+
+const PO_STATUS_STYLE: Record<PurchaseOrder['status'], string> = {
+  Draft: 'bg-[color:var(--admin-border)] text-[color:var(--admin-text-tertiary)]',
+  Submitted: 'bg-[#fbbf2422] text-[#fbbf24]',
+  Received: 'bg-[#34d39922] text-[#34d399]',
+  Cancelled: 'bg-[#f8717122] text-[#f87171]',
+}
+
+const TRANSFER_STATUS_LABEL: Record<StockTransfer['status'], string> = {
+  Pending: 'Ожидает',
+  InTransit: 'В пути',
+  Completed: 'Завершено',
+  Cancelled: 'Отменено',
+}
+
+const TRANSFER_STATUS_STYLE: Record<StockTransfer['status'], string> = {
+  Pending: 'bg-[color:var(--admin-border)] text-[color:var(--admin-text-tertiary)]',
+  InTransit: 'bg-[#fbbf2422] text-[#fbbf24]',
+  Completed: 'bg-[#34d39922] text-[#34d399]',
+  Cancelled: 'bg-[#f8717122] text-[#f87171]',
+}
+
+function StatusBadge({ label, className }: { label: string; className: string }) {
+  return <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${className}`}>{label}</span>
+}
+
+function FieldError({ message }: { message: string }) {
+  if (!message) return null
+  return (
+    <div className="flex items-center gap-1.5 text-[12px] font-medium text-[#f87171]">
+      <AlertIcon width={13} height={13} className="shrink-0" />
+      {message}
+    </div>
+  )
+}
+
+const inputClass =
+  'w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]'
+
+const primaryButtonClass =
+  'flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100'
+
+/* ---------- Suppliers ---------- */
+
+function SuppliersSection({
+  suppliers,
+  loading,
+  error,
+  load,
+}: {
+  suppliers: Supplier[]
+  loading: boolean
+  error: string
+  load: () => Promise<void>
+}) {
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState('')
+
+  async function handleCreate(e: FormEvent) {
+    e.preventDefault()
+    if (!name.trim() || submitting) return
+    setSubmitting(true)
+    setFormError('')
+    try {
+      await createSupplier(name.trim(), phone.trim() || undefined, email.trim() || undefined)
+      setName('')
+      setPhone('')
+      setEmail('')
+      await load()
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Не удалось создать поставщика')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <Card className="p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <TruckIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
+          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новый поставщик</span>
+        </div>
+        <form onSubmit={handleCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название *" className={inputClass} />
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Телефон" className={inputClass} />
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            type="email"
+            className={inputClass}
+          />
+          <button type="submit" disabled={submitting || !name.trim()} className={`${primaryButtonClass} sm:col-span-3`}>
+            <PlusIcon width={15} height={15} />
+            {submitting ? 'Создаём…' : 'Добавить поставщика'}
+          </button>
+        </form>
+        {formError && (
+          <div className="mt-3">
+            <FieldError message={formError} />
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Поставщики</span>
+          <button
+            onClick={load}
+            aria-label="Обновить"
+            className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
+          >
+            <RefreshIcon width={15} height={15} />
+          </button>
+        </div>
+
+        {loading && <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Загружаем…</div>}
+
+        {!loading && error && (
+          <div className="py-6 text-center">
+            <p className="mb-3 text-[13px] text-[color:var(--admin-text-secondary)]">{error}</p>
+            <button onClick={load} className="rounded-xl bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">
+              Повторить
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div className="flex flex-col gap-2">
+            {suppliers.map((s) => (
+              <div key={s.supplierId} className="flex flex-col gap-2 rounded-[14px] bg-[color:var(--admin-hover)] p-3.5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">{s.name}</div>
+                  <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">ID {s.supplierId}</div>
+                </div>
+                <div className="flex flex-col gap-1 text-[12px] text-[color:var(--admin-text-secondary)] sm:items-end">
+                  {s.contactPhone && (
+                    <span className="flex items-center gap-1.5">
+                      <PhoneIcon width={12} height={12} />
+                      {s.contactPhone}
+                    </span>
+                  )}
+                  {s.contactEmail && (
+                    <span className="flex items-center gap-1.5">
+                      <MailIcon width={12} height={12} />
+                      {s.contactEmail}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+            {suppliers.length === 0 && (
+              <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Поставщиков пока нет</div>
+            )}
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+/* ---------- Purchase orders ---------- */
+
+interface DraftLine {
+  productId: string
+  quantity: string
+  unitCost: string
+  currency: string
+}
+
+function emptyLine(): DraftLine {
+  return { productId: '', quantity: '1', unitCost: '', currency: 'TJS' }
+}
+
+function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Supplier[] }) {
+  const [orders, setOrders] = useState<PurchaseOrder[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const [supplierId, setSupplierId] = useState('')
+  const [lines, setLines] = useState<DraftLine[]>([emptyLine()])
+  const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState('')
+
+  const [busyId, setBusyId] = useState<number | null>(null)
+  const [rowError, setRowError] = useState<{ id: number; message: string } | null>(null)
+
+  const load = useCallback(async () => {
+    setError('')
+    try {
+      const res = await getPurchaseOrders(storeId)
+      if (res.outcome !== 'Found') {
+        setError(res.outcome === 'Forbidden' ? 'Нет доступа к этому магазину' : 'Магазин не найден')
+        setOrders([])
+        return
+      }
+      setOrders(res.orders ?? [])
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить заказы поставщикам')
+    } finally {
+      setLoading(false)
+    }
+  }, [storeId])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  function updateLine(i: number, patch: Partial<DraftLine>) {
+    setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
+  }
+
+  function addLine() {
+    setLines((ls) => [...ls, emptyLine()])
+  }
+
+  function removeLine(i: number) {
+    setLines((ls) => (ls.length > 1 ? ls.filter((_, idx) => idx !== i) : ls))
+  }
+
+  async function handleCreate(e: FormEvent) {
+    e.preventDefault()
+    if (submitting || !supplierId) return
+
+    const parsedLines: PurchaseOrderLine[] = []
+    for (const l of lines) {
+      const productId = Number(l.productId)
+      const quantity = Number(l.quantity)
+      const unitCost = Number(l.unitCost)
+      if (!productId || productId <= 0 || !quantity || quantity <= 0 || Number.isNaN(unitCost) || unitCost < 0 || !l.currency.trim()) {
+        setFormError('Проверьте строки заказа — товар, количество и цена обязательны')
+        return
+      }
+      parsedLines.push({ productId, quantity, unitCost, currency: l.currency.trim() })
+    }
+
+    setSubmitting(true)
+    setFormError('')
+    try {
+      const result = await createPurchaseOrder(storeId, Number(supplierId), parsedLines)
+      if (result.outcome !== 'Created') {
+        setFormError(result.outcome === 'Forbidden' ? 'Нет доступа к этому магазину' : 'Магазин не найден')
+        return
+      }
+      setLines([emptyLine()])
+      setSupplierId('')
+      await load()
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Не удалось создать заказ поставщику')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleSubmitOrder(id: number) {
+    setBusyId(id)
+    setRowError(null)
+    try {
+      const result = await submitPurchaseOrder(id)
+      if (result.outcome !== 'Submitted') {
+        setRowError({ id, message: describeSubmitOutcome(result.outcome) })
+        return
+      }
+      await load()
+    } catch (err) {
+      setRowError({ id, message: err instanceof ApiError ? err.message : 'Не удалось отправить заказ поставщику' })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function handleReceiveOrder(id: number) {
+    setBusyId(id)
+    setRowError(null)
+    try {
+      const result = await receivePurchaseOrder(id)
+      if (result.outcome !== 'Received') {
+        setRowError({ id, message: describeReceiveOutcome(result.outcome) })
+        return
+      }
+      await load()
+    } catch (err) {
+      setRowError({ id, message: err instanceof ApiError ? err.message : 'Не удалось оприходовать заказ' })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const supplierNameById = new Map(suppliers.map((s) => [s.supplierId, s.name]))
+
+  return (
+    <div className="flex flex-col gap-5">
+      <Card className="p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <DocumentIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
+          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новый заказ поставщику</span>
+        </div>
+
+        {suppliers.length === 0 ? (
+          <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">
+            Сначала добавьте хотя бы одного поставщика на вкладке «Поставщики».
+          </p>
+        ) : (
+          <form onSubmit={handleCreate} className="flex flex-col gap-3">
+            <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className={inputClass}>
+              <option value="">Выберите поставщика</option>
+              {suppliers.map((s) => (
+                <option key={s.supplierId} value={s.supplierId}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+
+            <div className="flex flex-col gap-2">
+              {lines.map((line, i) => (
+                <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1fr_90px_auto]">
+                  <input
+                    value={line.productId}
+                    onChange={(e) => updateLine(i, { productId: e.target.value })}
+                    placeholder="ID товара"
+                    type="number"
+                    min={1}
+                    className={inputClass}
+                  />
+                  <input
+                    value={line.quantity}
+                    onChange={(e) => updateLine(i, { quantity: e.target.value })}
+                    placeholder="Кол-во"
+                    type="number"
+                    min={1}
+                    className={inputClass}
+                  />
+                  <input
+                    value={line.unitCost}
+                    onChange={(e) => updateLine(i, { unitCost: e.target.value })}
+                    placeholder="Цена за ед."
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className={inputClass}
+                  />
+                  <input
+                    value={line.currency}
+                    onChange={(e) => updateLine(i, { currency: e.target.value })}
+                    placeholder="Валюта"
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeLine(i)}
+                    disabled={lines.length === 1}
+                    aria-label="Удалить строку"
+                    className="grid h-full min-h-[42px] w-full place-items-center rounded-xl bg-[color:var(--admin-hover)] text-[color:var(--admin-text-tertiary)] hover:text-[#f87171] disabled:opacity-40 sm:w-10"
+                  >
+                    <TrashIcon width={14} height={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={addLine}
+              className="flex w-fit items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
+            >
+              <PlusIcon width={13} height={13} />
+              Добавить позицию
+            </button>
+
+            {formError && <FieldError message={formError} />}
+
+            <button type="submit" disabled={submitting || !supplierId} className={primaryButtonClass}>
+              {submitting ? 'Создаём…' : 'Создать заказ'}
+            </button>
+          </form>
+        )}
+      </Card>
+
+      <Card className="p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Заказы поставщикам</span>
+          <button
+            onClick={load}
+            aria-label="Обновить"
+            className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
+          >
+            <RefreshIcon width={15} height={15} />
+          </button>
+        </div>
+
+        {loading && <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Загружаем…</div>}
+
+        {!loading && error && (
+          <div className="py-6 text-center">
+            <p className="mb-3 text-[13px] text-[color:var(--admin-text-secondary)]">{error}</p>
+            <button onClick={load} className="rounded-xl bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">
+              Повторить
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div className="flex flex-col gap-3">
+            {(orders ?? []).map((o) => (
+              <div key={o.purchaseOrderId} className="flex flex-col gap-2.5 rounded-[16px] bg-[color:var(--admin-hover)] p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">Заказ #{o.purchaseOrderId}</div>
+                  <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
+                    Поставщик: {supplierNameById.get(o.supplierId) ?? `#${o.supplierId}`} · создан {fmtDateTime(o.createdAt)}
+                    {o.receivedAt ? ` · оприходован ${fmtDateTime(o.receivedAt)}` : ''}
+                  </div>
+                  {rowError?.id === o.purchaseOrderId && (
+                    <div className="mt-1.5">
+                      <FieldError message={rowError.message} />
+                    </div>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <StatusBadge label={PO_STATUS_LABEL[o.status]} className={PO_STATUS_STYLE[o.status]} />
+                  {o.status === 'Draft' && (
+                    <button
+                      onClick={() => handleSubmitOrder(o.purchaseOrderId)}
+                      disabled={busyId === o.purchaseOrderId}
+                      className="rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80 disabled:opacity-50"
+                    >
+                      {busyId === o.purchaseOrderId ? 'Отправляем…' : 'Отправить поставщику'}
+                    </button>
+                  )}
+                  {o.status === 'Submitted' && (
+                    <button
+                      onClick={() => handleReceiveOrder(o.purchaseOrderId)}
+                      disabled={busyId === o.purchaseOrderId}
+                      className="rounded-lg bg-[color:var(--admin-accent)] px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                    >
+                      {busyId === o.purchaseOrderId ? 'Оприходуем…' : 'Оприходовать'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {(orders ?? []).length === 0 && (
+              <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Заказов поставщикам пока нет</div>
+            )}
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+/* ---------- Stock transfers ---------- */
+
+function TransfersSection({ storeId }: { storeId: number }) {
+  const [transfers, setTransfers] = useState<StockTransfer[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const [productId, setProductId] = useState('')
+  const [fromStoreId, setFromStoreId] = useState(String(storeId))
+  const [toStoreId, setToStoreId] = useState('')
+  const [quantity, setQuantity] = useState('1')
+  const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState('')
+
+  const [busyId, setBusyId] = useState<number | null>(null)
+  const [rowError, setRowError] = useState<{ id: number; message: string } | null>(null)
+
+  const load = useCallback(async () => {
+    setError('')
+    try {
+      const res = await getStockTransfers(storeId)
+      if (res.outcome !== 'Found') {
+        setError(res.outcome === 'Forbidden' ? 'Нет доступа к этому магазину' : 'Магазин не найден')
+        setTransfers([])
+        return
+      }
+      setTransfers(res.transfers ?? [])
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить перемещения')
+    } finally {
+      setLoading(false)
+    }
+  }, [storeId])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  async function handleCreate(e: FormEvent) {
+    e.preventDefault()
+    if (submitting) return
+    const pid = Number(productId)
+    const from = Number(fromStoreId)
+    const to = Number(toStoreId)
+    const qty = Number(quantity)
+    if (!pid || pid <= 0 || !from || from <= 0 || !to || to <= 0 || !qty || qty <= 0) {
+      setFormError('Заполните товар, оба магазина и количество (числами больше нуля)')
+      return
+    }
+    setSubmitting(true)
+    setFormError('')
+    try {
+      const result = await initiateStockTransfer(pid, from, to, qty)
+      if (result.outcome !== 'Initiated') {
+        setFormError(describeInitiateTransferOutcome(result.outcome))
+        return
+      }
+      setProductId('')
+      setToStoreId('')
+      setQuantity('1')
+      await load()
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Не удалось инициировать перемещение')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleComplete(id: number) {
+    setBusyId(id)
+    setRowError(null)
+    try {
+      const result = await completeStockTransfer(id)
+      if (result.outcome !== 'Completed') {
+        setRowError({ id, message: describeCompleteTransferOutcome(result.outcome) })
+        return
+      }
+      await load()
+    } catch (err) {
+      setRowError({ id, message: err instanceof ApiError ? err.message : 'Не удалось завершить перемещение' })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <Card className="p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <SwapIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
+          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новое перемещение</span>
+        </div>
+        <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
+          В бэкенде нет эндпоинта со списком ваших магазинов — если у вас несколько магазинов, введите ID
+          магазина назначения вручную.
+        </p>
+        <form onSubmit={handleCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <input
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+            placeholder="ID товара"
+            type="number"
+            min={1}
+            className={inputClass}
+          />
+          <input
+            value={fromStoreId}
+            onChange={(e) => setFromStoreId(e.target.value)}
+            placeholder="Из магазина (ID)"
+            type="number"
+            min={1}
+            className={inputClass}
+          />
+          <input
+            value={toStoreId}
+            onChange={(e) => setToStoreId(e.target.value)}
+            placeholder="В магазин (ID)"
+            type="number"
+            min={1}
+            className={inputClass}
+          />
+          <input
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            placeholder="Количество"
+            type="number"
+            min={1}
+            className={inputClass}
+          />
+          <button type="submit" disabled={submitting} className={`${primaryButtonClass} sm:col-span-4`}>
+            {submitting ? 'Инициируем…' : 'Инициировать перемещение'}
+          </button>
+        </form>
+        {formError && (
+          <div className="mt-3">
+            <FieldError message={formError} />
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Перемещения этого магазина</span>
+          <button
+            onClick={load}
+            aria-label="Обновить"
+            className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
+          >
+            <RefreshIcon width={15} height={15} />
+          </button>
+        </div>
+
+        {loading && <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Загружаем…</div>}
+
+        {!loading && error && (
+          <div className="py-6 text-center">
+            <p className="mb-3 text-[13px] text-[color:var(--admin-text-secondary)]">{error}</p>
+            <button onClick={load} className="rounded-xl bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">
+              Повторить
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div className="flex flex-col gap-3">
+            {(transfers ?? []).map((t) => (
+              <div key={t.stockTransferId} className="flex flex-col gap-2.5 rounded-[16px] bg-[color:var(--admin-hover)] p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">
+                    Перемещение #{t.stockTransferId} · товар #{t.productId}
+                  </div>
+                  <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
+                    Магазин #{t.fromStoreId} → #{t.toStoreId} · {t.quantity} ед. · создано {fmtDateTime(t.createdAt)}
+                    {t.completedAt ? ` · завершено ${fmtDateTime(t.completedAt)}` : ''}
+                  </div>
+                  {rowError?.id === t.stockTransferId && (
+                    <div className="mt-1.5">
+                      <FieldError message={rowError.message} />
+                    </div>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <StatusBadge label={TRANSFER_STATUS_LABEL[t.status]} className={TRANSFER_STATUS_STYLE[t.status]} />
+                  {t.status === 'InTransit' && (
+                    <button
+                      onClick={() => handleComplete(t.stockTransferId)}
+                      disabled={busyId === t.stockTransferId}
+                      className="rounded-lg bg-[color:var(--admin-accent)] px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                    >
+                      {busyId === t.stockTransferId ? 'Завершаем…' : 'Завершить перемещение'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {(transfers ?? []).length === 0 && (
+              <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Перемещений пока не было</div>
+            )}
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+/* ---------- shell ---------- */
+
+type SupplyTab = 'suppliers' | 'orders' | 'transfers'
+
+export function SupplyPage() {
+  const { storeId } = useAuth()
+  const [tab, setTab] = useState<SupplyTab>('suppliers')
+
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [suppliersLoading, setSuppliersLoading] = useState(true)
+  const [suppliersError, setSuppliersError] = useState('')
+
+  const loadSuppliers = useCallback(async () => {
+    setSuppliersError('')
+    try {
+      const res = await getSuppliers()
+      setSuppliers(res.suppliers ?? [])
+    } catch (err) {
+      setSuppliersError(err instanceof ApiError ? err.message : 'Не удалось загрузить поставщиков')
+    } finally {
+      setSuppliersLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadSuppliers()
+  }, [loadSuppliers])
+
+  if (!storeId) {
+    return (
+      <Card className="p-8 text-center">
+        <p className="text-[14px] text-[color:var(--admin-text-secondary)]">
+          Сначала выберите магазин, чтобы управлять поставками
+        </p>
+      </Card>
+    )
+  }
+
+  const TABS: { id: SupplyTab; label: string; icon: ReactNode }[] = [
+    { id: 'suppliers', label: 'Поставщики', icon: <TruckIcon width={15} height={15} /> },
+    { id: 'orders', label: 'Заказы поставщикам', icon: <DocumentIcon width={15} height={15} /> },
+    { id: 'transfers', label: 'Перемещения между магазинами', icon: <SwapIcon width={15} height={15} /> },
+  ]
+
+  return (
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
+      <Card className="flex flex-wrap gap-1.5 p-1.5">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
+              tab === t.id
+                ? 'bg-[color:var(--admin-accent)] text-white'
+                : 'text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]'
+            }`}
+          >
+            {t.icon}
+            {t.label}
+          </button>
+        ))}
+      </Card>
+
+      {tab === 'suppliers' && (
+        <SuppliersSection suppliers={suppliers} loading={suppliersLoading} error={suppliersError} load={loadSuppliers} />
+      )}
+      {tab === 'orders' && <OrdersSection storeId={storeId} suppliers={suppliers} />}
+      {tab === 'transfers' && <TransfersSection storeId={storeId} />}
+    </div>
+  )
+}

@@ -11,15 +11,9 @@ public sealed class GetPendingProductSubmissionsQueryHandler(IProductSubmissionR
         var submissions = await productSubmissionRepository.GetPendingAsync(cancellationToken);
         var dtos = submissions
             .Select(s => new ProductSubmissionDto(
-                s.Id,
-                s.Barcode.Value,
-                s.Name,
-                s.CategoryId,
-                s.BrandId,
-                s.CountryOfOrigin,
-                s.SubmittedByUserId,
-                s.CreatedAt))
+                s.Id, s.Barcode.Value, s.Name, s.CategoryId, s.BrandId, s.CountryOfOrigin, s.SubmittedByUserId, s.CreatedAt))
             .ToList();
+
         return new GetPendingProductSubmissionsResult(dtos);
     }
 }

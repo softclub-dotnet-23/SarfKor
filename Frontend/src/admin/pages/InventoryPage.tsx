@@ -3,7 +3,17 @@ import { Card } from '../components/Card'
 import { AdminModal } from '../components/AdminModal'
 import { SearchIcon, PlusIcon, AlertIcon, TruckIcon, BarcodeIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
-import { inventoryApi, productsApi, storesApi, ApiError, type StockLevel, type ReorderAlert } from '../../lib/api'
+import {
+  inventoryApi,
+  productsApi,
+  storesApi,
+  catalogApi,
+  ApiError,
+  type StockLevel,
+  type ReorderAlert,
+  type Category,
+  type Brand,
+} from '../../lib/api'
 import { createReorderRule } from '../../lib/api/reorderRules'
 
 const NAME_CACHE_KEY = 'sarfkor-product-names'
@@ -42,6 +52,18 @@ export function InventoryPage() {
   const [scanBarcode, setScanBarcode] = useState('')
   const [scanBusy, setScanBusy] = useState(false)
   const [scanError, setScanError] = useState('')
+  const [notFoundBarcode, setNotFoundBarcode] = useState('')
+
+  const [categories, setCategories] = useState<Category[]>([])
+  const [brands, setBrands] = useState<Brand[]>([])
+  const [submitOpen, setSubmitOpen] = useState(false)
+  const [submitName, setSubmitName] = useState('')
+  const [submitCategoryId, setSubmitCategoryId] = useState('')
+  const [submitBrandId, setSubmitBrandId] = useState('')
+  const [submitCountry, setSubmitCountry] = useState('')
+  const [submitBusy, setSubmitBusy] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [submitDone, setSubmitDone] = useState(false)
 
   const [receiptFor, setReceiptFor] = useState<ReceiptTarget | null>(null)
   const [receiptQty, setReceiptQty] = useState(10)
@@ -83,6 +105,11 @@ export function InventoryPage() {
     load()
   }, [load])
 
+  useEffect(() => {
+    catalogApi.getCategories().then((res) => setCategories(res.categories)).catch(() => {})
+    catalogApi.getBrands().then((res) => setBrands(res.brands)).catch(() => {})
+  }, [])
+
   const alertMap = useMemo(() => new Map(alerts.map((a) => [a.productId, a])), [alerts])
 
   const filtered = useMemo(() => {
@@ -111,6 +138,7 @@ export function InventoryPage() {
     if (!code || scanBusy) return
     setScanBusy(true)
     setScanError('')
+    setNotFoundBarcode('')
     try {
       const result = await productsApi.scanBarcode(code)
       rememberName(result.productId, result.productName)
@@ -120,11 +148,50 @@ export function InventoryPage() {
       setReceiptQty(10)
       setReceiptError('')
     } catch (err) {
-      setScanError(
-        err instanceof ApiError && err.status === 404 ? 'Товар с таким штрихкодом не найден' : 'Не удалось выполнить поиск',
-      )
+      if (err instanceof ApiError && err.status === 404) {
+        setScanError('Товар с таким штрихкодом не найден')
+        setNotFoundBarcode(code)
+      } else {
+        setScanError('Не удалось выполнить поиск')
+      }
     } finally {
       setScanBusy(false)
+    }
+  }
+
+  function openSubmitForm() {
+    setScanOpen(false)
+    setSubmitOpen(true)
+    setSubmitName('')
+    setSubmitCategoryId('')
+    setSubmitBrandId('')
+    setSubmitCountry('')
+    setSubmitError('')
+    setSubmitDone(false)
+  }
+
+  async function confirmSubmitNewProduct() {
+    if (!notFoundBarcode || !submitName.trim() || !submitCategoryId || !submitBrandId || !submitCountry.trim() || submitBusy) return
+    setSubmitBusy(true)
+    setSubmitError('')
+    try {
+      await productsApi.submitNewProduct({
+        barcode: notFoundBarcode,
+        name: submitName.trim(),
+        categoryId: Number(submitCategoryId),
+        brandId: Number(submitBrandId),
+        countryOfOrigin: submitCountry.trim(),
+      })
+      setSubmitDone(true)
+      setTimeout(() => {
+        setSubmitOpen(false)
+        setNotFoundBarcode('')
+        setScanBarcode('')
+      }, 1500)
+    } catch (err) {
+      setSubmitError(err instanceof ApiError ? err.message : 'Не удалось отправить заявку')
+    } finally {
+      setSubmitBusy(false)
     }
   }
 
@@ -358,6 +425,16 @@ export function InventoryPage() {
             className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
           />
           {scanError && <div className="text-[12px] font-medium text-[#f87171]">{scanError}</div>}
+          {notFoundBarcode && (
+            <button
+              type="button"
+              onClick={openSubmitForm}
+              className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-hover)] py-2.5 text-[13px] font-semibold text-[color:var(--admin-text)] hover:bg-[color:var(--admin-border)]"
+            >
+              <PlusIcon width={14} height={14} />
+              Подать заявку на новый товар
+            </button>
+          )}
           <button
             type="submit"
             disabled={scanBusy}
@@ -366,6 +443,73 @@ export function InventoryPage() {
             {scanBusy ? 'Ищем…' : 'Найти'}
           </button>
         </form>
+      </AdminModal>
+
+      <AdminModal open={submitOpen} onClose={() => setSubmitOpen(false)} title="Заявка на новый товар">
+        <div className="flex flex-col gap-4">
+          <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">
+            Штрихкод {notFoundBarcode} будет отправлен на модерацию администратору — товар появится в каталоге после
+            одобрения.
+          </p>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Название товара</span>
+            <input
+              value={submitName}
+              onChange={(e) => setSubmitName(e.target.value)}
+              placeholder="Например, Coca-Cola 0.5л"
+              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Категория</span>
+              <select
+                value={submitCategoryId}
+                onChange={(e) => setSubmitCategoryId(e.target.value)}
+                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+              >
+                <option value="">Выберите…</option>
+                {categories.map((c) => (
+                  <option key={c.categoryId} value={c.categoryId}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Бренд</span>
+              <select
+                value={submitBrandId}
+                onChange={(e) => setSubmitBrandId(e.target.value)}
+                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+              >
+                <option value="">Выберите…</option>
+                {brands.map((b) => (
+                  <option key={b.brandId} value={b.brandId}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Страна производства</span>
+            <input
+              value={submitCountry}
+              onChange={(e) => setSubmitCountry(e.target.value)}
+              placeholder="Например, TJ"
+              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+            />
+          </label>
+          {submitError && <div className="text-[12px] font-medium text-[#f87171]">{submitError}</div>}
+          <button
+            onClick={confirmSubmitNewProduct}
+            disabled={submitBusy || !submitName.trim() || !submitCategoryId || !submitBrandId || !submitCountry.trim()}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+          >
+            {submitDone ? 'Отправлено ✓' : submitBusy ? 'Отправляем…' : 'Отправить на модерацию'}
+          </button>
+        </div>
       </AdminModal>
 
       <AdminModal open={!!receiptFor} onClose={() => setReceiptFor(null)} title="Оприходовать поставку">

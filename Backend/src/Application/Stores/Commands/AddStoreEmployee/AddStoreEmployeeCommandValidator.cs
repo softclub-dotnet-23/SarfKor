@@ -7,7 +7,7 @@ public sealed class AddStoreEmployeeCommandValidator : AbstractValidator<AddStor
     public AddStoreEmployeeCommandValidator()
     {
         RuleFor(x => x.StoreId).GreaterThan(0);
-        RuleFor(x => x.EmployeeUserId).NotEmpty();
+        RuleFor(x => x.EmployeeEmail).NotEmpty().EmailAddress();
         RuleFor(x => x.Role).IsInEnum();
         RuleFor(x => x.PerformedByUserId).NotEmpty();
     }

@@ -10,8 +10,9 @@ public sealed class GetPendingReportsQueryHandler(IReportRepository reportReposi
     {
         var reports = await reportRepository.GetPendingAsync(cancellationToken);
         var dtos = reports
-            .Select(r => new ReportDto(r.Id, r.UserId, r.ProductId, r.StoreId, r.Type.ToString(), r.Description, r.CreatedAt))
+            .Select(r => new ReportDto(r.Id, r.UserId, r.ProductId, r.StoreId, r.Type, r.Description, r.CreatedAt))
             .ToList();
+
         return new GetPendingReportsResult(dtos);
     }
 }

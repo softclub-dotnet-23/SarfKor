@@ -85,17 +85,19 @@ export interface StoreEmployee {
   addedAt: string
 }
 
-export function addStoreEmployee(storeId: number, employeeUserId: string, role: StoreEmployeeRole) {
+export function getStoreEmployees(storeId: number) {
+  return apiFetch<{ outcome: string; employees?: StoreEmployee[] }>(`/api/stores/${storeId}/employees`)
+}
+
+// The owner only has the cashier's email to go on (there's no user directory) -- the backend
+// resolves it to a real UserId and reports EmployeeNotFound if nobody's registered with it.
+export function addStoreEmployee(storeId: number, employeeEmail: string, role: 'Cashier' = 'Cashier') {
   return apiFetch<{ outcome: string; storeEmployeeId?: number }>(`/api/stores/${storeId}/employees`, {
     method: 'POST',
-    body: { employeeUserId, role },
+    body: { employeeEmail, role },
   })
 }
 
 export function removeStoreEmployee(storeEmployeeId: number) {
   return apiFetch<{ outcome: string }>(`/api/store-employees/${storeEmployeeId}`, { method: 'DELETE' })
-}
-
-export function getStoreEmployees(storeId: number) {
-  return apiFetch<{ outcome: string; employees?: StoreEmployee[] }>(`/api/stores/${storeId}/employees`)
 }

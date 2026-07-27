@@ -10,6 +10,7 @@ namespace Application.Sales.Commands.ProcessSale;
 
 public sealed class ProcessSaleCommandHandler(
     IStoreRepository storeRepository,
+    IStoreEmployeeRepository storeEmployeeRepository,
     IProductRepository productRepository,
     IPriceEntryRepository priceEntryRepository,
     IPromotionRepository promotionRepository,
@@ -33,7 +34,11 @@ public sealed class ProcessSaleCommandHandler(
         if (store is null)
             return new ProcessSaleResult(ProcessSaleOutcome.StoreNotFound, null, null, null, null);
 
-        if (store.OwnerUserId != command.CashierUserId)
+        // The owner or any registered cashier of this store can ring up a sale — cost/profit
+        // visibility is what's actually restricted (see SetCostPriceCommandHandler/GetProfitReportQueryHandler),
+        // not the POS itself.
+        if (store.OwnerUserId != command.CashierUserId
+            && !await storeEmployeeRepository.IsEmployeeAsync(command.StoreId, command.CashierUserId, cancellationToken))
             return new ProcessSaleResult(ProcessSaleOutcome.Forbidden, null, null, null, null);
 
         var existing = await saleTransactionRepository.GetByIdempotencyKeyAsync(command.StoreId, command.IdempotencyKey, cancellationToken);

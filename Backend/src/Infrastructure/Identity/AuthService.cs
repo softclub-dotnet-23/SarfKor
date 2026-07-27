@@ -85,6 +85,12 @@ public sealed class AuthService(
         await userManager.AddToRoleAsync(user, role);
     }
 
+    public async Task<string?> FindUserIdByEmailAsync(string email, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        return user?.Id;
+    }
+
     private async Task<AuthResult> IssueTokenPairAsync(ApplicationUser user)
     {
         var roles = await userManager.GetRolesAsync(user);

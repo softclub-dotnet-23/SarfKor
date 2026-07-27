@@ -18,6 +18,7 @@ import {
 } from '../components/icons'
 import {
   adminApi,
+  catalogApi,
   ApiError,
   type PriceEntryDispute,
   type ReportDispute,
@@ -558,7 +559,7 @@ function BrandsSubsection() {
   const load = useCallback(async () => {
     setError('')
     try {
-      setItems((await adminApi.getBrands()).brands)
+      setItems((await catalogApi.getBrands()).brands)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось загрузить бренды')
     }
@@ -574,7 +575,7 @@ function BrandsSubsection() {
     setSubmitting(true)
     setFormError('')
     try {
-      await adminApi.createBrand(name.trim())
+      await catalogApi.createBrand(name.trim())
       setName('')
       await load()
     } catch (err) {
@@ -636,7 +637,7 @@ function CategoriesSubsection() {
   const load = useCallback(async () => {
     setError('')
     try {
-      setItems((await adminApi.getCategories()).categories)
+      setItems((await catalogApi.getCategories()).categories)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось загрузить категории')
     }
@@ -652,7 +653,7 @@ function CategoriesSubsection() {
     setSubmitting(true)
     setFormError('')
     try {
-      const res = await adminApi.createCategory(name.trim(), parentId ? Number(parentId) : undefined)
+      const res = await catalogApi.createCategory(name.trim(), parentId ? Number(parentId) : undefined)
       if (res.outcome === 'ParentCategoryNotFound') {
         setFormError('Родительская категория не найдена')
         return
@@ -738,7 +739,7 @@ function TaxRatesSubsection() {
   const load = useCallback(async () => {
     setError('')
     try {
-      const [taxRes, catRes] = await Promise.all([adminApi.getTaxRates(), adminApi.getCategories()])
+      const [taxRes, catRes] = await Promise.all([catalogApi.getTaxRates(), catalogApi.getCategories()])
       setItems(taxRes.taxRates)
       setCategories(catRes.categories)
     } catch (err) {
@@ -757,7 +758,7 @@ function TaxRatesSubsection() {
     setSubmitting(true)
     setFormError('')
     try {
-      await adminApi.createTaxRate(name.trim(), pct, categoryId ? Number(categoryId) : undefined)
+      await catalogApi.createTaxRate(name.trim(), pct, categoryId ? Number(categoryId) : undefined)
       setName('')
       setPercentage('')
       setCategoryId('')

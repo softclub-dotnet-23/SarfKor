@@ -19,13 +19,20 @@ public class EnrollCustomerInLoyaltyCommandHandlerTests
     private readonly Mock<ILoyaltyProgramRepository> _loyaltyProgramRepository = new();
     private readonly Mock<ILoyaltyAccountRepository> _loyaltyAccountRepository = new();
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+
+    public EnrollCustomerInLoyaltyCommandHandlerTests() =>
+        _storeEmployeeRepository
+            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
 
     private EnrollCustomerInLoyaltyCommandHandler CreateHandler() => new(
         _customerRepository.Object,
         _loyaltyProgramRepository.Object,
         _loyaltyAccountRepository.Object,
         _storeRepository.Object,
+        _storeEmployeeRepository.Object,
         _unitOfWork.Object);
 
     private void SetupValidCustomerAndProgram()

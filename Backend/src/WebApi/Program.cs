@@ -14,18 +14,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
 // Enums serialize/deserialize as their string name ("Product", "Android") instead of a raw
-// integer — matters for every request DTO that carries an enum field, so it belongs globally.
-// Controllers ([ApiController]) read Mvc.JsonOptions for both request-body model binding and
-// response serialization — ConfigureHttpJsonOptions below only reaches Minimal API endpoints
-// (there are none here), so without this call every enum-carrying request body 400s even
-// though responses (which apparently fall back to the Http.Json options) look fine.
+// integer — matters for every request/response DTO that carries an enum field, so it belongs
+// globally. MVC controllers and Minimal APIs read JSON options from two different places
+// (Mvc.JsonOptions vs Http.Json.JsonOptions) — both must be configured, or enum fields bound
+// through [FromBody] on a controller silently fall back to raw integers in both directions.
 builder.Services.AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
-builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
-
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -169,7 +169,7 @@ public sealed record RecordCommissionRequest(decimal Amount, string Currency);
 public sealed record LoginRequest(string Email, string Password);
 public sealed record UpdateUserProfileRequest(string DisplayName, string? AvatarReference, string PreferredLanguage);
 public sealed record RecordUserConsentRequest(Domain.Identity.ConsentType Type, bool IsGranted);
-public sealed record AddStoreEmployeeRequest(string EmployeeUserId, Domain.Stores.StoreEmployeeRole Role);
+public sealed record AddStoreEmployeeRequest(string EmployeeEmail, Domain.Stores.StoreEmployeeRole Role);
 public sealed record RaiseDisputeRequest(string Reason);
 public sealed record ResolveDisputeRequest(bool Uphold);
 public sealed record OpenCashierShiftRequest(int StoreId, decimal OpeningCash, string Currency);
@@ -212,4 +212,9 @@ public sealed record RecordStockReceiptRequest(int StoreId, int ProductId, int Q
 public sealed record ReportOutOfStockRequest(int ProductId, int? StoreId, string Description);
 public sealed record PublishExpiringOfferRequest(int StoreId, int ProductId, decimal OriginalPrice, decimal DiscountedPrice, string Currency, DateTimeOffset ExpiresAt);
 public sealed record ModerateNewProductRequest(bool Approve, string? Reason);
+public sealed record SubmitNewProductRequest(string Barcode, string Name, int CategoryId, int BrandId, string CountryOfOrigin);
 public sealed record ModerateReportRequest(bool Resolve, string? Reason);
+public sealed record UpdateBrandRequest(string Name);
+public sealed record UpdateCategoryRequest(string Name, int? ParentCategoryId);
+public sealed record UpdateTaxRateRequest(string Name, decimal Percentage, int? CategoryId);
+public sealed record UpdateSupplierRequest(string Name, string? ContactPhone, string? ContactEmail);

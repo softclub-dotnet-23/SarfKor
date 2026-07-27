@@ -1,3 +1,5 @@
+using Domain.Feedback;
+
 namespace Application.Feedback.Queries.GetPendingReports;
 
 public sealed record ReportDto(
@@ -5,7 +7,7 @@ public sealed record ReportDto(
     string UserId,
     int ProductId,
     int? StoreId,
-    string Type,
+    ReportType Type,
     string Description,
     DateTimeOffset CreatedAt);
 

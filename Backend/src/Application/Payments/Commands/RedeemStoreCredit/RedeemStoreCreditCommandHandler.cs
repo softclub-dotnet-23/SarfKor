@@ -5,6 +5,7 @@ namespace Application.Payments.Commands.RedeemStoreCredit;
 
 public sealed class RedeemStoreCreditCommandHandler(
     IStoreRepository storeRepository,
+    IStoreEmployeeRepository storeEmployeeRepository,
     IStoreCreditRepository storeCreditRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<RedeemStoreCreditCommand, RedeemStoreCreditResult>
 {
@@ -14,7 +15,8 @@ public sealed class RedeemStoreCreditCommandHandler(
         if (store is null)
             return new RedeemStoreCreditResult(RedeemStoreCreditOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != command.PerformedByUserId)
+        if (store.OwnerUserId != command.PerformedByUserId
+            && !await storeEmployeeRepository.IsEmployeeAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new RedeemStoreCreditResult(RedeemStoreCreditOutcome.Forbidden, null);
 
         var credit = await storeCreditRepository.GetByStoreAndCustomerAsync(command.StoreId, command.CustomerId, cancellationToken);

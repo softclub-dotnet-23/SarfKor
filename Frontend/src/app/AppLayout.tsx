@@ -5,12 +5,13 @@ import { LogoMark } from '../components/Logo'
 import { useAuth } from '../auth/AuthContext'
 import { useTheme } from '../theme/ThemeProvider'
 import { useThemeTransition } from '../theme/useThemeTransition'
-import { SunIcon, MoonIcon, ScanIcon, HeartIcon, ListIcon, BellIcon, UserIcon, ReceiptIcon } from '../components/icons'
+import { SunIcon, MoonIcon, ScanIcon, HeartIcon, ListIcon, BellIcon, UserIcon, ReceiptIcon, ClockIcon } from '../components/icons'
 
 const NAV_ITEMS = [
   { to: '/app', label: 'Сканировать', icon: ScanIcon, end: true },
   { to: '/app/favorites', label: 'Избранное', icon: HeartIcon },
   { to: '/app/lists', label: 'Списки покупок', icon: ListIcon },
+  { to: '/app/expiring', label: 'Скоро истекает', icon: ClockIcon },
   { to: '/app/alerts', label: 'Уведомления о цене', icon: BellIcon },
   { to: '/app/notifications', label: 'Оповещения', icon: BellIcon },
   { to: '/app/receipts', label: 'Чеки', icon: ReceiptIcon },

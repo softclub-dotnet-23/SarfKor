@@ -1,11 +1,67 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type FormEvent, type SVGProps } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Card } from '../components/Card'
-import { BarcodeIcon, PlusIcon, MinusIcon, TrashIcon, CheckIcon, AlertIcon } from '../components/icons'
+import { BarcodeIcon, PlusIcon, MinusIcon, TrashIcon, CheckIcon, AlertIcon, ChevronDownIcon, CashIcon, CardIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
-import { productsApi, salesApi, ApiError, type ScanBarcodeResult, type ProcessSaleResult } from '../../lib/api'
+import {
+  productsApi,
+  salesApi,
+  bundlesApi,
+  ApiError,
+  type ScanBarcodeResult,
+  type ProcessSaleResult,
+  type ProcessSaleResultLine,
+  type BundleLine,
+  type ProductBundle,
+  type Commission,
+  type SaleReturn,
+} from '../../lib/api'
 
 const CURRENCY = 'TJS'
+const RECENT_SALES_KEY = 'sarfkor-recent-sales'
+
+interface RecentSale {
+  saleTransactionId: number
+  totalAmount: number
+  currency: string
+  completedAt: string
+  lines: ProcessSaleResultLine[]
+  voided: boolean
+}
+
+function loadRecentSales(): RecentSale[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECENT_SALES_KEY) ?? '[]')
+    return Array.isArray(raw) ? raw : []
+  } catch {
+    return []
+  }
+}
+
+function saveRecentSales(sales: RecentSale[]) {
+  // Keep this local cache small — it exists only so a cashier can void/refund a
+  // sale they just rang up without a "list my sales" endpoint, not as a ledger.
+  localStorage.setItem(RECENT_SALES_KEY, JSON.stringify(sales.slice(0, 20)))
+}
+
+function ReceiptPercentIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <line x1="19" y1="5" x2="5" y2="19" />
+      <circle cx="6.5" cy="6.5" r="2.5" />
+      <circle cx="17.5" cy="17.5" r="2.5" />
+    </svg>
+  )
+}
+
+function ReturnIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M3 7v6h6" />
+      <path d="M21 17a9 9 0 0 0-15-6.7L3 13" />
+    </svg>
+  )
+}
 
 interface CartLine {
   productId: number
@@ -30,9 +86,341 @@ function describeOutcome(result: ProcessSaleResult): string {
       return `Нет цены на товар #${result.failedProductId} в вашем магазине`
     case 'InsufficientStock':
       return `Недостаточно товара #${result.failedProductId} на складе`
+    case 'GiftCardNotFound':
+      return 'Подарочная карта с таким кодом не найдена'
+    case 'GiftCardNotUsable':
+      return 'Эта подарочная карта неактивна или просрочена'
+    case 'CustomerNotFound':
+      return 'Клиент с таким ID не найден'
+    case 'BundleNotFound':
+      return 'Набор товаров не найден'
     default:
       return 'Не удалось провести продажу'
   }
+}
+
+function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }) {
+  const [expanded, setExpanded] = useState(false)
+  const [voidBusy, setVoidBusy] = useState(false)
+  const [voidReason, setVoidReason] = useState('')
+  const [voidOpen, setVoidOpen] = useState(false)
+  const [voidError, setVoidError] = useState('')
+
+  const [commissionOpen, setCommissionOpen] = useState(false)
+  const [commissionAmount, setCommissionAmount] = useState('')
+  const [commissionBusy, setCommissionBusy] = useState(false)
+  const [commissionStatus, setCommissionStatus] = useState('')
+  const [commissions, setCommissions] = useState<Commission[] | null>(null)
+
+  const [returnOpen, setReturnOpen] = useState(false)
+  const [returnLineId, setReturnLineId] = useState('')
+  const [returnQty, setReturnQty] = useState('1')
+  const [returnReason, setReturnReason] = useState('')
+  const [returnBusy, setReturnBusy] = useState(false)
+  const [returnStatus, setReturnStatus] = useState('')
+  const [returns, setReturns] = useState<SaleReturn[] | null>(null)
+
+  async function handleVoid(e: FormEvent) {
+    e.preventDefault()
+    if (!voidReason.trim() || voidBusy) return
+    setVoidBusy(true)
+    setVoidError('')
+    try {
+      const res = await salesApi.voidSale(sale.saleTransactionId, voidReason.trim())
+      if (res.outcome === 'Voided') {
+        onVoided()
+      } else if (res.outcome === 'AlreadyVoided') {
+        setVoidError('Эта продажа уже отменена')
+      } else {
+        setVoidError('Не удалось отменить продажу')
+      }
+    } catch (err) {
+      setVoidError(err instanceof ApiError ? err.message : 'Не удалось отменить продажу')
+    } finally {
+      setVoidBusy(false)
+    }
+  }
+
+  async function handleCommission(e: FormEvent) {
+    e.preventDefault()
+    const amount = Number(commissionAmount)
+    if (!amount || amount <= 0 || commissionBusy) return
+    setCommissionBusy(true)
+    setCommissionStatus('')
+    try {
+      const res = await salesApi.recordCommission(sale.saleTransactionId, amount, sale.currency)
+      if (res.outcome === 'Recorded') {
+        setCommissionStatus('Комиссия записана')
+        setCommissionAmount('')
+        await loadCommissions()
+      } else {
+        setCommissionStatus(res.outcome === 'Forbidden' ? 'Нет доступа' : 'Продажа не найдена')
+      }
+    } catch (err) {
+      setCommissionStatus(err instanceof ApiError ? err.message : 'Не удалось записать комиссию')
+    } finally {
+      setCommissionBusy(false)
+    }
+  }
+
+  async function loadCommissions() {
+    try {
+      const res = await salesApi.getCommissionsForSale(sale.saleTransactionId)
+      if (res.outcome === 'Found') setCommissions(res.commissions ?? [])
+    } catch {
+      // Leave whatever was loaded before — not worth surfacing an error for a side list.
+    }
+  }
+
+  async function loadReturns() {
+    try {
+      const res = await salesApi.getReturnsForSale(sale.saleTransactionId)
+      if (res.outcome === 'Found') setReturns(res.returns ?? [])
+    } catch {
+      // Same as loadCommissions — best-effort refresh.
+    }
+  }
+
+  async function handleReturn(e: FormEvent) {
+    e.preventDefault()
+    const lineId = Number(returnLineId)
+    const qty = Number(returnQty)
+    if (!lineId || !qty || qty <= 0 || !returnReason.trim() || returnBusy) return
+    setReturnBusy(true)
+    setReturnStatus('')
+    try {
+      const res = await salesApi.processReturn(sale.saleTransactionId, [{ saleLineItemId: lineId, quantity: qty }], returnReason.trim())
+      if (res.outcome === 'Processed') {
+        setReturnStatus(`Возврат оформлен — возмещено ${fmt(res.totalRefund ?? 0)} ${sale.currency}`)
+        setReturnReason('')
+        setReturnQty('1')
+        await loadReturns()
+      } else if (res.outcome === 'ExceedsAvailableQuantity') {
+        setReturnStatus('Количество превышает то, что было продано (с учётом прошлых возвратов)')
+      } else if (res.outcome === 'LineNotFound') {
+        setReturnStatus('Такой позиции нет в этой продаже')
+      } else if (res.outcome === 'SaleNotCompleted') {
+        setReturnStatus('Продажа отменена — возврат невозможен')
+      } else {
+        setReturnStatus('Нет доступа')
+      }
+    } catch (err) {
+      setReturnStatus(err instanceof ApiError ? err.message : 'Не удалось оформить возврат')
+    } finally {
+      setReturnBusy(false)
+    }
+  }
+
+  return (
+    <div className="rounded-[16px] bg-[color:var(--admin-hover)] p-4">
+      <button onClick={() => setExpanded((v) => !v)} className="flex w-full items-center justify-between gap-3 text-left">
+        <div>
+          <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">
+            Продажа #{sale.saleTransactionId} {sale.voided && <span className="text-[#f87171]">· отменена</span>}
+          </div>
+          <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
+            {fmt(sale.totalAmount)} {sale.currency} · {new Date(sale.completedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+        <ChevronDownIcon width={16} height={16} className={`shrink-0 text-[color:var(--admin-text-tertiary)] transition-transform ${expanded ? 'rotate-180' : ''}`} />
+      </button>
+
+      {expanded && (
+        <div className="mt-3 flex flex-col gap-3 border-t border-[color:var(--admin-border)] pt-3">
+          <div className="flex flex-wrap gap-2 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
+            {sale.lines.map((l) => (
+              <span key={l.saleLineItemId} className="rounded-full bg-[color:var(--admin-card)] px-2.5 py-1">
+                #{l.saleLineItemId} · товар {l.productId} × {l.quantity}
+              </span>
+            ))}
+          </div>
+
+          {!sale.voided && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setVoidOpen((v) => !v)}
+                className="flex items-center gap-1.5 rounded-lg bg-[#f8717122] px-3 py-1.5 text-[11.5px] font-semibold text-[#f87171] hover:opacity-80"
+              >
+                <AlertIcon width={12} height={12} />
+                Отменить продажу
+              </button>
+              <button
+                onClick={() => {
+                  setCommissionOpen((v) => !v)
+                  if (!commissions) loadCommissions()
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+              >
+                <ReceiptPercentIcon />
+                Комиссия
+              </button>
+              <button
+                onClick={() => {
+                  setReturnOpen((v) => !v)
+                  if (!returns) loadReturns()
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+              >
+                <ReturnIcon />
+                Возврат
+              </button>
+            </div>
+          )}
+
+          {voidOpen && !sale.voided && (
+            <form onSubmit={handleVoid} className="flex flex-col gap-2 rounded-xl bg-[color:var(--admin-card)] p-3">
+              <input
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="Причина отмены (обязательно)"
+                className="rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--admin-text)] outline-none"
+              />
+              {voidError && <div className="text-[11.5px] font-medium text-[#f87171]">{voidError}</div>}
+              <button
+                type="submit"
+                disabled={voidBusy || !voidReason.trim()}
+                className="self-start rounded-lg bg-[#f87171] px-3.5 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+              >
+                {voidBusy ? 'Отменяем…' : 'Подтвердить отмену'}
+              </button>
+            </form>
+          )}
+
+          {commissionOpen && (
+            <div className="rounded-xl bg-[color:var(--admin-card)] p-3">
+              <form onSubmit={handleCommission} className="flex items-center gap-2">
+                <input
+                  value={commissionAmount}
+                  onChange={(e) => setCommissionAmount(e.target.value)}
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="Сумма комиссии"
+                  className="min-w-0 flex-1 rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--admin-text)] outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={commissionBusy || !commissionAmount}
+                  className="shrink-0 rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                >
+                  {commissionBusy ? 'Сохраняем…' : 'Записать'}
+                </button>
+              </form>
+              {commissionStatus && <div className="mt-1.5 text-[11.5px] text-[color:var(--admin-text-secondary)]">{commissionStatus}</div>}
+              {commissions && commissions.length > 0 && (
+                <div className="mt-2 flex flex-col gap-1">
+                  {commissions.map((c) => (
+                    <div key={c.commissionId} className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">
+                      {fmt(c.amount)} {c.currency} · {new Date(c.createdAt).toLocaleString('ru-RU')}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {returnOpen && (
+            <div className="rounded-xl bg-[color:var(--admin-card)] p-3">
+              <form onSubmit={handleReturn} className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <select
+                    value={returnLineId}
+                    onChange={(e) => setReturnLineId(e.target.value)}
+                    className="min-w-0 flex-1 rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--admin-text)] outline-none"
+                  >
+                    <option value="">Позиция</option>
+                    {sale.lines.map((l) => (
+                      <option key={l.saleLineItemId} value={l.saleLineItemId}>
+                        Товар {l.productId} (продано {l.quantity})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={returnQty}
+                    onChange={(e) => setReturnQty(e.target.value)}
+                    type="number"
+                    min={1}
+                    className="w-20 shrink-0 rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--admin-text)] outline-none"
+                  />
+                </div>
+                <input
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  placeholder="Причина возврата (обязательно)"
+                  className="rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--admin-text)] outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={returnBusy || !returnLineId || !returnReason.trim()}
+                  className="self-start rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                >
+                  {returnBusy ? 'Оформляем…' : 'Оформить возврат'}
+                </button>
+              </form>
+              {returnStatus && <div className="mt-1.5 text-[11.5px] text-[color:var(--admin-text-secondary)]">{returnStatus}</div>}
+              {returns && returns.length > 0 && (
+                <div className="mt-2 flex flex-col gap-1">
+                  {returns.map((r) => (
+                    <div key={r.saleReturnId} className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">
+                      Возврат #{r.saleReturnId} · {r.reason} · {new Date(r.createdAt).toLocaleString('ru-RU')}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BundlePicker({ storeId, onAdd }: { storeId: number; onAdd: (bundle: ProductBundle) => void }) {
+  const [open, setOpen] = useState(false)
+  const [bundles, setBundles] = useState<ProductBundle[] | null>(null)
+
+  async function toggle() {
+    setOpen((v) => !v)
+    if (bundles === null) {
+      try {
+        setBundles((await bundlesApi.getProductBundles(storeId)).bundles)
+      } catch {
+        setBundles([])
+      }
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-hover)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+      >
+        <PlusIcon width={12} height={12} />
+        Набор
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-10 mt-1.5 w-64 rounded-xl bg-[color:var(--admin-card)] p-2 shadow-lg ring-1 ring-[color:var(--admin-border)]">
+          {bundles === null && <div className="p-2 text-[12px] text-[color:var(--admin-text-tertiary)]">Загрузка…</div>}
+          {bundles && bundles.length === 0 && <div className="p-2 text-[12px] text-[color:var(--admin-text-tertiary)]">В магазине нет наборов</div>}
+          {bundles?.map((b) => (
+            <button
+              key={b.productBundleId}
+              onClick={() => {
+                onAdd(b)
+                setOpen(false)
+              }}
+              className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] hover:bg-[color:var(--admin-hover)]"
+            >
+              <span className="truncate font-medium text-[color:var(--admin-text)]">{b.name}</span>
+              <span className="shrink-0 text-[color:var(--admin-text-tertiary)]">{fmt(b.bundlePrice)} {b.currency}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function PosPage() {
@@ -46,9 +434,31 @@ export function PosPage() {
   const [lastScan, setLastScan] = useState<ScanBarcodeResult | null>(null)
 
   const [cart, setCart] = useState<CartLine[]>([])
+  const [cartBundles, setCartBundles] = useState<{ productBundleId: number; name: string; bundlePrice: number; currency: string; quantity: number }[]>([])
   const [checkoutBusy, setCheckoutBusy] = useState(false)
   const [checkoutError, setCheckoutError] = useState('')
-  const [successInfo, setSuccessInfo] = useState<{ totalAmount: number; currency: string } | null>(null)
+  const [successInfo, setSuccessInfo] = useState<{ totalAmount: number; currency: string; amountDue?: number; giftCardAmountApplied?: number; storeCreditAmountApplied?: number } | null>(null)
+
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [customerId, setCustomerId] = useState('')
+  const [giftCardCode, setGiftCardCode] = useState('')
+  const [applyStoreCredit, setApplyStoreCredit] = useState(false)
+
+  const [recentSales, setRecentSales] = useState<RecentSale[]>(() => loadRecentSales())
+
+  function addBundleToCart(bundle: ProductBundle) {
+    setCartBundles((bs) => {
+      const existing = bs.find((b) => b.productBundleId === bundle.productBundleId)
+      if (existing) {
+        return bs.map((b) => (b.productBundleId === bundle.productBundleId ? { ...b, quantity: b.quantity + 1 } : b))
+      }
+      return [...bs, { productBundleId: bundle.productBundleId, name: bundle.name, bundlePrice: bundle.bundlePrice, currency: bundle.currency, quantity: 1 }]
+    })
+  }
+
+  function removeBundleLine(productBundleId: number) {
+    setCartBundles((bs) => bs.filter((b) => b.productBundleId !== productBundleId))
+  }
 
   function addToCart(productId: number, productName: string, unitPrice: number) {
     setCart((c) => {
@@ -101,28 +511,59 @@ export function PosPage() {
     }
   }
 
-  const total = cart.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0)
-  const itemCount = cart.reduce((sum, l) => sum + l.quantity, 0)
+  const total =
+    cart.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0) +
+    cartBundles.reduce((sum, b) => sum + b.bundlePrice * b.quantity, 0)
+  const itemCount = cart.reduce((sum, l) => sum + l.quantity, 0) + cartBundles.reduce((sum, b) => sum + b.quantity, 0)
 
   async function completeSale() {
-    if (cart.length === 0 || checkoutBusy || !storeId) return
+    if ((cart.length === 0 && cartBundles.length === 0) || checkoutBusy || !storeId) return
     setCheckoutBusy(true)
     setCheckoutError('')
     const key = idempotencyKeyRef.current ?? crypto.randomUUID()
     idempotencyKeyRef.current = key
     try {
+      const bundleLines: BundleLine[] = cartBundles.map((b) => ({ productBundleId: b.productBundleId, quantity: b.quantity }))
       const result = await salesApi.processSale({
         storeId,
         idempotencyKey: key,
         currency: CURRENCY,
         lines: cart.map((l) => ({ productId: l.productId, quantity: l.quantity })),
+        bundleLines: bundleLines.length > 0 ? bundleLines : undefined,
+        customerId: customerId ? Number(customerId) : undefined,
+        giftCardCode: giftCardCode.trim() || undefined,
+        applyStoreCredit: customerId ? applyStoreCredit : false,
       })
       if (result.outcome === 'Completed') {
-        setSuccessInfo({ totalAmount: result.totalAmount ?? total, currency: result.currency ?? CURRENCY })
+        setSuccessInfo({
+          totalAmount: result.totalAmount ?? total,
+          currency: result.currency ?? CURRENCY,
+          amountDue: result.amountDue,
+          giftCardAmountApplied: result.giftCardAmountApplied,
+          storeCreditAmountApplied: result.storeCreditAmountApplied,
+        })
+        if (result.saleTransactionId != null) {
+          const next = [
+            {
+              saleTransactionId: result.saleTransactionId,
+              totalAmount: result.totalAmount ?? total,
+              currency: result.currency ?? CURRENCY,
+              completedAt: new Date().toISOString(),
+              lines: result.lines ?? [],
+              voided: false,
+            },
+            ...recentSales,
+          ]
+          setRecentSales(next)
+          saveRecentSales(next)
+        }
         setCart([])
+        setCartBundles([])
         setLastScan(null)
+        setGiftCardCode('')
+        setApplyStoreCredit(false)
         idempotencyKeyRef.current = null
-        setTimeout(() => setSuccessInfo(null), 2800)
+        setTimeout(() => setSuccessInfo(null), 3600)
       } else {
         // A definitive rejection (bad line, no access, etc.) means the next
         // attempt is a different sale once the cashier fixes the cart — reuse
@@ -210,10 +651,11 @@ export function PosPage() {
       <Card className="flex h-fit flex-col gap-4 p-5 lg:sticky lg:top-6">
         <div className="flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Текущий чек</span>
-          {cart.length > 0 && (
+          {(cart.length > 0 || cartBundles.length > 0) && (
             <button
               onClick={() => {
                 setCart([])
+                setCartBundles([])
                 idempotencyKeyRef.current = null
               }}
               className="text-xs font-medium text-[color:var(--admin-text-tertiary)] hover:text-[#f87171]"
@@ -266,13 +708,39 @@ export function PosPage() {
                 </button>
               </motion.div>
             ))}
+            {cartBundles.map((b) => (
+              <motion.div
+                key={`bundle-${b.productBundleId}`}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-2.5 overflow-hidden rounded-xl bg-[color:var(--admin-accent-soft)] p-2.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[12.5px] font-semibold text-[color:var(--admin-accent)]">Набор: {b.name}</div>
+                  <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
+                    {fmt(b.bundlePrice)} {b.currency} × {b.quantity}
+                  </div>
+                </div>
+                <button
+                  onClick={() => removeBundleLine(b.productBundleId)}
+                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[color:var(--admin-text-tertiary)] hover:text-[#f87171]"
+                  aria-label="Удалить набор"
+                >
+                  <TrashIcon width={13} height={13} />
+                </button>
+              </motion.div>
+            ))}
           </AnimatePresence>
-          {cart.length === 0 && (
+          {cart.length === 0 && cartBundles.length === 0 && (
             <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">
               Чек пуст — отсканируйте товар слева
             </div>
           )}
         </div>
+
+        {storeId != null && <BundlePicker storeId={storeId} onAdd={addBundleToCart} />}
 
         <div className="flex flex-col gap-2 border-t border-[color:var(--admin-border)] pt-4">
           <div className="flex items-center justify-between text-[13px] text-[color:var(--admin-text-secondary)]">
@@ -285,6 +753,46 @@ export function PosPage() {
           </div>
         </div>
 
+        <div className="border-t border-[color:var(--admin-border)] pt-3">
+          <button
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className="flex w-full items-center justify-between text-[12.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+          >
+            <span className="flex items-center gap-1.5">
+              <CardIcon width={13} height={13} />
+              Клиент, подарочная карта, кредит
+            </span>
+            <ChevronDownIcon width={14} height={14} className={`transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {advancedOpen && (
+            <div className="mt-3 flex flex-col gap-2.5">
+              <input
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                type="number"
+                min={0}
+                placeholder="ID клиента (необязательно)"
+                className="rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-2 text-[12.5px] text-[color:var(--admin-text)] outline-none"
+              />
+              <label className="flex items-center gap-2 text-[12px] text-[color:var(--admin-text-secondary)]">
+                <input
+                  type="checkbox"
+                  checked={applyStoreCredit}
+                  disabled={!customerId}
+                  onChange={(e) => setApplyStoreCredit(e.target.checked)}
+                />
+                Списать магазинный кредит клиента
+              </label>
+              <input
+                value={giftCardCode}
+                onChange={(e) => setGiftCardCode(e.target.value)}
+                placeholder="Код подарочной карты (необязательно)"
+                className="rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-2 text-[12.5px] text-[color:var(--admin-text)] outline-none"
+              />
+            </div>
+          )}
+        </div>
+
         {checkoutError && (
           <div className="flex items-center gap-2 rounded-xl bg-[#f87171]/10 px-3.5 py-2.5 text-[12.5px] font-medium text-[#f87171]">
             <AlertIcon width={14} height={14} className="shrink-0" />
@@ -294,12 +802,38 @@ export function PosPage() {
 
         <button
           onClick={completeSale}
-          disabled={cart.length === 0 || checkoutBusy}
+          disabled={(cart.length === 0 && cartBundles.length === 0) || checkoutBusy}
           className="rounded-xl bg-[color:var(--admin-accent)] py-3.5 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
         >
           {checkoutBusy ? 'Проводим продажу…' : 'Оформить продажу'}
         </button>
       </Card>
+
+      {recentSales.length > 0 && (
+        <Card className="p-5 lg:col-span-2">
+          <div className="mb-3 flex items-center gap-2">
+            <CashIcon width={16} height={16} className="text-[color:var(--admin-accent)]" />
+            <span className="text-[15px] font-bold text-[color:var(--admin-text)]">Недавние продажи</span>
+          </div>
+          <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
+            Список продаж, оформленных в этом браузере — бэкенд не отдаёт историю продаж списком, поэтому отменить,
+            добавить комиссию или оформить возврат можно только по продажам из этого списка.
+          </p>
+          <div className="flex flex-col gap-2.5">
+            {recentSales.map((sale) => (
+              <SaleCard
+                key={sale.saleTransactionId}
+                sale={sale}
+                onVoided={() => {
+                  const next = recentSales.map((s) => (s.saleTransactionId === sale.saleTransactionId ? { ...s, voided: true } : s))
+                  setRecentSales(next)
+                  saveRecentSales(next)
+                }}
+              />
+            ))}
+          </div>
+        </Card>
+      )}
 
       <AnimatePresence>
         {successInfo && (
@@ -316,6 +850,11 @@ export function PosPage() {
               <div className="text-sm font-bold">Продажа оформлена</div>
               <div className="text-xs text-white/60">
                 {fmt(successInfo.totalAmount)} {successInfo.currency}
+                {successInfo.giftCardAmountApplied ? ` · картой: ${fmt(successInfo.giftCardAmountApplied)}` : ''}
+                {successInfo.storeCreditAmountApplied ? ` · кредитом: ${fmt(successInfo.storeCreditAmountApplied)}` : ''}
+                {successInfo.amountDue != null && successInfo.amountDue !== successInfo.totalAmount
+                  ? ` · к оплате: ${fmt(successInfo.amountDue)}`
+                  : ''}
               </div>
             </div>
           </motion.div>

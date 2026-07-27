@@ -5,34 +5,130 @@ export interface SaleLine {
   quantity: number
 }
 
+export interface BundleLine {
+  productBundleId: number
+  quantity: number
+}
+
 export interface ProcessSaleRequest {
   storeId: number
   idempotencyKey: string
   currency: string
   lines: SaleLine[]
+  giftCardCode?: string
+  customerId?: number
+  applyStoreCredit?: boolean
+  bundleLines?: BundleLine[]
+}
+
+export interface ProcessSaleResultLine {
+  saleLineItemId: number
+  productId: number
+  quantity: number
+  unitPrice: number
 }
 
 export interface ProcessSaleResult {
-  outcome: 'Completed' | 'StoreNotFound' | 'Forbidden' | 'ProductNotFound' | 'PriceNotFound' | 'InsufficientStock'
-  saleTransactionId?: string
+  outcome:
+    | 'Completed'
+    | 'StoreNotFound'
+    | 'Forbidden'
+    | 'ProductNotFound'
+    | 'PriceNotFound'
+    | 'InsufficientStock'
+    | 'GiftCardNotFound'
+    | 'GiftCardNotUsable'
+    | 'CustomerNotFound'
+    | 'BundleNotFound'
+  saleTransactionId?: number
   totalAmount?: number
   currency?: string
   failedProductId?: number
+  giftCardAmountApplied?: number
+  amountDue?: number
+  storeCreditAmountApplied?: number
+  lines?: ProcessSaleResultLine[]
 }
 
 export function processSale(req: ProcessSaleRequest) {
   return apiFetch<ProcessSaleResult>('/api/sales', { method: 'POST', body: req })
 }
 
-export function voidSale(saleTransactionId: string, reason: string) {
-  return apiFetch<{ outcome: string; voidedAt?: string }>(`/api/sales/${saleTransactionId}/void`, {
+export type VoidSaleOutcome = 'Voided' | 'NotFound' | 'Forbidden' | 'AlreadyVoided'
+
+export function voidSale(saleTransactionId: number, reason: string) {
+  return apiFetch<{ outcome: VoidSaleOutcome; voidedAt?: string }>(`/api/sales/${saleTransactionId}/void`, {
     method: 'POST',
     body: { reason },
   })
 }
 
+export type RecordCommissionOutcome = 'Recorded' | 'SaleNotFound' | 'Forbidden'
+
+export function recordCommission(saleTransactionId: number, amount: number, currency: string) {
+  return apiFetch<{ outcome: RecordCommissionOutcome; commissionId?: number }>(
+    `/api/sales/${saleTransactionId}/commission`,
+    { method: 'POST', body: { amount, currency } },
+  )
+}
+
+export interface Commission {
+  commissionId: number
+  cashierUserId: string
+  amount: number
+  currency: string
+  createdAt: string
+}
+
+export type GetCommissionsOutcome = 'Found' | 'SaleNotFound' | 'Forbidden'
+
+export function getCommissionsForSale(saleTransactionId: number) {
+  return apiFetch<{ outcome: GetCommissionsOutcome; commissions?: Commission[] }>(
+    `/api/sales/${saleTransactionId}/commissions`,
+  )
+}
+
+export interface ReturnLine {
+  saleLineItemId: number
+  quantity: number
+}
+
+export type ProcessReturnOutcome =
+  | 'Processed'
+  | 'SaleNotFound'
+  | 'Forbidden'
+  | 'SaleNotCompleted'
+  | 'LineNotFound'
+  | 'ExceedsAvailableQuantity'
+
+export function processReturn(saleTransactionId: number, lines: ReturnLine[], reason: string) {
+  return apiFetch<{ outcome: ProcessReturnOutcome; saleReturnId?: number; totalRefund?: number; failedSaleLineItemId?: number }>(
+    `/api/sales/${saleTransactionId}/return`,
+    { method: 'POST', body: { lines, reason } },
+  )
+}
+
+export interface ReturnLineDetail {
+  saleLineItemId: number
+  quantity: number
+  refundAmount: number
+}
+
+export interface SaleReturn {
+  saleReturnId: number
+  reason: string
+  createdAt: string
+  lines: ReturnLineDetail[]
+}
+
+export type GetReturnsOutcome = 'Found' | 'SaleNotFound' | 'Forbidden'
+
+export function getReturnsForSale(saleTransactionId: number) {
+  return apiFetch<{ outcome: GetReturnsOutcome; returns?: SaleReturn[] }>(`/api/sales/${saleTransactionId}/returns`)
+}
+
 export interface CashierShift {
-  cashierShiftId: string
+  cashierShiftId: number
   cashierUserId: string
   openingCash: number
   expectedCash?: number
@@ -43,13 +139,13 @@ export interface CashierShift {
 }
 
 export function openCashierShift(storeId: number, openingCash: number, currency: string) {
-  return apiFetch<{ outcome: string; cashierShiftId?: string }>('/api/cashier-shifts/open', {
+  return apiFetch<{ outcome: string; cashierShiftId?: number }>('/api/cashier-shifts/open', {
     method: 'POST',
     body: { storeId, openingCash, currency },
   })
 }
 
-export function closeCashierShift(cashierShiftId: string, closingCash: number) {
+export function closeCashierShift(cashierShiftId: number, closingCash: number) {
   return apiFetch<{ outcome: string; expectedCash?: number; closingCash?: number; discrepancy?: number }>(
     `/api/cashier-shifts/${cashierShiftId}/close`,
     { method: 'POST', body: { closingCash } },

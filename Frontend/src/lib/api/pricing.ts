@@ -6,3 +6,12 @@ export function submitPriceUpdate(productId: number, storeId: number, price: num
     body: { productId, storeId, price, currency },
   })
 }
+
+export type RaisePriceEntryDisputeOutcome = 'Raised' | 'PriceEntryNotFound'
+
+export function raisePriceEntryDispute(priceEntryId: number, reason: string) {
+  return apiFetch<{ outcome: RaisePriceEntryDisputeOutcome; disputeId?: number }>(
+    `/api/price-entries/${priceEntryId}/dispute`,
+    { method: 'POST', body: { reason } },
+  )
+}

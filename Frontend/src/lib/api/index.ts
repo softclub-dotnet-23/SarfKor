@@ -26,9 +26,21 @@ export * as expiringOffersApi from './expiringOffers'
 export * as notificationsApi from './notifications'
 export * as deviceTokensApi from './deviceTokens'
 export * as receiptsApi from './receipts'
-export type { CashierShift, ProcessSaleRequest, ProcessSaleResult, SaleLine } from './sales'
+export * as feedbackApi from './feedback'
+export type {
+  CashierShift,
+  ProcessSaleRequest,
+  ProcessSaleResult,
+  ProcessSaleResultLine,
+  SaleLine,
+  BundleLine,
+  Commission,
+  SaleReturn,
+  ReturnLine,
+  ReturnLineDetail,
+} from './sales'
 export type { StockLevel } from './inventory'
-export type { ScanBarcodeResult, ScanResultStore, StoreBasket } from './products'
+export type { ScanBarcodeResult, ScanResultStore, StoreBasket, MostScannedProduct } from './products'
 export type {
   StoreDashboard,
   DailySalesReport,

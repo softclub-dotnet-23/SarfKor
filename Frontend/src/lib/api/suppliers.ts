@@ -7,6 +7,8 @@ export interface Supplier {
   contactEmail?: string
 }
 
+// Suppliers are global (not scoped to a store) — confirmed against the
+// backend source, which has no storeId on either endpoint below.
 export function getSuppliers() {
   return apiFetch<{ suppliers: Supplier[] }>('/api/suppliers')
 }

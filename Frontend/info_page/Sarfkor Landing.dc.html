@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+.sk-root{
+ --font-sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+ --brand:#2f6feb;--brand-dark:#1f56c9;--brand-2:#4C8CFF;
+ --brand-grad:linear-gradient(135deg,#5a97ff 0%,#2f6feb 52%,#1f56c9 100%);
+ --brand-grad-soft:linear-gradient(135deg,rgba(90,151,255,.16),rgba(31,86,201,.16));
+ --bg-app:#ffffff;--bg-section:#f5f6fa;--bg-card:#ffffff;--bg-inverse:#0b0f19;
+ --text-primary:#0b0f19;--text-secondary:#5b6270;--text-tertiary:#8f95a3;
+ --border-subtle:rgba(11,15,25,.08);--border-strong:rgba(11,15,25,.13);
+ --hairline:rgba(255,255,255,.75);
+ --shadow-soft:0 1px 1px rgba(11,15,25,.035),0 2px 6px -1px rgba(11,15,25,.05),0 14px 34px -12px rgba(11,15,25,.12);
+ --shadow-lift:0 1px 1px rgba(11,15,25,.04),0 8px 18px -6px rgba(11,15,25,.12),0 30px 64px -20px rgba(11,15,25,.24);
+ --shadow-pop:0 2px 4px rgba(11,15,25,.06),0 16px 32px -10px rgba(11,15,25,.18),0 48px 96px -28px rgba(11,15,25,.3);
+ --btn-dark-grad:linear-gradient(180deg,#1c2233,#0b0f19);
+ --ease-out:cubic-bezier(.16,1,.3,1);--ease-spring:cubic-bezier(.34,1.42,.5,1);
+ color-scheme:light;font-family:var(--font-sans);color:var(--text-primary);background:var(--bg-app);
+ -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+ transition:background-color .55s var(--ease-out),color .55s var(--ease-out);
+ overflow-x:clip;
+}
+.sk-root.dark{
+ --brand-grad:linear-gradient(135deg,#5a97ff 0%,#2f6feb 55%,#2148a8 100%);
+ --brand-grad-soft:linear-gradient(135deg,rgba(90,151,255,.18),rgba(31,86,201,.1));
+ --bg-app:#08090f;--bg-section:#0d0f18;--bg-card:#12141e;--bg-inverse:#f5f6fa;
+ --text-primary:#f5f6fa;--text-secondary:#9095a6;--text-tertiary:#6b7080;
+ --border-subtle:rgba(255,255,255,.08);--border-strong:rgba(255,255,255,.15);
+ --hairline:rgba(255,255,255,.09);
+ --shadow-soft:0 1px 2px rgba(0,0,0,.5),0 14px 34px -12px rgba(0,0,0,.65);
+ --shadow-lift:0 10px 24px -8px rgba(0,0,0,.6),0 36px 72px -22px rgba(0,0,0,.8);
+ --shadow-pop:0 24px 68px -18px rgba(0,0,0,.85);
+ --btn-dark-grad:linear-gradient(180deg,#fbfbfe,#e6e8ef);
+ color-scheme:dark;
+}
+.sk-root *{box-sizing:border-box}
+.sk-root ::selection{background:var(--brand);color:#fff}
+@keyframes sk-float{0%,100%{transform:translateY(0) rotate(var(--r,0deg))}50%{transform:translateY(-16px) rotate(var(--r,0deg))}}
+@keyframes sk-pulse-ring{0%{transform:scale(.85);opacity:.55}70%{transform:scale(2);opacity:0}100%{transform:scale(2);opacity:0}}
+@keyframes sk-laser{0%{top:9%}50%{top:84%}100%{top:9%}}
+@keyframes sk-frame{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes sk-spin{to{transform:rotate(360deg)}}
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+::view-transition-old(root){z-index:0}
+::view-transition-new(root){z-index:1}
+html.sk-wipe::view-transition-new(root){animation:sk-reveal .8s cubic-bezier(.16,1,.3,1)}
+@keyframes sk-reveal{from{clip-path:circle(0 at var(--sk-x,50%) var(--sk-y,50%))}to{clip-path:circle(var(--sk-r,150%) at var(--sk-x,50%) var(--sk-y,50%))}}
+</style>
+</helmet>
+<div class="sk-root {{ themeClass }}" ref="{{ rootRef }}" style="position:relative;min-height:100vh;overflow-x:clip">
+
+  <!-- ============ HEADER ============ -->
+  <header ref="{{ headerRef }}" style="position:fixed;inset:0 0 auto 0;z-index:50;transition:background-color .4s var(--ease-out),box-shadow .4s var(--ease-out),backdrop-filter .4s">
+    <div style="margin:0 auto;max-width:1200px;display:flex;height:68px;align-items:center;justify-content:space-between;padding:0 24px">
+      <div onClick="{{ goHome }}" style="display:flex;align-items:center;gap:11px;cursor:pointer">
+        <div style="width:34px;height:34px;border-radius:11px;background:var(--brand-grad);box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 4px 12px -2px rgba(47,111,235,.5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:19px;letter-spacing:-.02em">S</div>
+        <span style="font-size:19px;font-weight:700;letter-spacing:-.02em">Sarfkor</span>
+      </div>
+      <nav style="display:flex;align-items:center;gap:2px;padding:5px;border-radius:999px" data-nav>
+        <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="6">
+          <button data-index="{{ item.i }}" onClick="{{ navClick }}" style="position:relative;border:0;background:{{ item.bg }};color:{{ item.color }};padding:9px 16px;border-radius:999px;font-size:14px;font-weight:{{ item.weight }};font-family:inherit;transition:color .3s var(--ease-out);box-shadow:{{ item.shadow }}">{{ item.label }}</button>
+        </sc-for>
+      </nav>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button onClick="{{ toggleTheme }}" aria-label="Тема" style="position:relative;width:72px;height:38px;border-radius:999px;border:1px solid var(--border-strong);background:var(--bg-section);padding:4px;display:flex;align-items:center;cursor:pointer;box-shadow:inset 0 1px 3px rgba(11,15,25,.1)">
+          <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-tertiary);opacity:{{ sunHintOp }};transition:opacity .4s;display:flex">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+          </span>
+          <span style="position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--text-tertiary);opacity:{{ moonHintOp }};transition:opacity .4s;display:flex">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.8A8.5 8.5 0 1111.2 3a6.6 6.6 0 009.8 9.8z"/></svg>
+          </span>
+          <div ref="{{ knobRef }}" style="position:relative;z-index:1;width:30px;height:30px;border-radius:999px;background:var(--bg-card);box-shadow:var(--shadow-soft),0 0 0 1px var(--border-subtle);display:flex;align-items:center;justify-content:center;color:var(--brand);transition:transform .45s var(--ease-spring);transform:translateX({{ knobX }})">
+            <sc-if value="{{ isDark }}" hint-placeholder-val="{{ false }}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.8A8.5 8.5 0 1111.2 3a6.6 6.6 0 009.8 9.8z"/></svg>
+            </sc-if>
+            <sc-if value="{{ isLight }}" hint-placeholder-val="{{ true }}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.4"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+            </sc-if>
+          </div>
+        </button>
+        <button onClick="{{ openModal }}" style="border:0;font-family:inherit;background:var(--btn-dark-grad);color:var(--bg-app);padding:10px 20px;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 1px 0 rgba(255,255,255,.14) inset,var(--shadow-soft);transition:transform .3s var(--ease-spring)" style-hover="transform:translateY(-1px) scale(1.03)">Войти</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ HERO ============ -->
+  <section id="hero" style="position:relative;overflow:hidden;padding:150px 24px 90px">
+    <div style="position:absolute;top:-15%;right:-5%;width:60%;height:70%;background:var(--brand-grad-soft);filter:blur(90px);border-radius:50%;pointer-events:none;opacity:.9"></div>
+    <div style="position:relative;margin:0 auto;max-width:1200px;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center" data-hero-grid>
+      <div>
+        <div style="display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;background:var(--bg-card);border:1px solid var(--border-subtle);box-shadow:var(--shadow-soft);font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:26px">
+          <span style="width:7px;height:7px;border-radius:50%;background:#12b76a;box-shadow:0 0 0 3px rgba(18,183,106,.18)"></span>Уже в 2500+ магазинах Таджикистана
+        </div>
+        <h1 style="font-size:clamp(46px,6vw,72px);font-weight:800;line-height:.98;letter-spacing:-.04em;margin:0">
+          <span style="display:block">Сканируй.</span>
+          <span style="display:block">Сравнивай.</span>
+          <span style="display:block;background:var(--brand-grad);-webkit-background-clip:text;background-clip:text;color:transparent">Экономь.</span>
+        </h1>
+        <p style="margin:26px 0 0;max-width:430px;font-size:19px;line-height:1.5;color:var(--text-secondary);text-wrap:pretty">Узнай цену товара во всех ближайших магазинах за несколько секунд.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:38px">
+          <button onClick="{{ openModal }}" style="border:0;font-family:inherit;background:var(--btn-dark-grad);color:var(--bg-app);padding:15px 28px;border-radius:999px;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 1px 0 rgba(255,255,255,.16) inset,var(--shadow-lift);transition:transform .35s var(--ease-spring)" style-hover="transform:translateY(-2px) scale(1.02)">Попробовать бесплатно</button>
+          <button onClick="{{ scrollHiw }}" style="display:inline-flex;align-items:center;gap:11px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);padding:14px 24px 14px 15px;border-radius:999px;font-size:16px;font-weight:600;cursor:pointer;border:1px solid var(--border-subtle);box-shadow:var(--shadow-soft);transition:transform .35s var(--ease-spring)" style-hover="transform:translateY(-2px)">
+            <span style="width:34px;height:34px;border-radius:50%;background:var(--brand-grad);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 4px 10px -2px rgba(47,111,235,.5)"><span style="border-style:solid;border-width:6px 0 6px 10px;border-color:transparent transparent transparent #fff;margin-left:2px"></span></span>
+            Посмотреть как работает
+          </button>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:32px">
+          <div style="display:flex" data-avatars>
+            <sc-for list="{{ heroAvatars }}" as="c" hint-placeholder-count="4">
+              <span style="width:38px;height:38px;border-radius:50%;background:{{ c.g }};border:2.5px solid var(--bg-app);margin-left:-11px;box-shadow:var(--shadow-soft)"></span>
+            </sc-for>
+          </div>
+          <span style="font-size:15px;color:var(--text-secondary);font-weight:500"><strong style="color:var(--text-primary)">50 000+</strong> пользователей уже экономят</span>
+        </div>
+      </div>
+
+      <!-- PHONE STAGE -->
+      <div ref="{{ stageRef }}" style="position:relative;display:flex;align-items:center;justify-content:center;min-height:560px;perspective:1400px;cursor:grab;touch-action:none">
+        <div ref="{{ phoneWrapRef }}" style="position:relative;transform-style:preserve-3d">
+          <div ref="{{ phoneRef }}" style="position:relative;width:300px;height:616px;transform-style:preserve-3d;transform:rotateX(6deg) rotateY(-22deg)">
+            <!-- back -->
+            <div style="position:absolute;inset:0;border-radius:44px;transform:translateZ(-13px) rotateY(180deg);backface-visibility:hidden;background:radial-gradient(140% 100% at 30% 8%,#ffbe7d,transparent 55%),linear-gradient(150deg,#f0994f,#dd7a30 52%,#c26320);box-shadow:inset 0 0 40px rgba(120,55,10,.4),inset 0 1px 0 rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;color:rgba(120,55,10,.55);font-weight:800;font-size:60px;letter-spacing:-.03em">
+              <div style="position:absolute;top:20px;left:20px;width:122px;height:122px;border-radius:28px;background:radial-gradient(120% 90% at 30% 15%,#f2a862,#d9772e 70%);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -2px 6px rgba(90,40,5,.3),0 5px 12px rgba(90,40,5,.4)">
+                <div style="position:absolute;top:15px;left:15px;width:42px;height:42px;border-radius:50%;background:radial-gradient(circle at 36% 30%,#3c4657,#141b26 52%,#070b12);box-shadow:0 0 0 4px rgba(120,55,10,.35),inset 0 0 0 3px rgba(150,162,180,.5),inset 0 -2px 4px rgba(0,0,0,.6)"><span style="position:absolute;top:22%;left:26%;width:22%;height:22%;border-radius:50%;background:rgba(200,215,235,.6);filter:blur(1px)"></span></div>
+                <div style="position:absolute;bottom:15px;left:15px;width:42px;height:42px;border-radius:50%;background:radial-gradient(circle at 36% 30%,#3c4657,#141b26 52%,#070b12);box-shadow:0 0 0 4px rgba(120,55,10,.35),inset 0 0 0 3px rgba(150,162,180,.5),inset 0 -2px 4px rgba(0,0,0,.6)"><span style="position:absolute;top:22%;left:26%;width:22%;height:22%;border-radius:50%;background:rgba(200,215,235,.6);filter:blur(1px)"></span></div>
+                <div style="position:absolute;top:50%;right:16px;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 36% 30%,#3c4657,#141b26 52%,#070b12);box-shadow:0 0 0 4px rgba(120,55,10,.35),inset 0 0 0 3px rgba(150,162,180,.5),inset 0 -2px 4px rgba(0,0,0,.6)"><span style="position:absolute;top:22%;left:26%;width:22%;height:22%;border-radius:50%;background:rgba(200,215,235,.6);filter:blur(1px)"></span></div>
+                <div style="position:absolute;top:14px;right:16px;width:15px;height:15px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fffdf2,#e9d79a 70%);box-shadow:0 0 6px rgba(255,250,220,.6)"></div>
+                <div style="position:absolute;top:44px;right:22px;width:7px;height:7px;border-radius:50%;background:#0c1119;box-shadow:inset 0 1px 1px rgba(255,255,255,.15)"></div>
+              </div>
+            </div>
+            <!-- edge -->
+            <div style="position:absolute;inset:-3px;border-radius:47px;background:linear-gradient(160deg,#ffca8a,#d1732e 30%,#a8531c 50%,#d1732e 70%,#ffca8a);transform:translateZ(-1px)"></div>
+            <!-- front -->
+            <div style="position:absolute;inset:0;border-radius:44px;padding:7px;background:linear-gradient(160deg,#f0994f,#a8531c 50%,#dd7a30);transform:translateZ(13px);box-shadow:var(--shadow-pop),0 1px 0 rgba(255,255,255,.35) inset">
+              <div ref="{{ screenRef }}" style="position:relative;width:100%;height:100%;border-radius:37px;overflow:hidden;background:#000;touch-action:pan-y;container-type:inline-size">
+                <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:88px;height:26px;border-radius:999px;background:#000;z-index:5"></div>
+                <div style="position:absolute;inset:0;background:radial-gradient(130% 80% at 50% 0%,#4a7ee0,#1a3b8f 55%,#241a5c);padding:42px 16px 12px;display:flex;flex-direction:column;transition:transform .5s var(--ease-out),opacity .45s var(--ease-out);transform:scale({{ homeScale }});opacity:{{ homeOpacity }};pointer-events:{{ homePE }}">
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:0 8px 12px;color:#fff;font-size:13px;font-weight:700">
+                    <span data-clock="12">9:41</span>
+                    <span style="display:flex;gap:5px;align-items:center;font-size:11px;font-weight:600">Sarfkor OS</span>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px 10px;flex:1;align-content:start">
+                    <sc-for list="{{ homeApps }}" as="a" hint-placeholder-count="16">
+                      <button data-app="{{ a.id }}" onClick="{{ openAppFn }}" style="border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;font-family:inherit">
+                        <span style="width:100%;aspect-ratio:1;border-radius:14px;background:{{ a.g }};box-shadow:0 3px 8px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.3) inset;display:flex;align-items:center;justify-content:center;color:{{ a.gc }};{{ a.ring }}">{{ a.glyph }}</span>
+                        <span style="font-size:9px;color:#fff;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,.4);white-space:nowrap">{{ a.label }}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;gap:14px;justify-content:center;padding:11px 14px;border-radius:26px;background:rgba(255,255,255,.16);backdrop-filter:blur(12px);margin-top:8px">
+                    <sc-for list="{{ dockApps }}" as="d" hint-placeholder-count="4">
+                      <button data-app="{{ d.id }}" onClick="{{ openAppFn }}" style="border:0;padding:0;cursor:pointer;width:46px;height:46px;border-radius:12px;background:{{ d.g }};box-shadow:0 2px 6px rgba(0,0,0,.3),0 1px 0 rgba(255,255,255,.25) inset;display:flex;align-items:center;justify-content:center;color:#fff">{{ d.glyph }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="position:absolute;inset:0;background:#000;transition:transform .5s var(--ease-out),opacity .4s var(--ease-out);transform:scale({{ appScale }});opacity:{{ appOpacity }};pointer-events:{{ appPE }};display:flex;flex-direction:column">
+                  <div style="flex:1;min-height:0;position:relative;overflow:hidden">{{ appContent }}</div>
+                  <div onClick="{{ closeAppFn }}" style="position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:118px;height:5px;border-radius:999px;background:rgba(90,95,110,.55);cursor:pointer;z-index:20"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div ref="{{ hintRef }}" style="position:absolute;bottom:22px;right:8px;display:flex;align-items:center;gap:8px;padding:9px 15px;border-radius:999px;background:var(--bg-card);border:1px solid var(--border-subtle);box-shadow:var(--shadow-lift);font-size:13px;font-weight:600;color:var(--text-secondary);pointer-events:none;transition:opacity .6s">
+          <span style="font-size:15px">↔</span>Крути телефон · тапни приложение
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS (scroll-driven) ============ -->
+  <section id="how-it-works" ref="{{ hiwRef }}" style="position:relative;height:500vh">
+    <div style="position:sticky;top:0;height:100vh;overflow:hidden;display:flex">
+      <div data-ghost style="position:absolute;left:-2%;top:50%;transform:translateY(-50%);font-size:clamp(160px,32vw,420px);font-weight:800;line-height:.8;letter-spacing:-.06em;color:color-mix(in srgb,var(--brand) 8%,transparent);pointer-events:none;z-index:0">01</div>
+      <div data-hiw-title style="position:absolute;top:clamp(72px,11vh,104px);left:0;right:0;text-align:center;pointer-events:none;z-index:21;transition:opacity .15s linear">
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--brand);margin-bottom:12px">Как это работает</div>
+        <h2 style="font-size:clamp(28px,3.6vw,52px);font-weight:800;letter-spacing:-.03em;margin:0;color:var(--text-primary)">Всего 4 шага до выгоды</h2>
+      </div>
+      <div style="position:relative;width:100%;max-width:1200px;margin:0 auto;padding:0 32px;z-index:1">
+        <sc-for list="{{ steps }}" as="st" hint-placeholder-count="4">
+          <div data-scene style="position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:40px;height:100vh;padding:0 32px;will-change:transform,opacity">
+            <div style="{{ st.textOrder }}">
+              <div style="display:inline-block;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:{{ st.tagBg }};color:{{ st.accent }};margin-bottom:22px">{{ st.tag }}</div>
+              <h3 style="font-size:clamp(30px,3.4vw,46px);font-weight:800;letter-spacing:-.03em;margin:0 0 18px">{{ st.title }}</h3>
+              <p style="font-size:19px;line-height:1.55;color:var(--text-secondary);max-width:420px;margin:0 0 26px;text-wrap:pretty">{{ st.description }}</p>
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <sc-for list="{{ st.feats }}" as="f" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:12px;font-size:16px;font-weight:600">
+                    <span style="width:26px;height:26px;border-radius:8px;background:{{ st.tagBg }};color:{{ st.accent }};display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:800">✓</span>{{ f }}
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center;position:relative;{{ st.phoneOrder }}">
+              <div style="position:absolute;bottom:8%;width:64%;height:40px;background:{{ st.accent }};opacity:.16;filter:blur(30px);border-radius:50%"></div>
+              <div data-hiw-phone style="width:250px;height:512px;border-radius:40px;padding:6px;background:linear-gradient(160deg,#43474e,#1a1c20 50%,#33363c);box-shadow:var(--shadow-pop);transform-style:preserve-3d">
+                <div style="width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--bg-app);position:relative">{{ st.screen }}</div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="position:absolute;bottom:44px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:3" data-dots>
+        <sc-for list="{{ steps }}" as="st" hint-placeholder-count="4">
+          <div data-dot style="height:8px;width:44px;border-radius:999px;background:var(--border-strong);transition:all .4s var(--ease-out)"></div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATS ============ -->
+  <section id="stats" style="padding:96px 24px">
+    <div ref="{{ statsRef }}" style="margin:0 auto;max-width:1200px;position:relative;border-radius:32px;padding:52px 44px;background:linear-gradient(160deg,#141a2e,#0b0f19 70%);box-shadow:var(--shadow-lift),0 1px 0 rgba(255,255,255,.06) inset;overflow:hidden">
+      <div style="position:absolute;top:-40%;right:-5%;width:45%;height:120%;background:var(--brand-grad-soft);filter:blur(70px);opacity:.5"></div>
+      <div style="position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:28px" data-stats-grid>
+        <sc-for list="{{ statsData }}" as="s" hint-placeholder-count="4">
+          <div>
+            <div style="width:50px;height:50px;border-radius:15px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;color:#fff;margin-bottom:18px;box-shadow:0 1px 0 rgba(255,255,255,.12) inset">{{ s.icon }}</div>
+            <div data-stat data-target="{{ s.value }}" data-decimals="{{ s.decimals }}" data-suffix="{{ s.suffix }}" style="font-size:clamp(30px,3.2vw,40px);font-weight:800;letter-spacing:-.03em;color:#fff;font-variant-numeric:tabular-nums">0{{ s.suffix }}</div>
+            <div style="font-size:15px;color:rgba(255,255,255,.5);margin-top:6px;font-weight:500">{{ s.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STORES MAP ============ -->
+  <section id="stores" style="padding:96px 24px">
+    <div style="margin:0 auto;max-width:1200px;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center" data-stores-grid>
+      <div>
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--brand);margin-bottom:16px">Магазины рядом с вами</div>
+        <h2 style="font-size:clamp(32px,4vw,48px);font-weight:800;letter-spacing:-.03em;line-height:1.05;margin:0 0 22px">Тысячи магазинов<br>по всему Таджикистану</h2>
+        <p style="font-size:18px;line-height:1.6;color:var(--text-secondary);max-width:440px;text-wrap:pretty">Находи товары по лучшей цене поблизости и строй маршрут в один тап. Карта показывает актуальные предложения в реальном времени.</p>
+      </div>
+      <div style="position:relative;aspect-ratio:4/3.2;border-radius:32px;overflow:hidden;background:var(--bg-section);border:1px solid var(--border-subtle);box-shadow:var(--shadow-lift)">
+        <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 83px,var(--border-subtle) 83px,var(--border-subtle) 84px),repeating-linear-gradient(90deg,transparent,transparent 63px,var(--border-subtle) 63px,var(--border-subtle) 64px);opacity:.7"></div>
+        <div style="position:absolute;top:12%;left:14%;width:26%;height:22%;border-radius:12px;background:var(--bg-card);opacity:.6"></div>
+        <div style="position:absolute;top:52%;left:50%;width:34%;height:30%;border-radius:12px;background:var(--bg-card);opacity:.6"></div>
+        <div style="position:absolute;top:24%;left:62%;width:22%;height:26%;border-radius:12px;background:var(--bg-card);opacity:.6"></div>
+        <sc-for list="{{ pins }}" as="p" hint-placeholder-count="5">
+          <button data-index="{{ p.i }}" onClick="{{ pinClick }}" style="position:absolute;top:{{ p.top }};left:{{ p.left }};transform:translate(-50%,-100%);border:0;background:none;cursor:pointer;z-index:{{ p.z }}">
+            <span style="position:absolute;top:6px;left:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;background:var(--brand);display:{{ p.ringDisplay }};animation:sk-pulse-ring 2.4s cubic-bezier(.4,0,.6,1) infinite"></span>
+            <span style="position:relative;display:block;width:{{ p.size }};height:{{ p.size }};color:{{ p.color }};filter:drop-shadow(0 4px 6px rgba(11,15,25,.25));transition:all .3s var(--ease-spring)">
+              <svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor"><path d="M12 2C7.6 2 4 5.6 4 10c0 5.4 8 12 8 12s8-6.6 8-12c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg>
+            </span>
+          </button>
+        </sc-for>
+        <div data-popup style="position:absolute;top:{{ popup.top }};left:{{ popup.left }};width:220px;border-radius:18px;background:var(--bg-card);border:1px solid var(--border-subtle);box-shadow:var(--shadow-pop);padding:16px;transform-origin:top left;transition:opacity .3s var(--ease-out),transform .3s var(--ease-spring);opacity:{{ popup.opacity }};transform:scale({{ popup.scale }});pointer-events:{{ popup.pe }};z-index:20">
+          <button onClick="{{ closePopup }}" style="position:absolute;top:10px;right:10px;border:0;background:var(--bg-section);width:22px;height:22px;border-radius:50%;color:var(--text-secondary);cursor:pointer;font-size:13px">✕</button>
+          <div style="font-size:16px;font-weight:700;letter-spacing:-.01em">{{ popup.name }}</div>
+          <div style="font-size:13px;color:var(--text-secondary);margin:3px 0 12px">{{ popup.address }}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:600"><span style="color:#f5a623">★</span>{{ popup.rating }}</span>
+            <span style="font-size:14px;font-weight:700;color:var(--brand)">{{ popup.distance }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TESTIMONIALS ============ -->
+  <section id="testimonials" style="padding:96px 24px">
+    <div style="margin:0 auto;max-width:1200px">
+      <div style="text-align:center;margin-bottom:52px">
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--brand);margin-bottom:16px">Отзывы</div>
+        <h2 style="font-size:clamp(32px,4vw,48px);font-weight:800;letter-spacing:-.03em;margin:0">Реальные отзывы реальных людей</h2>
+      </div>
+      <div onMouseEnter="{{ pauseCarousel }}" onMouseLeave="{{ resumeCarousel }}" style="position:relative">
+        <button onClick="{{ prevSlide }}" style="position:absolute;left:-8px;top:50%;transform:translate(-50%,-50%);z-index:5;width:48px;height:48px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);box-shadow:var(--shadow-lift);cursor:pointer;font-size:18px;color:var(--text-primary);transition:transform .3s var(--ease-spring)" style-hover="transform:translate(-50%,-50%) scale(1.08)">‹</button>
+        <button onClick="{{ nextSlide }}" style="position:absolute;right:-8px;top:50%;transform:translate(50%,-50%);z-index:5;width:48px;height:48px;border-radius:50%;border:1px solid var(--border-subtle);background:var(--bg-card);box-shadow:var(--shadow-lift);cursor:pointer;font-size:18px;color:var(--text-primary);transition:transform .3s var(--ease-spring)" style-hover="transform:translate(50%,-50%) scale(1.08)">›</button>
+        <div style="overflow:hidden">
+          <div ref="{{ trackRef }}" style="display:flex;transition:transform .6s var(--ease-out)">
+            <sc-for list="{{ testimonials }}" as="t" hint-placeholder-count="6">
+              <div style="flex:0 0 33.333%;padding:0 12px" data-tcard>
+                <div style="height:100%;border-radius:24px;background:var(--bg-card);border:1px solid var(--border-subtle);box-shadow:var(--shadow-soft),0 1px 0 var(--hairline) inset;padding:28px">
+                  <div style="display:flex;align-items:center;gap:13px;margin-bottom:16px">
+                    <span style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,{{ t.color }},{{ t.color2 }});display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;box-shadow:0 1px 0 rgba(255,255,255,.3) inset">{{ t.initial }}</span>
+                    <div>
+                      <div style="font-size:15px;font-weight:700">{{ t.name }}</div>
+                      <div style="color:#f5a623;font-size:13px;letter-spacing:2px">★★★★★</div>
+                    </div>
+                  </div>
+                  <p style="font-size:15px;line-height:1.6;color:var(--text-secondary);margin:0;text-wrap:pretty">{{ t.text }}</p>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:36px" data-tdots>
+          <sc-for list="{{ testDots }}" as="d" hint-placeholder-count="4">
+            <button data-index="{{ d.i }}" onClick="{{ dotClick }}" style="height:8px;width:{{ d.w }};border-radius:999px;border:0;background:{{ d.bg }};cursor:pointer;transition:all .4s var(--ease-out)"></button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section id="faq" style="padding:96px 24px">
+    <div style="margin:0 auto;max-width:1200px;display:grid;grid-template-columns:.85fr 1.15fr;gap:56px;align-items:start" data-faq-grid>
+      <div>
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--brand);margin-bottom:16px">Частые вопросы</div>
+        <h2 style="font-size:clamp(32px,4vw,48px);font-weight:800;letter-spacing:-.03em;line-height:1.05;margin:0 0 40px">Ответы на вопросы</h2>
+        <div style="position:relative;height:200px" data-faq-deco>
+          <div style="--r:-8deg;position:absolute;top:10px;left:10px;width:120px;height:120px;border-radius:28px;background:var(--brand-grad);box-shadow:var(--shadow-lift);display:flex;align-items:center;justify-content:center;color:#fff;font-size:64px;font-weight:800;letter-spacing:-.03em;animation:sk-float 6s ease-in-out infinite">S</div>
+          <div style="--r:10deg;position:absolute;top:60px;left:120px;width:110px;height:110px;border-radius:26px;background:var(--bg-card);border:1px solid var(--border-subtle);box-shadow:var(--shadow-lift);display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800;color:var(--brand);animation:sk-float 6s ease-in-out infinite 1.2s">?</div>
+        </div>
+      </div>
+      <div style="border-radius:28px;background:var(--bg-card);border:1px solid var(--border-subtle);box-shadow:var(--shadow-soft),0 1px 0 var(--hairline) inset;overflow:hidden">
+        <sc-for list="{{ faqs }}" as="q" hint-placeholder-count="4">
+          <div style="border-bottom:{{ q.border }}">
+            <button data-index="{{ q.i }}" onClick="{{ faqClick }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 28px;border:0;background:none;cursor:pointer;text-align:left;font-family:inherit">
+              <span style="font-size:18px;font-weight:{{ q.weight }};color:var(--text-primary);letter-spacing:-.01em">{{ q.question }}</span>
+              <span style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:{{ q.chevBg }};color:{{ q.chevColor }};display:flex;align-items:center;justify-content:center;transition:transform .3s var(--ease-out);transform:rotate({{ q.rotate }});box-shadow:{{ q.chevShadow }}">⌄</span>
+            </button>
+            <div style="display:grid;grid-template-rows:{{ q.rows }};transition:grid-template-rows .35s var(--ease-out)">
+              <div style="overflow:hidden">
+                <p style="margin:0;padding:0 28px 26px;font-size:16px;line-height:1.6;color:var(--text-secondary);text-wrap:pretty">{{ q.answer }}</p>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer style="position:relative;margin-top:60px;background:linear-gradient(135deg,#0e1424,#0b1020);color:#fff;padding:120px 24px 40px;overflow:visible">
+    <div style="position:absolute;top:0;left:50%;transform:translate(-50%,-48%) rotateX(20deg) rotateZ(-8deg);width:118px;height:118px;border-radius:30px;background:var(--brand-grad);box-shadow:0 30px 60px -20px rgba(47,111,235,.7),0 1px 0 rgba(255,255,255,.5) inset;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:52px;letter-spacing:-.03em">S</div>
+    <div style="max-width:1200px;margin:0 auto;text-align:center">
+      <h2 style="font-size:clamp(32px,4.5vw,56px);font-weight:800;letter-spacing:-.03em;line-height:1.05;margin:0 0 20px">Начни экономить<br>уже сегодня</h2>
+      <p style="font-size:19px;color:rgba(255,255,255,.6);margin:0 0 36px;text-wrap:pretty">Скачивай Sarfkor и покупай умнее каждый день.</p>
+      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+        <button onClick="{{ openModal }}" style="border:0;font-family:inherit;background:linear-gradient(180deg,#fff,#e9ecf3);color:#0b0f19;padding:15px 30px;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,var(--shadow-lift);transition:transform .35s var(--ease-spring)" style-hover="transform:translateY(-2px) scale(1.02)">Попробовать бесплатно</button>
+        <button onClick="{{ scrollFaq }}" style="border:1px solid rgba(255,255,255,.22);font-family:inherit;background:rgba(255,255,255,.04);color:#fff;padding:15px 30px;border-radius:16px;font-size:16px;font-weight:600;cursor:pointer;transition:all .35s var(--ease-spring)" style-hover="background:rgba(255,255,255,.1)">Стать партнёром</button>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,.1);margin-top:72px;padding-top:28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px" data-foot-row>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:28px;height:28px;border-radius:9px;background:var(--brand-grad);box-shadow:0 1px 0 rgba(255,255,255,.4) inset;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;letter-spacing:-.02em">S</div>
+          <span style="font-weight:700;font-size:16px">Sarfkor</span>
+        </div>
+        <div style="display:flex;gap:28px">
+          <sc-for list="{{ footerLinks }}" as="l" hint-placeholder-count="3">
+            <span onClick="{{ footerNav }}" data-target="{{ l.id }}" style="font-size:14px;color:rgba(255,255,255,.6);cursor:pointer;transition:color .25s">{{ l.label }}</span>
+          </sc-for>
+        </div>
+        <span style="font-size:14px;color:rgba(255,255,255,.4)">© 2026 Sarfkor. Таджикистан</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ============ MODAL ============ -->
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeModal }}" style="position:fixed;inset:0;z-index:100;background:rgba(11,15,25,.5);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px">
+      <div onClick="{{ stop }}" style="width:100%;max-width:420px;border-radius:28px;background:var(--bg-card);border:1px solid var(--border-subtle);box-shadow:var(--shadow-pop),0 1px 0 var(--hairline) inset;padding:40px 34px;text-align:center;animation:sk-modal .4s var(--ease-spring)">
+        <div style="width:64px;height:64px;border-radius:20px;background:var(--brand-grad);margin:0 auto 22px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 10px 24px -6px rgba(47,111,235,.5)">
+          <div style="width:28px;height:28px;border-radius:9px;background:#fff"></div>
+        </div>
+        <h3 style="font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0 0 12px">Sarfkor уже рядом</h3>
+        <p style="font-size:16px;line-height:1.55;color:var(--text-secondary);margin:0 0 26px;text-wrap:pretty">Скоро в App Store и Google Play. Пока посмотри, как это работает.</p>
+        <button onClick="{{ scrollHiw }}" style="width:100%;border:0;font-family:inherit;background:var(--btn-dark-grad);color:var(--bg-app);padding:15px;border-radius:14px;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 1px 0 rgba(255,255,255,.16) inset,var(--shadow-soft)">Посмотреть как это работает</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme:'light', page:0, modalOpen:false, activeStore:'evar', tIndex:0, faqOpen:2, perPage:3,
+    openApp:null, notesText:'Список покупок:\n• Молоко «Домик в деревне»\n• Хлеб бородинский\n• Яйца C1', settings:{wifi:true,bt:false,air:false,dark:true}, calc:{disp:'0',prev:null,op:null,fresh:true} };
+
+  rootRef=React.createRef(); headerRef=React.createRef(); stageRef=React.createRef();
+  phoneWrapRef=React.createRef(); phoneRef=React.createRef(); screenRef=React.createRef();
+  pagesRef=React.createRef(); hintRef=React.createRef(); knobRef=React.createRef();
+  hiwRef=React.createRef(); statsRef=React.createRef(); trackRef=React.createRef();
+
+  PINS=[
+    {id:'evar',name:'Ёвар',address:'ул. Рудаки, 123',rating:4.8,distance:'320 м',top:'46%',left:'68%'},
+    {id:'ashan',name:'Ашан',address:'ул. Айни, 45',rating:4.5,distance:'650 м',top:'22%',left:'30%'},
+    {id:'aminot',name:'Аминот',address:'ул. Сино, 12',rating:4.6,distance:'910 м',top:'68%',left:'20%'},
+    {id:'dehot',name:'Дехот',address:'ул. Бухоро, 8',rating:4.3,distance:'1.2 км',top:'30%',left:'80%'},
+    {id:'somon',name:'Сомон',address:'ул. Фирдавси, 61',rating:4.7,distance:'1.4 км',top:'78%',left:'55%'},
+  ];
+  TESTS=[
+    {name:'Мария Т.',color:'#FF9F6B',text:'Отличное приложение! Экономлю каждый день на покупках для семьи. Очень удобно и быстро.'},
+    {name:'Сурдоб Х.',color:'#6BA4FF',text:'Теперь точно знаю где дешевле. Sarfkor стал моим помощником №1 в походах за продуктами.'},
+    {name:'Зарнигор А.',color:'#FF6B9A',text:'Функция сравнения чека просто супер! Уже несколько раз ловила расхождение с ценником.'},
+    {name:'Феруз М.',color:'#6BCB9E',text:'Экономит и деньги, и время. Рекомендую всем, кто хочет покупать умнее каждый день.'},
+    {name:'Далер Н.',color:'#FFC96B',text:'Использую перед каждым походом в магазин — экономия ощутима уже через месяц.'},
+    {name:'Нигина С.',color:'#B08BFF',text:'Простой и понятный интерфейс, супер быстро находит товар по штрихкоду.'},
+  ];
+  FAQS=[
+    {question:'Как работает сканирование?',answer:'Наведите камеру телефона на штрихкод товара — приложение мгновенно распознает его и покажет цены во всех ближайших магазинах.'},
+    {question:'Приложение бесплатное?',answer:'Да, Sarfkor полностью бесплатен для покупателей. Мы зарабатываем на партнёрских кабинетах для магазинов, а не на пользователях.'},
+    {question:'Как часто обновляются цены?',answer:'Цены обновляются в реальном времени: их вносят сами магазины-партнёры и подтверждают пользователи через систему репутации, поэтому данные остаются свежими каждый день.'},
+    {question:'Можно ли добавить свой магазин?',answer:'Конечно. Откройте партнёрский кабинет, добавьте магазин и загрузите цены — уже через несколько минут его увидят покупатели поблизости.'},
+  ];
+  STEPS=[
+    {tag:'Шаг 01',title:'Сканируй штрихкод',description:'Наведи камеру на товар — Sarfkor мгновенно распознаёт штрихкод и находит товар в базе.',feats:['Работает даже при плохом свете','Распознавание за 0,3 секунды'],accent:'#2563eb'},
+    {tag:'Шаг 02',title:'Получи информацию',description:'Мы находим товар в базе и показываем полную карточку: состав, объём и цену за единицу.',feats:['Честная цена за 1л / 100г','История изменения цены'],accent:'#7c3aed'},
+    {tag:'Шаг 03',title:'Сравни цены',description:'Список всех магазинов рядом с ценами — от самой выгодной до самой дорогой.',feats:['Сортировка по расстоянию','Отметка «лучшая цена»'],accent:'#0891b2'},
+    {tag:'Шаг 04',title:'Экономь деньги',description:'Выбирай лучшее предложение и строй маршрут до магазина в один тап.',feats:['Маршрут в один тап','Учёт сэкономленного за месяц'],accent:'#12b76a'},
+  ];
+
+  componentDidMount(){
+    // font-face for keyframe used inline in modal
+    if(!document.getElementById('sk-modal-kf')){const s=document.createElement('style');s.id='sk-modal-kf';s.textContent='@keyframes sk-modal{from{opacity:0;transform:scale(.94) translateY(12px)}to{opacity:1;transform:none}}';document.head.appendChild(s);}
+    this.setupHeader();
+    this.setupPhone();
+    this.setupHiw();
+    this.setupStats();
+    this.perPageMedia();
+    this.carouselTimer=setInterval(()=>{if(!this.paused)this.advance(1);},5000);
+    this.clockTimer=setInterval(()=>this.updateClocks(),1000);this.updateClocks();
+  }
+  componentWillUnmount(){
+    cancelAnimationFrame(this._raf1);cancelAnimationFrame(this._raf2);
+    clearInterval(this.carouselTimer);clearInterval(this.clockTimer);
+    if(this._onScroll)window.removeEventListener('scroll',this._onScroll);
+    if(this._onResize)window.removeEventListener('resize',this._onResize);
+  }
+
+  /* ---------- HEADER ---------- */
+  setupHeader(){
+    this._onScroll=()=>{const h=this.headerRef.current;if(!h)return;
+      if(window.scrollY>8){h.style.background='color-mix(in srgb,var(--bg-app) 80%,transparent)';h.style.backdropFilter='blur(18px)';h.style.boxShadow='0 1px 0 var(--border-subtle)';}
+      else{h.style.background='transparent';h.style.backdropFilter='none';h.style.boxShadow='none';}
+    };
+    window.addEventListener('scroll',this._onScroll,{passive:true});this._onScroll();
+  }
+
+  /* ---------- PHONE ---------- */
+  setupPhone(){
+    const stage=this.stageRef.current,phone=this.phoneRef.current,wrap=this.phoneWrapRef.current,screen=this.screenRef.current,pages=this.pagesRef.current;
+    if(!stage||!phone)return;
+    let rotY=-22,rotX=6,velY=0,velX=0,dragging=false,lastX=0,lastY=0,t=0,mx=0,my=0;
+    const self=this;
+    stage.addEventListener('pointerdown',e=>{if(screen&&screen.contains(e.target))return;dragging=true;lastX=e.clientX;lastY=e.clientY;stage.style.cursor='grabbing';self.markInteract();});
+    window.addEventListener('pointermove',e=>{
+      const r=stage.getBoundingClientRect();mx=(e.clientX-r.left)/r.width-.5;my=(e.clientY-r.top)/r.height-.5;
+      if(!dragging)return;const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;
+      rotY+=dx*0.4;rotX=Math.max(-32,Math.min(32,rotX-dy*0.26));velY=dx*0.4;velX=-dy*0.26;
+    });
+    window.addEventListener('pointerup',()=>{dragging=false;stage.style.cursor='grab';});
+    let visible=true;const io=new IntersectionObserver(([en])=>{visible=en.isIntersecting;if(visible)loop();},{rootMargin:'50% 0px'});io.observe(stage);
+    const loop=()=>{if(!visible)return;t+=0.009;
+      if(!dragging){rotY+=velY;rotX+=velX;velY*=0.94;velX*=0.94;
+        if(Math.abs(velY)<0.05&&Math.abs(velX)<0.05){
+          const tgtY=self.interacted?(-22+Math.sin(t*0.5)*12+mx*10):(-22+Math.sin(t*0.5)*15);
+          const tgtX=self.interacted?(6+Math.cos(t*0.4)*4-my*8):(6+Math.cos(t*0.4)*4);
+          rotY+=(tgtY-rotY)*0.03;rotX+=(tgtX-rotX)*0.03;
+        }
+      }
+      phone.style.transform=`rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+      if(wrap)wrap.style.transform=`translateY(${Math.sin(t*0.8)*8}px)`;
+      self._raf1=requestAnimationFrame(loop);
+    };loop();
+  }
+  markInteract(){if(this.interacted)return;this.interacted=true;if(this.hintRef.current)this.hintRef.current.style.opacity='0';}
+  setPage(p){this.setState({page:p});if(this.pagesRef.current)this.pagesRef.current.style.transform=`translateX(${p?-50:0}%)`;}
+
+  /* ---------- HOW IT WORKS ---------- */
+  setupHiw(){
+    const sec=this.hiwRef.current;if(!sec)return;
+    const scenes=[...sec.querySelectorAll('[data-scene]')];
+    const phones=scenes.map(s=>s.querySelector('[data-hiw-phone]'));
+    const texts=scenes.map(s=>s.children[0]);
+    const dots=[...sec.querySelectorAll('[data-dot]')];
+    const ghost=sec.querySelector('[data-ghost]');
+    const title=sec.querySelector('[data-hiw-title]');
+    const N=4;let cur=0,visible=false,last=0;
+    const clamp01=v=>Math.max(0,Math.min(1,v));
+    const smooth=(a,b,x)=>{const t=clamp01((x-a)/(b-a));return t*t*(3-2*t);};
+    scenes.forEach(sc=>{sc.style.willChange='transform,opacity,filter';sc.style.backfaceVisibility='hidden';});
+    const io=new IntersectionObserver(([en])=>{visible=en.isIntersecting;if(visible){last=performance.now();loop();}},{rootMargin:'50% 0px'});io.observe(sec);
+    const loop=()=>{if(!visible)return;
+      const now=performance.now();const dt=Math.min(0.05,(now-last)/1000);last=now;
+      const rect=sec.getBoundingClientRect();
+      const target=clamp01(-rect.top/(sec.offsetHeight-window.innerHeight));
+      cur+=(target-cur)*(1-Math.exp(-dt/0.045));const seg=cur*N;
+      if(title)title.style.opacity=(1-smooth(0.05,0.85,seg)).toFixed(3);
+      const ghostI=Math.max(0,Math.min(N-1,Math.round(seg)));
+      if(ghost){ghost.textContent='0'+(ghostI+1);ghost.style.color=`color-mix(in srgb,${this.STEPS[ghostI].accent} 8%,transparent)`;
+        ghost.style.transform=`translateY(calc(-50% + ${(seg-ghostI)*-40}px))`;}
+      scenes.forEach((sc,i)=>{
+        const d=seg-i;const ad=Math.abs(d);
+        const op=1-smooth(0.2,1,ad);
+        sc.style.opacity=op;
+        sc.style.transform='none';
+        sc.style.filter=op>0.99?'none':`blur(${Math.min(ad*5,7).toFixed(2)}px)`;
+        sc.style.pointerEvents=op>0.6?'auto':'none';sc.style.zIndex=Math.round(op*10);
+        const tx=texts[i];if(tx)tx.style.transform=`translateX(${d*260}px)`;
+        const ph=phones[i];if(ph){const ry=Math.max(-90,Math.min(90,-d*82));ph.style.transform=`perspective(1200px) translateX(${-d*300}px) rotateY(${ry}deg) rotateX(3deg) scale(${0.92+0.08*op})`;}
+      });
+      const activeI=Math.max(0,Math.min(N-1,Math.round(seg)));
+      dots.forEach((dd,i)=>{const on=i===activeI;dd.style.width=on?'54px':'44px';dd.style.background=on?this.STEPS[activeI].accent:'var(--border-strong)';dd.style.opacity=on?'1':'.5';});
+      this._raf2=requestAnimationFrame(loop);
+    };loop();
+  }
+
+  /* ---------- STATS ---------- */
+  setupStats(){
+    const el=this.statsRef.current;if(!el)return;
+    const io=new IntersectionObserver(([en])=>{if(en.isIntersecting){this.runCount();io.disconnect();}},{rootMargin:'-10% 0px'});io.observe(el);
+  }
+  runCount(){
+    const nodes=[...this.statsRef.current.querySelectorAll('[data-stat]')];const dur=1600,start=performance.now();
+    const fmt=(v,dec)=>{const f=v.toFixed(dec);if(dec>0)return f;return Math.round(v).toLocaleString('ru-RU').replace(/,/g,' ');};
+    const step=now=>{const p=Math.min(1,(now-start)/dur);const e=1-Math.pow(1-p,3);
+      nodes.forEach(n=>{const tgt=parseFloat(n.dataset.target),dec=parseInt(n.dataset.decimals)||0,suf=n.dataset.suffix||'';n.textContent=fmt(tgt*e,dec)+suf;});
+      if(p<1)requestAnimationFrame(step);};requestAnimationFrame(step);
+  }
+
+  /* ---------- CAROUSEL ---------- */
+  perPageMedia(){this._onResize=()=>{const w=window.innerWidth;const pp=w>=1024?3:w>=640?2:1;if(pp!==this.state.perPage){this.setState({perPage:pp,tIndex:0});}this.applyTrack(0,pp);};window.addEventListener('resize',this._onResize);this._onResize();}
+  pages(){return Math.max(1,Math.ceil(this.TESTS.length/this.state.perPage));}
+  applyTrack(i,pp){if(this.trackRef.current)this.trackRef.current.style.transform=`translateX(${-i*100}%)`;
+    [...(this.trackRef.current?.querySelectorAll('[data-tcard]')||[])].forEach(c=>{c.style.flex=`0 0 ${100/(pp||this.state.perPage)}%`;});}
+  advance(dir){const pg=this.pages();const ni=(this.state.tIndex+dir+pg)%pg;this.setState({tIndex:ni});this.applyTrack(ni);}
+
+  renderVals(){
+    const s=this.state,dark=s.theme==='dark';
+    const nav=[['Главная','hero'],['Возможности','how-it-works'],['Как это работает','stats'],['Магазины','stores'],['О нас','testimonials'],['Контакты','faq']];
+    const navItems=nav.map(([label,id],i)=>({i,label,bg:i===0?'var(--bg-section)':'transparent',color:i===0?'var(--text-primary)':'var(--text-secondary)',weight:i===0?'600':'500',shadow:i===0?'var(--shadow-soft)':'none'}));
+    const grads=['#FF9F6B','#6BCB9E','#6BA4FF','#FFC96B'];
+    const heroAvatars=grads.map(c=>({g:`linear-gradient(135deg,${c},${c}cc)`}));
+    const mkApp=(id,label,g,gc)=>({id,label,g,gc:gc||'#fff',glyph:this.appGlyph(id),ring:id==='sarfkor'?'box-shadow:0 3px 8px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.3) inset,0 0 0 2px rgba(255,255,255,.85)':''});
+    const homeApps=[
+      mkApp('facetime','FaceTime','linear-gradient(160deg,#34d158,#1a9c3f)'),
+      mkApp('photos','Фото','conic-gradient(from 210deg,#fdd835,#ff5252,#e040fb,#40c4ff,#69f0ae,#fdd835)','#2a2a2a'),
+      mkApp('camera','Камера','linear-gradient(160deg,#4a4a4f,#1c1c1e)'),
+      mkApp('calendar','Календарь','#ffffff','#ff3b30'),
+      mkApp('clock','Часы','linear-gradient(160deg,#2a2a2e,#000)'),
+      mkApp('weather','Погода','linear-gradient(160deg,#4aa3ff,#0a5cff)'),
+      mkApp('maps','Карты','linear-gradient(160deg,#9be08a,#3ea6ff)'),
+      mkApp('notes','Заметки','linear-gradient(160deg,#ffe58a,#ffc42c)','#8a6a00'),
+      mkApp('calc','Калькул.','linear-gradient(160deg,#2a2a2e,#0c0c0e)'),
+      mkApp('settings','Настройки','linear-gradient(160deg,#e6e8ee,#9aa0ab)','#4a4f5a'),
+      mkApp('appstore','App Store','linear-gradient(160deg,#33a0ff,#0060df)'),
+      mkApp('health','Здоровье','#ffffff','#fc2b56'),
+      mkApp('wallet','Кошелёк','linear-gradient(160deg,#3a3a3f,#0c0c0e)'),
+      mkApp('stocks','Акции','linear-gradient(160deg,#2a2a2e,#000)'),
+      mkApp('books','Книги','linear-gradient(160deg,#ff9f0a,#ff6200)'),
+      mkApp('sarfkor','Sarfkor','var(--brand-grad)'),
+    ];
+    const dockApps=[
+      mkApp('phone','','linear-gradient(160deg,#34d158,#1a9c3f)'),
+      mkApp('safari','','linear-gradient(160deg,#3aa9ff,#0a6cff)'),
+      mkApp('messages','','linear-gradient(160deg,#4be05a,#1fb84a)'),
+      mkApp('music','','linear-gradient(160deg,#fc4c6a,#f52d55)'),
+    ];
+    const openApp=s.openApp;
+    if(openApp)this._lastApp=openApp;
+    const shownApp=openApp||this._lastApp;
+    const appContent=shownApp?this.appScreen(shownApp):null;
+    const homeScale=openApp?'0.9':'1',homeOpacity=openApp?'0':'1',homePE=openApp?'none':'auto';
+    const appScale=openApp?'1':'1.08',appOpacity=openApp?'1':'0',appPE=openApp?'auto':'none';
+    const compareStores=[
+      {name:'Ёвар',price:'7.90',distance:'лучшая цена · 320м',color:'linear-gradient(135deg,#16a34a,#15803d)',best:true},
+      {name:'Ашан',price:'8.40',distance:'1.2 км',color:'linear-gradient(135deg,#f97316,#ea580c)'},
+      {name:'Амонат',price:'9.20',distance:'2.0 км',color:'linear-gradient(135deg,#3b82f6,#1d4ed8)'},
+    ].map(x=>({...x,border:x.best?'rgba(22,163,74,.4)':'var(--border-subtle)',shadow:x.best?'0 4px 14px -4px rgba(22,163,74,.4)':'var(--shadow-soft)',distColor:x.best?'#16a34a':'var(--text-tertiary)',distWeight:x.best?'700':'500'}));
+    const steps=this.STEPS.map((st,i)=>({...st,i,tagBg:`color-mix(in srgb,${st.accent} 13%,transparent)`,textOrder:'order:1',phoneOrder:'order:2',screen:this.stepScreen(i)}));
+    const statsData=[
+      {icon:this.statIcon('users'),value:'50000',decimals:0,suffix:'+',label:'Активных пользователей'},
+      {icon:this.statIcon('scan'),value:'1.2',decimals:1,suffix:'M+',label:'Сканирований товаров'},
+      {icon:this.statIcon('receipt'),value:'18.4',decimals:1,suffix:'M',label:'Сомони сэкономлено'},
+      {icon:this.statIcon('store'),value:'2500',decimals:0,suffix:'+',label:'Подключенных магазинов'},
+    ];
+    const pins=this.PINS.map((p,i)=>{const act=p.id===s.activeStore;return{...p,i,z:act?10:5,size:act?'34px':'28px',color:act?'var(--brand)':'var(--text-tertiary)',ringDisplay:act?'block':'none'};});
+    const ap=this.PINS.find(p=>p.id===s.activeStore);
+    const popup=ap?{name:ap.name,address:ap.address,rating:ap.rating,distance:ap.distance,top:`calc(${ap.top} - 8px)`,left:`min(${ap.left},62%)`,opacity:1,scale:'1',pe:'auto'}:{name:'',address:'',rating:'',distance:'',top:'0',left:'0',opacity:0,scale:'.9',pe:'none'};
+    const tColors={'#FF9F6B':'#ff7a3d','#6BA4FF':'#3d7aff','#FF6B9A':'#ff3d78','#6BCB9E':'#3dbb7e','#FFC96B':'#ffb43d','#B08BFF':'#8f5dff'};
+    const testimonials=this.TESTS.map(t=>({...t,color2:tColors[t.color]||t.color,initial:t.name[0]}));
+    const testDots=Array.from({length:this.pages()},(_, i)=>({i,w:i===s.tIndex?'26px':'8px',bg:i===s.tIndex?'var(--brand)':'var(--border-strong)'}));
+    const faqs=this.FAQS.map((q,i)=>{const open=i===s.faqOpen;return{...q,i,open,border:i<this.FAQS.length-1?'1px solid var(--border-subtle)':'none',weight:open?'700':'600',rows:open?'1fr':'0fr',rotate:open?'180deg':'0deg',chevBg:open?'var(--brand)':'var(--bg-section)',chevColor:open?'#fff':'var(--text-secondary)',chevShadow:open?'0 4px 10px -2px rgba(47,111,235,.5)':'none'};});
+    const footerLinks=[{id:'how-it-works',label:'Возможности'},{id:'stores',label:'Магазины'},{id:'faq',label:'Поддержка'}];
+
+    return {
+      themeClass:dark?'dark':'',rootRef:this.rootRef,headerRef:this.headerRef,stageRef:this.stageRef,
+      phoneWrapRef:this.phoneWrapRef,phoneRef:this.phoneRef,screenRef:this.screenRef,pagesRef:this.pagesRef,
+      hintRef:this.hintRef,knobRef:this.knobRef,hiwRef:this.hiwRef,statsRef:this.statsRef,trackRef:this.trackRef,
+      knobX:dark?'34px':'0px',isDark:dark,isLight:!dark,sunHintOp:dark?'.45':'0',moonHintOp:dark?'0':'.45',
+      navItems,heroAvatars,homeApps,dockApps,compareStores,steps,statsData,pins,popup,testimonials,testDots,faqs,footerLinks,
+      openApp,appContent,homeScale,homeOpacity,homePE,appScale,appOpacity,appPE,
+      openAppFn:e=>{this.setState({openApp:e.currentTarget.dataset.app});this.markInteract();},
+      closeAppFn:()=>{this.setState({openApp:null});clearTimeout(this._appClose);this._appClose=setTimeout(()=>{this._lastApp=null;this.forceUpdate();},520);},
+      calcPress:e=>this.calcPress(e.currentTarget.dataset.k),
+      notesInput:e=>this.setState({notesText:e.target.value}),
+      toggleSetting:e=>{const k=e.currentTarget.dataset.k;this.setState(p=>({settings:{...p.settings,[k]:!p.settings[k]}}));},
+      modalOpen:s.modalOpen,
+      toggleTheme:(e)=>{
+        const root=this.rootRef.current;const next=this.state.theme==='dark'?'light':'dark';
+        const apply=()=>{if(root)root.classList.toggle('dark',next==='dark');this.setState({theme:next});};
+        const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+        if(!document.startViewTransition||reduce){apply();return;}
+        const r=e&&e.currentTarget?e.currentTarget.getBoundingClientRect():null;
+        const x=r?r.left+r.width/2:window.innerWidth/2,y=r?r.top+r.height/2:window.innerHeight/2;
+        const rad=Math.hypot(Math.max(x,window.innerWidth-x),Math.max(y,window.innerHeight-y));
+        const de=document.documentElement;
+        de.style.setProperty('--sk-x',x+'px');de.style.setProperty('--sk-y',y+'px');de.style.setProperty('--sk-r',rad+'px');
+        de.classList.add('sk-wipe');
+        const vt=document.startViewTransition(()=>apply());
+        vt.finished.finally(()=>de.classList.remove('sk-wipe'));
+      },
+      goHome:()=>this.scrollTo('hero'),
+      navClick:e=>this.scrollTo(nav[+e.currentTarget.dataset.index][1]),
+      openModal:()=>this.setState({modalOpen:true}),
+      closeModal:()=>this.setState({modalOpen:false}),
+      stop:e=>e.stopPropagation(),
+      scrollHiw:()=>{this.setState({modalOpen:false});this.scrollTo('how-it-works');},
+      scrollFaq:()=>this.scrollTo('faq'),
+      pinClick:e=>{const id=this.PINS[+e.currentTarget.dataset.index].id;this.setState(p=>({activeStore:p.activeStore===id?null:id}));},
+      closePopup:()=>this.setState({activeStore:null}),
+      prevSlide:()=>this.advance(-1),nextSlide:()=>this.advance(1),
+      dotClick:e=>{const i=+e.currentTarget.dataset.index;this.setState({tIndex:i});this.applyTrack(i);},
+      pauseCarousel:()=>{this.paused=true;},resumeCarousel:()=>{this.paused=false;},
+      faqClick:e=>{const i=+e.currentTarget.dataset.index;this.setState(p=>({faqOpen:p.faqOpen===i?-1:i}));},
+      footerNav:e=>this.scrollTo(e.currentTarget.dataset.target),
+    };
+  }
+
+  scrollTo(id){const el=document.getElementById(id);if(el)window.scrollTo({top:el.getBoundingClientRect().top+window.scrollY-40,behavior:'smooth'});}
+
+  updateClocks(){
+    const n=new Date(),hh=n.getHours(),mm=String(n.getMinutes()).padStart(2,'0');
+    const t12=((hh%12)||12)+':'+mm;
+    document.querySelectorAll('[data-clock]').forEach(el=>{el.textContent=el.dataset.clock==='full'?String(hh).padStart(2,'0')+':'+mm:t12;});
+    document.querySelectorAll('[data-datefull]').forEach(el=>{el.textContent=n.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});});
+  }
+  calcOp(a,b,op){return op==='+'?a+b:op==='−'?a-b:op==='×'?a*b:op==='÷'?(b?a/b:0):b;}
+  calcPress(k){this.setState(p=>{let {disp,prev,op,fresh}=p.calc;const cur=parseFloat(disp)||0;
+    if(/[0-9]/.test(k)){disp=(fresh||disp==='0')?k:disp+k;fresh=false;}
+    else if(k==='.'){if(fresh){disp='0.';fresh=false;}else if(!disp.includes('.'))disp+='.';}
+    else if(k==='C'){disp='0';prev=null;op=null;fresh=true;}
+    else if(k==='±'){disp=String(cur*-1);}
+    else if(k==='%'){disp=String(cur/100);}
+    else if(k==='='){if(op&&prev!=null){disp=String(this.calcOp(prev,cur,op));op=null;prev=null;fresh=true;}}
+    else{if(op&&prev!=null&&!fresh){prev=this.calcOp(prev,cur,op);disp=String(prev);}else prev=cur;op=k;fresh=true;}
+    if(disp.replace('-','').replace('.','').length>9)disp=parseFloat(disp).toPrecision(7).replace(/\.?0+$/,'');
+    return {calc:{disp,prev,op,fresh}};});}
+
+  appGlyph(id){const R=React.createElement;
+    const s=(...k)=>R('svg',{width:26,height:26,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.9,strokeLinecap:'round',strokeLinejoin:'round'},...k);
+    const P=d=>R('path',{d});const C=(x,y,r,extra)=>R('circle',Object.assign({cx:x,cy:y,r},extra||{}));
+    const T=t=>R('text',{x:12,y:16.5,textAnchor:'middle',fontSize:14,fontWeight:800,fill:'currentColor',stroke:'none',fontFamily:'inherit'},t);
+    switch(id){
+      case 'facetime':return s(R('rect',{x:3,y:6,width:12,height:12,rx:3}),P('M15 10l6-3v10l-6-3z'));
+      case 'photos':return s(R('rect',{x:3.5,y:4.5,width:17,height:15,rx:3}),C(8,9,1.6),P('M4.5 17l4.5-4 3 2.5 3.5-4 4 4.5'));
+      case 'camera':return s(P('M4 8.5h3l1.4-2h7.2L18 8.5h2a1.5 1.5 0 011.5 1.5v7A1.5 1.5 0 0120 18.5H4A1.5 1.5 0 012.5 17V10A1.5 1.5 0 014 8.5z'),C(12,13,3.2));
+      case 'calendar':return s(R('rect',{x:4,y:5,width:16,height:15,rx:2.5}),P('M4 9.5h16M8 3.5v3M16 3.5v3'),C(12,14,.5,{fill:'currentColor'}));
+      case 'clock':return s(C(12,12,8.5),P('M12 7.5V12l3 2'));
+      case 'weather':return s(C(8.5,9,3),P('M8.5 2.5v1.5M3 9h1.5M13.5 9H15M4.8 5.3l1 1M12.2 5.3l-1 1'),P('M9 18.5h8a3 3 0 000-6 4 4 0 00-7.6 1'));
+      case 'maps':return s(P('M12 21s6.5-5.6 6.5-10.5a6.5 6.5 0 10-13 0C5.5 15.4 12 21 12 21z'),C(12,10.5,2.4));
+      case 'notes':return s(R('rect',{x:5,y:3.5,width:14,height:17,rx:2}),P('M8.5 8h7M8.5 12h7M8.5 16h4'));
+      case 'calc':return s(R('rect',{x:5,y:3.5,width:14,height:17,rx:2}),P('M8 8h8M8.5 12.5h1M12 12.5h1M15.5 12.5h1M8.5 16.5h1M12 16.5h1M15.5 16.5h1'));
+      case 'settings':return s(C(12,12,3),P('M12 3.5v2M12 18.5v2M4.7 7.5l1.7 1M17.6 15.5l1.7 1M4.7 16.5l1.7-1M17.6 8.5l1.7-1M3.5 12h2M18.5 12h2'));
+      case 'appstore':return s(C(12,12,8.7),T('A'));
+      case 'health':return s(P('M12 20s-7-4.7-7-9.6A3.9 3.9 0 0112 8a3.9 3.9 0 017 2.4C19 15.3 12 20 12 20z'));
+      case 'wallet':return s(R('rect',{x:3.5,y:6,width:17,height:12,rx:2.5}),P('M3.5 10h17M16 14h1.5'));
+      case 'stocks':return s(P('M4 16l4-4 3 2.5L20 7'),P('M20 11V7h-4'));
+      case 'books':return s(P('M12 6.5C10 5 6.5 5 5 5.5v12c1.5-.5 5-.5 7 1 2-1.5 5.5-1.5 7-1v-12c-1.5-.5-5-.5-7 1z'),P('M12 6.5V19'));
+      case 'sarfkor':return s(T('S'));
+      case 'phone':return s(P('M6.5 4.5c.5 3 2 6 4 8s5 3.5 8 4c.6.1 1-.3 1.2-.8l.6-2c.2-.6-.1-1.2-.7-1.4l-2.4-.8c-.5-.2-1 0-1.3.4l-.7.9c-1.8-.9-3.3-2.4-4.2-4.2l.9-.7c.4-.3.6-.8.4-1.3l-.8-2.4c-.2-.6-.8-.9-1.4-.7l-2 .6c-.5.2-.9.6-.8 1.2z'));
+      case 'safari':return s(C(12,12,8.7),P('M15.5 8.5l-2 5-5 2 2-5z'));
+      case 'messages':return s(P('M4 11.5c0-3.6 3.6-6.5 8-6.5s8 2.9 8 6.5-3.6 6.5-8 6.5c-1 0-2-.1-2.9-.4L5 19l1-3.2c-1.2-1.1-2-2.6-2-4.3z'));
+      case 'music':return s(P('M9 17.5V6l9-2v11.5'),C(6.5,17.5,2.5),C(15.5,15.5,2.5));
+      default:return s(C(12,12,8));
+    }
+  }
+
+  appScreen(id){
+    const R=React.createElement;
+    if(id==='sarfkor'){return R('div',{style:{position:'absolute',inset:0,background:'#fff',overflow:'hidden'}},R('iframe',{src:window.location.href,title:'Sarfkor',loading:'lazy',style:{position:'absolute',inset:0,width:'100%',height:'100%',border:0,background:'#fff'}}));}
+    const wrap=(bg,...kids)=>R('div',{style:{position:'absolute',inset:0,background:bg,display:'flex',flexDirection:'column',color:'#0b0f19',overflow:'hidden'}},...kids);
+    const status=(color)=>R('div',{style:{display:'flex',justifyContent:'space-between',padding:'12px 18px 4px',fontSize:'12px',fontWeight:700,color:color||'#0b0f19',flex:'0 0 auto'}},R('span',{'data-clock':'12'},'9:41'),R('span',null,'Sarfkor OS'));
+    const scroll=(...kids)=>R('div',{style:{flex:1,minHeight:0,overflowY:'auto',WebkitOverflowScrolling:'touch'}},...kids);
+
+    if(id==='sarfkor'){
+      const brandGrad='linear-gradient(135deg,#5a97ff,#1f56c9)';
+      const sec=(title,...k)=>R('div',{style:{padding:'18px 16px'}},R('div',{style:{fontSize:'11px',fontWeight:800,textTransform:'uppercase',letterSpacing:'.12em',color:'#2f6feb',marginBottom:'8px'}},title),...k);
+      return wrap('#fff',status('#0b0f19'),scroll(
+        R('div',{style:{padding:'20px 16px 22px',background:'radial-gradient(120% 80% at 80% 0%,rgba(90,151,255,.18),transparent 60%)'}},
+          R('div',{style:{fontSize:'26px',fontWeight:800,lineHeight:1.02,letterSpacing:'-.03em'}},'Сканируй.'),
+          R('div',{style:{fontSize:'26px',fontWeight:800,lineHeight:1.02,letterSpacing:'-.03em'}},'Сравнивай.'),
+          R('div',{style:{fontSize:'26px',fontWeight:800,lineHeight:1.02,letterSpacing:'-.03em',background:brandGrad,WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}},'Экономь.'),
+          R('div',{style:{marginTop:'10px',fontSize:'13px',color:'#5b6270',lineHeight:1.4}},'Цена товара во всех магазинах рядом за секунды.'),
+          R('div',{style:{marginTop:'14px',display:'inline-block',background:'linear-gradient(180deg,#1c2233,#0b0f19)',color:'#fff',padding:'11px 18px',borderRadius:'999px',fontSize:'13px',fontWeight:700}},'Попробовать бесплатно')),
+        R('div',{style:{margin:'0 12px',borderRadius:'20px',background:'linear-gradient(160deg,#141a2e,#0b0f19)',padding:'16px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'14px'}},
+          ...[['50 000+','пользователей'],['1.2M+','сканирований'],['18.4M','сомони'],['2 500+','магазинов']].map((x,i)=>R('div',{key:i},
+            R('div',{style:{fontSize:'20px',fontWeight:800,color:'#fff',letterSpacing:'-.02em'}},x[0]),
+            R('div',{style:{fontSize:'11px',color:'rgba(255,255,255,.5)'}},x[1])))),
+        sec('Как это работает',
+          ...[['01','Сканируй штрихкод','#2563eb'],['02','Получи информацию','#7c3aed'],['03','Сравни цены','#0891b2'],['04','Экономь деньги','#12b76a']].map((st,i)=>
+            R('div',{key:i,style:{display:'flex',alignItems:'center',gap:'12px',padding:'10px 0',borderBottom:'1px solid rgba(11,15,25,.07)'}},
+              R('span',{style:{width:'34px',height:'34px',borderRadius:'10px',background:`color-mix(in srgb,${st[2]} 14%,transparent)`,color:st[2],display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:'13px',flex:'0 0 auto'}},st[0]),
+              R('span',{style:{fontSize:'14px',fontWeight:600}},st[1])))),
+        sec('Магазины рядом',
+          ...[['Ёвар','320 м','7.90',true],['Ашан','1.2 км','8.40',false],['Амонат','2.0 км','9.20',false]].map((r,i)=>
+            R('div',{key:i,style:{display:'flex',alignItems:'center',gap:'11px',padding:'11px',borderRadius:'14px',background:'#fff',border:'1px solid '+(r[3]?'rgba(22,163,74,.4)':'rgba(11,15,25,.08)'),marginBottom:'8px',boxShadow:'0 4px 12px -6px rgba(11,15,25,.15)'}},
+              R('div',{style:{width:'34px',height:'34px',borderRadius:'10px',background:r[3]?'linear-gradient(135deg,#16a34a,#15803d)':'linear-gradient(135deg,#94a3b8,#64748b)'}}),
+              R('div',{style:{flex:1}},R('div',{style:{fontSize:'13px',fontWeight:700}},r[0]),R('div',{style:{fontSize:'11px',color:r[3]?'#16a34a':'#8f95a3',fontWeight:r[3]?700:500}},r[3]?'лучшая цена · '+r[1]:r[1])),
+              R('div',{style:{fontSize:'15px',fontWeight:800}},r[2])))),
+        R('div',{style:{padding:'22px 16px 34px',textAlign:'center',background:'linear-gradient(135deg,#0e1424,#0b1020)',color:'#fff',marginTop:'8px'}},
+          R('div',{style:{fontSize:'20px',fontWeight:800,letterSpacing:'-.02em'}},'Начни экономить'),
+          R('div',{style:{fontSize:'12px',color:'rgba(255,255,255,.55)',marginTop:'6px'}},'© 2026 Sarfkor · Таджикистан'))
+      ));
+    }
+
+    if(id==='settings'){
+      const rows=[['wifi','Wi-Fi','Sarfkor_5G'],['bt','Bluetooth',''],['air','Авиарежим',''],['dark','Тёмная тема','']];
+      return wrap('#f2f2f7',status(),R('div',{style:{padding:'6px 18px 12px',fontSize:'24px',fontWeight:800,letterSpacing:'-.02em'}},'Настройки'),
+        scroll(R('div',{style:{margin:'0 14px',borderRadius:'16px',overflow:'hidden',background:'#fff'}},
+          ...rows.map((r,i)=>{const on=this.state.settings[r[0]];return R('div',{key:i,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'13px 15px',borderBottom:i<rows.length-1?'1px solid rgba(11,15,25,.07)':'none'}},
+            R('div',null,R('div',{style:{fontSize:'15px',fontWeight:600}},r[1]),r[2]&&on?R('div',{style:{fontSize:'12px',color:'#8f95a3'}},r[2]):null),
+            R('button',{'data-k':r[0],onMouseDown:e=>e.stopPropagation(),style:{position:'relative',width:'46px',height:'28px',borderRadius:'999px',border:0,cursor:'pointer',background:on?'#34c759':'#c7c7cc',transition:'background .25s'},onClickCapture:e=>this.setState(p=>({settings:{...p.settings,[r[0]]:!p.settings[r[0]]}}))},
+              R('span',{style:{position:'absolute',top:'2px',left:on?'20px':'2px',width:'24px',height:'24px',borderRadius:'50%',background:'#fff',transition:'left .25s cubic-bezier(.34,1.42,.5,1)',boxShadow:'0 1px 3px rgba(0,0,0,.3)'}})));}))));
+    }
+
+    if(id==='calc'){
+      const keys=[['C','#a5a5a5','#000'],['±','#a5a5a5','#000'],['%','#a5a5a5','#000'],['÷','#ff9f0a','#fff'],
+        ['7','#333','#fff'],['8','#333','#fff'],['9','#333','#fff'],['×','#ff9f0a','#fff'],
+        ['4','#333','#fff'],['5','#333','#fff'],['6','#333','#fff'],['−','#ff9f0a','#fff'],
+        ['1','#333','#fff'],['2','#333','#fff'],['3','#333','#fff'],['+','#ff9f0a','#fff'],
+        ['0','#333','#fff','wide'],['.','#333','#fff'],['=','#ff9f0a','#fff']];
+      return wrap('#000',status('#fff'),
+        R('div',{style:{flex:1,display:'flex',flexDirection:'column',justifyContent:'flex-end',padding:'0 12px 14px'}},
+          R('div',{style:{textAlign:'right',color:'#fff',fontSize:'46px',fontWeight:300,padding:'0 10px 12px',letterSpacing:'-.02em',overflow:'hidden'}},this.state.calc.disp),
+          R('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px'}},
+            ...keys.map((k,i)=>R('button',{key:i,onClickCapture:()=>this.calcPress(k[0]),onMouseDown:e=>e.stopPropagation(),style:{gridColumn:k[3]==='wide'?'span 2':'span 1',height:'46px',borderRadius:'999px',border:0,cursor:'pointer',background:k[1],color:k[2],fontSize:'19px',fontWeight:600,fontFamily:'inherit',textAlign:k[3]==='wide'?'left':'center',paddingLeft:k[3]==='wide'?'20px':0}},k[0])))));
+    }
+
+    if(id==='notes'){
+      return wrap('#fffdf5',status(),R('div',{style:{padding:'6px 18px 8px',fontSize:'22px',fontWeight:800,letterSpacing:'-.02em',color:'#8a6a00'}},'Заметки'),
+        R('textarea',{value:this.state.notesText,onChange:e=>this.setState({notesText:e.target.value}),onMouseDown:e=>e.stopPropagation(),style:{flex:1,margin:'0 14px 16px',border:0,borderRadius:'14px',background:'#fff',padding:'14px',fontSize:'14px',lineHeight:1.5,color:'#0b0f19',fontFamily:'inherit',resize:'none',outline:'none',boxShadow:'0 2px 10px -4px rgba(0,0,0,.15)'}}));
+    }
+
+    if(id==='clock'){
+      return wrap('linear-gradient(160deg,#12151f,#05060a)',status('#fff'),
+        R('div',{style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',color:'#fff',gap:'6px'}},
+          R('div',{style:{fontSize:'12px',letterSpacing:'.2em',textTransform:'uppercase',color:'rgba(255,255,255,.5)'}},'Душанбе'),
+          R('div',{'data-clock':'full',style:{fontSize:'58px',fontWeight:200,letterSpacing:'-.02em',fontVariantNumeric:'tabular-nums'}},'09:41'),
+          R('div',{'data-datefull':'1',style:{fontSize:'14px',color:'rgba(255,255,255,.6)',textTransform:'capitalize'}},'')));
+    }
+
+    if(id==='weather'){
+      return wrap('linear-gradient(170deg,#3a8bff,#0a5cff 60%,#0842b0)',status('#fff'),
+        R('div',{style:{flex:1,color:'#fff',display:'flex',flexDirection:'column',alignItems:'center',padding:'8px 16px'}},
+          R('div',{style:{fontSize:'22px',fontWeight:600,marginTop:'6px'}},'Душанбе'),
+          R('div',{style:{fontSize:'72px',fontWeight:200,letterSpacing:'-.03em'}},'28°'),
+          R('div',{style:{fontSize:'15px',opacity:.9,marginTop:'-6px'}},'Ясно'),
+          R('div',{style:{fontSize:'13px',opacity:.75,marginTop:'2px'}},'Макс. 31°   Мин. 19°'),
+          R('div',{style:{marginTop:'auto',marginBottom:'16px',width:'100%',display:'flex',justifyContent:'space-between',padding:'12px',borderRadius:'16px',background:'rgba(255,255,255,.16)',backdropFilter:'blur(6px)'}},
+            ...[['Сейчас','28°'],['14:00','30°'],['15:00','31°'],['16:00','30°'],['17:00','27°']].map((h,i)=>R('div',{key:i,style:{textAlign:'center',fontSize:'12px'}},R('div',{style:{opacity:.8}},h[0]),R('div',{style:{margin:'8px 0'}},'☀'),R('div',{style:{fontWeight:600}},h[1]))))));
+    }
+
+    if(id==='photos'){
+      const cols=['#ff9f6b','#6bcb9e','#6ba4ff','#ffc96b','#ff6b9a','#b08bff','#4aa3ff','#12b76a','#f97316'];
+      return wrap('#fff',status(),R('div',{style:{padding:'6px 18px 10px',fontSize:'22px',fontWeight:800,letterSpacing:'-.02em'}},'Фото'),
+        scroll(R('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'3px',padding:'0 3px'}},
+          ...Array.from({length:18}).map((_,i)=>R('div',{key:i,style:{aspectRatio:'1',background:`linear-gradient(135deg,${cols[i%cols.length]},${cols[(i+3)%cols.length]})`}})))));
+    }
+
+    if(id==='calendar'){
+      const n=new Date(),y=n.getFullYear(),m=n.getMonth(),today=n.getDate();
+      const first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate();
+      const cells=[];for(let i=0;i<first;i++)cells.push(null);for(let d=1;d<=days;d++)cells.push(d);
+      const mn=n.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
+      return wrap('#fff',status(),R('div',{style:{padding:'4px 18px 8px'}},R('div',{style:{fontSize:'12px',color:'#ff3b30',fontWeight:700,textTransform:'uppercase'}},n.toLocaleDateString('ru-RU',{weekday:'long'})),R('div',{style:{fontSize:'22px',fontWeight:800,letterSpacing:'-.02em',textTransform:'capitalize'}},mn)),
+        R('div',{style:{display:'grid',gridTemplateColumns:'repeat(7,1fr)',padding:'0 12px 6px',color:'#8f95a3',fontSize:'11px',fontWeight:600,textAlign:'center'}},...['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((d,i)=>R('div',{key:i},d))),
+        R('div',{style:{flex:1,display:'grid',gridTemplateColumns:'repeat(7,1fr)',gridAutoRows:'1fr',padding:'0 12px 14px',gap:'2px'}},
+          ...cells.map((d,i)=>R('div',{key:i,style:{display:'flex',alignItems:'center',justifyContent:'center',fontSize:'13px',fontWeight:d===today?800:500,color:d===today?'#fff':'#0b0f19',borderRadius:'50%',background:d===today?'#ff3b30':'transparent',width:'30px',height:'30px',margin:'0 auto'}},d||'')))); 
+    }
+
+    if(id==='safari'){
+      return wrap('#f2f2f7',status(),
+        R('div',{style:{flex:1,minHeight:0,overflow:'hidden',display:'flex',flexDirection:'column'}},
+          R('div',{style:{padding:'6px 16px 10px'}},R('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',padding:'9px',borderRadius:'12px',background:'#fff',fontSize:'13px',color:'#0b0f19',fontWeight:600,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}},R('span',{style:{color:'#8f95a3'}},'🔒'),'sarfkor.tj')),
+          R('div',{style:{flex:1,minHeight:0,overflowY:'auto',background:'#fff',margin:'0 12px 14px',borderRadius:'16px',boxShadow:'0 2px 12px -4px rgba(0,0,0,.12)'}},
+            R('div',{style:{padding:'22px 16px',textAlign:'center',background:'radial-gradient(120% 70% at 50% 0%,rgba(90,151,255,.16),transparent)'}},
+              R('div',{style:{fontSize:'22px',fontWeight:800,letterSpacing:'-.03em'}},'Sarfkor'),
+              R('div',{style:{fontSize:'13px',color:'#5b6270',marginTop:'6px'}},'Сравнивай цены в магазинах Таджикистана'),
+              R('div',{style:{marginTop:'12px',display:'inline-block',background:'linear-gradient(135deg,#5a97ff,#1f56c9)',color:'#fff',padding:'10px 18px',borderRadius:'999px',fontSize:'13px',fontWeight:700}},'Открыть приложение')),
+            R('div',{style:{padding:'0 16px 18px'}},...['Как это работает','Магазины рядом','Отзывы','Частые вопросы'].map((t,i)=>R('div',{key:i,style:{padding:'13px 0',borderBottom:'1px solid rgba(11,15,25,.07)',fontSize:'14px',fontWeight:600,display:'flex',justifyContent:'space-between'}},t,R('span',{style:{color:'#c7c7cc'}},'›')))))));
+    }
+
+    if(id==='maps'){
+      return wrap('#e8f0e6',status(),
+        R('div',{style:{position:'absolute',inset:0,backgroundImage:'repeating-linear-gradient(0deg,transparent,transparent 41px,rgba(0,0,0,.06) 41px,rgba(0,0,0,.06) 42px),repeating-linear-gradient(90deg,transparent,transparent 33px,rgba(0,0,0,.06) 33px,rgba(0,0,0,.06) 34px)'}}),
+        ...[['46%','62%',true],['26%','30%',false],['70%','22%',false],['34%','78%',false]].map((p,i)=>R('div',{key:i,style:{position:'absolute',top:p[0],left:p[1],transform:'translate(-50%,-100%)',color:p[2]?'#2f6feb':'#e05353',fontSize:p[2]?'26px':'20px',filter:'drop-shadow(0 3px 4px rgba(0,0,0,.3))'}},'📍')),
+        R('div',{style:{position:'absolute',left:'12px',right:'12px',bottom:'16px',padding:'13px',borderRadius:'16px',background:'#fff',boxShadow:'0 6px 20px -6px rgba(0,0,0,.3)'}},
+          R('div',{style:{fontSize:'15px',fontWeight:700}},'Ёвар'),R('div',{style:{fontSize:'12px',color:'#8f95a3',marginTop:'2px'}},'ул. Рудаки, 123 · 320 м'),
+          R('div',{style:{marginTop:'10px',textAlign:'center',background:'linear-gradient(135deg,#5a97ff,#1f56c9)',color:'#fff',padding:'9px',borderRadius:'12px',fontSize:'13px',fontWeight:700}},'Построить маршрут')));
+    }
+
+    // generic app shell
+    const names={facetime:'FaceTime',camera:'Камера',appstore:'App Store',health:'Здоровье',wallet:'Кошелёк',stocks:'Акции',books:'Книги',phone:'Телефон',messages:'Сообщения',music:'Музыка'};
+    const bgs={facetime:'linear-gradient(160deg,#34d158,#1a9c3f)',camera:'linear-gradient(160deg,#4a4a4f,#1c1c1e)',appstore:'linear-gradient(160deg,#33a0ff,#0060df)',health:'#fff',wallet:'linear-gradient(160deg,#3a3a3f,#0c0c0e)',stocks:'linear-gradient(160deg,#2a2a2e,#000)',books:'linear-gradient(160deg,#ff9f0a,#ff6200)',phone:'linear-gradient(160deg,#34d158,#1a9c3f)',safari:'linear-gradient(160deg,#3aa9ff,#0a6cff)',messages:'linear-gradient(160deg,#4be05a,#1fb84a)',music:'linear-gradient(160deg,#fc4c6a,#f52d55)'};
+    return wrap('#f2f2f7',status(),R('div',{style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'16px',padding:'20px'}},
+      R('div',{style:{width:'88px',height:'88px',borderRadius:'22px',background:bgs[id]||'#8e8e93',color:id==='health'?'#fc2b56':'#fff',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 10px 24px -8px rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.35) inset',transform:'scale(1.4)'}},this.appGlyph(id)),
+      R('div',{style:{fontSize:'19px',fontWeight:800,letterSpacing:'-.02em',marginTop:'10px'}},names[id]||'Приложение'),
+      R('div',{style:{fontSize:'13px',color:'#8f95a3',textAlign:'center',maxWidth:'170px'}},'Скоро в Sarfkor OS')));
+  }
+
+  statIcon(name){
+    const R=React.createElement;
+    const svg=(...kids)=>R('svg',{width:24,height:24,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','strokeWidth':1.8,'strokeLinecap':'round','strokeLinejoin':'round'},...kids);
+    const P=d=>R('path',{d});
+    if(name==='users')return svg(R('circle',{cx:9,cy:8,r:3.3}),P('M3.5 19.2c0-3 2.6-5.2 5.5-5.2s5.5 2.2 5.5 5.2'),P('M16.2 5.4a3 3 0 010 5.5'),P('M16 14.2c2.3.5 3.9 2.4 3.9 5'));
+    if(name==='scan')return svg(P('M4 8V5.6A1.6 1.6 0 015.6 4H8'),P('M16 4h2.4A1.6 1.6 0 0120 5.6V8'),P('M20 16v2.4a1.6 1.6 0 01-1.6 1.6H16'),P('M8 20H5.6A1.6 1.6 0 014 18.4V16'),P('M7.5 8.5v7M11 8.5v7M14.5 8.5v7M17 8.5v7'));
+    if(name==='receipt')return svg(P('M6 3.5h12v17l-2.5-1.4L13 20.5l-2.5-1.4L8 20.5 6 19.4z'),P('M9 8.2h6M9 12h6M9 15.6h3.5'));
+    if(name==='store')return svg(P('M4.2 9.5 5.4 4.6h13.2l1.2 4.9'),P('M4.2 9.5a2.35 2.35 0 004.7 0 2.35 2.35 0 004.7 0 2.35 2.35 0 004.7 0'),P('M5.6 12v8h12.8v-8'),P('M10 20v-4.6h4V20'));
+    return svg(R('circle',{cx:12,cy:12,r:8}));
+  }
+
+  stepScreen(i){
+    const R=React.createElement;const pad={padding:'40px 16px 16px',height:'100%',display:'flex',flexDirection:'column'};
+    if(i===0)return R('div',{style:{...pad,background:'#0a0d16',alignItems:'center',justifyContent:'center',position:'relative'}},
+      R('div',{style:{position:'relative',width:'160px',height:'160px',border:'3px solid rgba(255,255,255,.85)',borderRadius:'20px',animation:'sk-frame 2.2s ease-in-out infinite'}},
+        R('div',{style:{position:'absolute',left:'8%',right:'8%',height:'2px',background:'#2f6feb',boxShadow:'0 0 12px 2px #2f6feb',animation:'sk-laser 2.2s ease-in-out infinite'}})),
+      R('div',{style:{marginTop:'28px',display:'flex',gap:'3px',alignItems:'flex-end',height:'44px'}},
+        [6,3,8,2,5,9,3,7,4,8,2,6,9,3,5].map((h,k)=>R('div',{key:k,style:{width:'4px',height:h*4+'px',background:'#fff'}})))
+    );
+    if(i===1)return R('div',{style:{...pad,background:'var(--bg-app)',gap:'12px'}},
+      R('div',{style:{height:'96px',borderRadius:'16px',background:'var(--brand-grad-soft)',border:'1px solid var(--border-subtle)'}}),
+      R('div',{style:{fontSize:'16px',fontWeight:800,color:'var(--text-primary)'}},'Молоко 3,2%'),
+      R('div',{style:{fontSize:'12px',color:'var(--text-secondary)'}},'1 л · Домик в деревне'),
+      R('div',{style:{marginTop:'auto',padding:'14px',borderRadius:'14px',background:'var(--bg-section)',display:'flex',justifyContent:'space-between',alignItems:'center'}},
+        R('span',{style:{fontSize:'12px',color:'var(--text-secondary)'}},'Цена за 1 л'),
+        R('span',{style:{fontSize:'20px',fontWeight:800,color:'var(--text-primary)'}},'7.90'))
+    );
+    if(i===2){const rows=[['Ашан','27.00',false],['Ёвар','25.90',true],['Аминот','28.20',false]];
+      return R('div',{style:{...pad,background:'var(--bg-app)',gap:'10px'}},
+        R('div',{style:{fontSize:'15px',fontWeight:800,color:'var(--text-primary)',marginBottom:'4px'}},'Сравнение цен'),
+        ...rows.map((r,k)=>R('div',{key:k,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'13px',borderRadius:'13px',background:'var(--bg-card)',border:r[2]?'1.5px solid rgba(22,163,74,.4)':'1px solid var(--border-subtle)',boxShadow:r[2]?'0 4px 12px -4px rgba(22,163,74,.4)':'none'}},
+          R('span',{style:{fontSize:'13px',fontWeight:700,color:'var(--text-primary)'}},r[0]),
+          R('span',{style:{display:'flex',alignItems:'center',gap:'8px'}},
+            r[2]?R('span',{style:{fontSize:'10px',fontWeight:700,color:'#16a34a',background:'rgba(22,163,74,.12)',padding:'3px 7px',borderRadius:'6px'}},'Выгодно'):null,
+            R('span',{style:{fontSize:'15px',fontWeight:800,color:r[2]?'#16a34a':'var(--text-primary)'}},r[1]))))
+      );
+    }
+    return R('div',{style:{...pad,background:'var(--bg-app)',alignItems:'center',justifyContent:'center',textAlign:'center'}},
+      R('div',{style:{width:'72px',height:'72px',borderRadius:'50%',background:'linear-gradient(135deg,#34c759,#12b76a)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'34px',color:'#fff',boxShadow:'0 10px 24px -6px rgba(18,183,106,.5)'}},'✓'),
+      R('div',{style:{marginTop:'20px',fontSize:'14px',color:'var(--text-secondary)'}},'Вы сэкономили'),
+      R('div',{style:{fontSize:'34px',fontWeight:800,color:'var(--text-primary)',letterSpacing:'-.02em'}},'3.10'),
+      R('div',{style:{fontSize:'13px',color:'var(--text-secondary)'}},'сомони'),
+      R('div',{style:{marginTop:'12px',fontSize:'11px',color:'var(--text-tertiary)',maxWidth:'170px'}},'Выбрали самую низкую цену в магазине «Ёвар»')
+    );
+  }
+}
+</script>
+</body>
+</html>

@@ -76,10 +76,12 @@ export function getReorderAlerts(storeId: number) {
   return apiFetch<{ outcome: string; alerts?: ReorderAlert[] }>(`/api/stores/${storeId}/reorder-alerts`)
 }
 
+export type StoreEmployeeRole = 'Owner' | 'Cashier'
+
 export interface StoreEmployee {
   storeEmployeeId: number
   userId: string
-  role: 'Owner' | 'Cashier'
+  role: StoreEmployeeRole
   addedAt: string
 }
 

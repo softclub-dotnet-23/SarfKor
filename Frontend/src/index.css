@@ -13,8 +13,17 @@
   --color-ink: #0b0f19;
   --color-ink-soft: #11162a;
 
-  --shadow-soft: 0 1px 2px rgba(11, 15, 25, 0.04), 0 12px 32px -12px rgba(11, 15, 25, 0.12);
-  --shadow-lift: 0 8px 16px -4px rgba(11, 15, 25, 0.08), 0 24px 48px -16px rgba(11, 15, 25, 0.18);
+  /* Three-layer shadows (tight contact + mid falloff + soft ambient) read as
+     physical depth; a single flat shadow reads as a flat rectangle with a
+     blur filter. This is the one change that does the most to make cards,
+     popovers and buttons stop looking like a generic template. */
+  --shadow-soft: 0 1px 1px rgba(11, 15, 25, 0.03), 0 4px 10px -4px rgba(11, 15, 25, 0.08),
+    0 16px 36px -16px rgba(11, 15, 25, 0.14);
+  --shadow-lift: 0 2px 4px rgba(11, 15, 25, 0.05), 0 10px 24px -8px rgba(11, 15, 25, 0.14),
+    0 32px 64px -20px rgba(11, 15, 25, 0.22);
+  --shadow-button: 0 1px 2px rgba(11, 15, 25, 0.12), 0 8px 20px -6px rgba(11, 15, 25, 0.28);
+  --shadow-brand: 0 1px 2px color-mix(in srgb, var(--color-brand) 40%, transparent),
+    0 12px 28px -8px color-mix(in srgb, var(--color-brand) 45%, transparent);
 
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-ring: pulse-ring 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -52,6 +61,12 @@
   --text-primary: #0b0f19;
   --text-secondary: #5b6270;
   --border-subtle: rgba(11, 15, 25, 0.08);
+  /* Inset highlight (top) + inset shade (bottom) — the cheap trick that
+     makes a flat-fill button/card read as a physical, lit surface rather
+     than a painted rectangle. Layer this INSIDE an outer shadow, never
+     alone; values flip per-theme because a "highlight" on a dark surface
+     needs to be a much dimmer white than on a light one. */
+  --inset-sheen: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(11, 15, 25, 0.06);
   color-scheme: light;
 }
 
@@ -63,6 +78,7 @@
   --text-primary: #f5f6fa;
   --text-secondary: #9095a6;
   --border-subtle: rgba(255, 255, 255, 0.08);
+  --inset-sheen: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
   color-scheme: dark;
 }
 
@@ -136,6 +152,84 @@ html.theme-wipe::view-transition-group(root) {
   --admin-accent-soft: rgba(56, 189, 248, 0.12);
   --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 20px 40px -20px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
+}
+
+/* Moderation panel (Admin role) — its own token set, deliberately distinct
+   from .admin-shell's blue store-partner palette since this is a visually
+   separate product surface (violet accent, near-black panels). Same .dark
+   class drives both so the site-wide theme toggle stays in sync everywhere. */
+.mod-shell {
+  --mod-bg: #f5f5f6;
+  --mod-panel: #ffffff;
+  --mod-panel2: #efeff1;
+  --mod-elev: #ffffff;
+  --mod-border: rgba(0, 0, 0, 0.09);
+  --mod-border2: rgba(0, 0, 0, 0.15);
+  --mod-text: #0c0c0e;
+  --mod-muted: #6a6a72;
+  --mod-faint: #9a9aa2;
+  --mod-accent: #7c3aed;
+  --mod-accent2: #7c3aed;
+  --mod-accent-dim: rgba(139, 92, 246, 0.12);
+  --mod-ok: #7c3aed;
+  --mod-ok-dim: rgba(139, 92, 246, 0.12);
+  --mod-warn: #6a6a72;
+  --mod-warn-dim: rgba(106, 106, 114, 0.12);
+  --mod-danger: #dc2626;
+  --mod-danger-dim: rgba(220, 38, 38, 0.12);
+  --mod-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  color-scheme: light;
+}
+
+.dark .mod-shell {
+  --mod-bg: #000000;
+  --mod-panel: #0b0b0d;
+  --mod-panel2: #151517;
+  --mod-elev: #1c1c20;
+  --mod-border: rgba(255, 255, 255, 0.09);
+  --mod-border2: rgba(255, 255, 255, 0.16);
+  --mod-text: #f4f4f6;
+  --mod-muted: #8c8c96;
+  --mod-faint: #5a5a63;
+  --mod-accent: #8b5cf6;
+  --mod-accent2: #a78bfa;
+  --mod-accent-dim: rgba(139, 92, 246, 0.16);
+  --mod-ok: #8b5cf6;
+  --mod-ok-dim: rgba(139, 92, 246, 0.16);
+  --mod-warn: #8c8c96;
+  --mod-warn-dim: rgba(140, 140, 150, 0.16);
+  --mod-danger: #f87171;
+  --mod-danger-dim: rgba(248, 113, 113, 0.14);
+  --mod-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+@keyframes mod-live-ping {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes mod-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes mod-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes admin-pulse-glow {

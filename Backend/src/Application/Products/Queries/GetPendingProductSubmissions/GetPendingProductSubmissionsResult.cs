@@ -1,7 +1,7 @@
 namespace Application.Products.Queries.GetPendingProductSubmissions;
 
 public sealed record ProductSubmissionDto(
-    int ProductSubmissionId,
+    int SubmissionId,
     string Barcode,
     string Name,
     int CategoryId,

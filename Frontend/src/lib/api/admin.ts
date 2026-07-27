@@ -1,54 +1,5 @@
 import { apiFetch } from './client'
 
-// Platform moderation — Admin role only. Distinct from the StorePartner cabinet
-// (`stores.ts`, `inventory.ts`, etc.): nothing here is scoped to a store.
-
-export interface ProductSubmission {
-  productSubmissionId: number
-  barcode: string
-  name: string
-  categoryId: number
-  brandId: number
-  countryOfOrigin: string
-  submittedByUserId: string
-  createdAt: string
-}
-
-export function getPendingProductSubmissions() {
-  return apiFetch<{ submissions: ProductSubmission[] }>('/api/admin/products/submissions/pending')
-}
-
-export function moderateProductSubmission(submissionId: number, approve: boolean, reason?: string) {
-  return apiFetch<{ outcome: string; productId?: number }>(`/api/admin/products/${submissionId}/moderate`, {
-    method: 'POST',
-    body: { approve, reason },
-  })
-}
-
-// ReportType: 0 WrongPrice, 1 OutOfStock, 2 ReceiptMismatch, 3 Other (matches Domain.Feedback.ReportType).
-export const REPORT_TYPE_LABELS = ['Неверная цена', 'Нет в наличии', 'Расхождение с чеком', 'Другое'] as const
-
-export interface Report {
-  reportId: number
-  userId: string
-  productId: number
-  storeId?: number
-  type: number
-  description: string
-  createdAt: string
-}
-
-export function getPendingReports() {
-  return apiFetch<{ reports: Report[] }>('/api/admin/reports/pending')
-}
-
-export function moderateReport(reportId: number, resolve: boolean, reason?: string) {
-  return apiFetch<{ outcome: string }>(`/api/admin/reports/${reportId}/moderate`, {
-    method: 'POST',
-    body: { resolve, reason },
-  })
-}
-
 export interface PriceEntryDispute {
   disputeId: number
   priceEntryId: number
@@ -62,10 +13,10 @@ export function getPendingPriceEntryDisputes() {
 }
 
 export function resolvePriceEntryDispute(disputeId: number, uphold: boolean) {
-  return apiFetch<{ outcome: string }>(`/api/admin/price-entry-disputes/${disputeId}/resolve`, {
-    method: 'POST',
-    body: { uphold },
-  })
+  return apiFetch<{ outcome: 'Upheld' | 'Dismissed' | 'NotFound' | 'AlreadyResolved' }>(
+    `/api/admin/price-entry-disputes/${disputeId}/resolve`,
+    { method: 'POST', body: { uphold } },
+  )
 }
 
 export interface ReportDispute {
@@ -81,8 +32,65 @@ export function getPendingReportDisputes() {
 }
 
 export function resolveReportDispute(disputeId: number, uphold: boolean) {
-  return apiFetch<{ outcome: string }>(`/api/admin/report-disputes/${disputeId}/resolve`, {
-    method: 'POST',
-    body: { uphold },
-  })
+  return apiFetch<{ outcome: 'Upheld' | 'Dismissed' | 'NotFound' | 'AlreadyResolved' }>(
+    `/api/admin/report-disputes/${disputeId}/resolve`,
+    { method: 'POST', body: { uphold } },
+  )
+}
+
+export interface ProductSubmission {
+  submissionId: number
+  barcode: string
+  name: string
+  categoryId: number
+  brandId: number
+  countryOfOrigin: string
+  submittedByUserId: string
+  createdAt: string
+}
+
+export function getPendingProductSubmissions() {
+  return apiFetch<{ submissions: ProductSubmission[] }>('/api/admin/products/pending')
+}
+
+export function moderateProductSubmission(submissionId: number, approve: boolean, reason?: string) {
+  return apiFetch<{ outcome: 'Approved' | 'Rejected' | 'NotFound' | 'AlreadyModerated'; productId?: number }>(
+    `/api/admin/products/${submissionId}/moderate`,
+    { method: 'POST', body: { approve, reason } },
+  )
+}
+
+export interface Report {
+  reportId: number
+  userId: string
+  productId: number
+  storeId?: number
+  type: 'WrongPrice' | 'OutOfStock' | 'ReceiptMismatch' | 'Other'
+  description: string
+  createdAt: string
+}
+
+export function getPendingReports() {
+  return apiFetch<{ reports: Report[] }>('/api/admin/reports/pending')
+}
+
+export function moderateReport(reportId: number, resolve: boolean, reason?: string) {
+  return apiFetch<{ outcome: 'Resolved' | 'Rejected' | 'NotFound' | 'AlreadyModerated' }>(
+    `/api/admin/reports/${reportId}/moderate`,
+    { method: 'POST', body: { resolve, reason } },
+  )
+}
+
+export interface AuditLogEntry {
+  auditLogId: number
+  performedByUserId: string
+  action: string
+  entityType: string
+  entityId: number
+  details?: string
+  occurredAt: string
+}
+
+export function getRecentAuditLogs(count = 20) {
+  return apiFetch<{ logs: AuditLogEntry[] }>('/api/admin/audit-logs/recent', { query: { count } })
 }

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Card } from '../components/Card'
 import { AdminModal } from '../components/AdminModal'
-import { ClockIcon, ShieldIcon, AlertIcon, UsersIcon, PlusIcon, TrashIcon } from '../components/icons'
+import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { storesApi, salesApi, ApiError, type CashierShift, type CashierAnomaly, type StoreEmployee } from '../../lib/api'
 import { daysAgo, today } from '../lib/dates'
@@ -159,6 +159,84 @@ export function StaffPage() {
       </div>
 
       <Card className="p-5">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ShieldIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
+            <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Сотрудники магазина</span>
+          </div>
+          <button
+            onClick={openAddForm}
+            className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90"
+          >
+            <PlusIcon width={14} height={14} />
+            Добавить кассира
+          </button>
+        </div>
+        {employeesForbidden ? (
+          <div className="py-6 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">
+            Список сотрудников виден только владельцу магазина
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {employees.map((emp) => (
+              <div
+                key={emp.storeEmployeeId}
+                className="flex items-center justify-between gap-3 rounded-[14px] bg-[color:var(--admin-hover)] p-3.5"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-[13px] font-semibold text-[color:var(--admin-text)]">
+                    {shortId(emp.userId, user?.userId)}
+                  </div>
+                  <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
+                    {emp.role === 'Owner' ? 'Владелец' : 'Кассир'} · с {new Date(emp.addedAt).toLocaleDateString('ru-RU')}
+                  </div>
+                </div>
+                <button
+                  onClick={() => removeEmployee(emp.storeEmployeeId)}
+                  disabled={removingId === emp.storeEmployeeId}
+                  aria-label="Удалить сотрудника"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[#f8717122] hover:text-[#f87171] disabled:opacity-50"
+                >
+                  <TrashIcon width={14} height={14} />
+                </button>
+              </div>
+            ))}
+            {employees.length === 0 && (
+              <div className="py-6 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">
+                В магазине пока нет добавленных сотрудников
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      <AdminModal open={addOpen} onClose={() => setAddOpen(false)} title="Добавить кассира">
+        <div className="flex flex-col gap-4">
+          <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">
+            Кассир должен сначала зарегистрироваться в приложении — добавьте его по email аккаунта.
+          </p>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Email кассира</span>
+            <input
+              type="email"
+              value={addEmail}
+              onChange={(e) => setAddEmail(e.target.value)}
+              placeholder="cashier@sarfkor.tj"
+              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+            />
+          </label>
+          {addError && <div className="text-[12px] font-medium text-[#f87171]">{addError}</div>}
+          <button
+            onClick={confirmAddEmployee}
+            disabled={addBusy || !addEmail.trim()}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+          >
+            {addBusy ? 'Добавляем…' : 'Добавить'}
+          </button>
+        </div>
+      </AdminModal>
+
+      <Card className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <ClockIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Смены</span>
@@ -258,8 +336,9 @@ export function StaffPage() {
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Роли и доступ</span>
         </div>
         <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-          Отдельной суб-роли «кассир» с урезанным доступом в бэкенде пока нет — все, кто работает с кассой этого
-          магазина, входят под ролью StorePartner.
+          Отдельной JWT-роли «кассир» пока нет — все, кто работает с кассой этого магазина, входят под ролью
+          StorePartner. Доступ к себестоимости и отчётам о прибыли ограничен отдельно: только владелец магазина
+          (Store.OwnerUserId), не добавленные сотрудники.
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {ROLE_ACCESS.map((r) => (

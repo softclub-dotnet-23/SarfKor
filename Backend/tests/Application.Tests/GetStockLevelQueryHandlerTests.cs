@@ -13,9 +13,16 @@ public class GetStockLevelQueryHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<IStockLevelRepository> _stockLevelRepository = new();
 
-    private GetStockLevelQueryHandler CreateHandler() => new(_storeRepository.Object, _stockLevelRepository.Object);
+    public GetStockLevelQueryHandlerTests() =>
+        _storeEmployeeRepository
+            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+    private GetStockLevelQueryHandler CreateHandler() =>
+        new(_storeRepository.Object, _storeEmployeeRepository.Object, _stockLevelRepository.Object);
 
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()

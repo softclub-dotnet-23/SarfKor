@@ -7,6 +7,7 @@ namespace Application.Sales.Commands.OpenCashierShift;
 
 public sealed class OpenCashierShiftCommandHandler(
     IStoreRepository storeRepository,
+    IStoreEmployeeRepository storeEmployeeRepository,
     ICashierShiftRepository cashierShiftRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<OpenCashierShiftCommand, OpenCashierShiftResult>
 {
@@ -16,9 +17,10 @@ public sealed class OpenCashierShiftCommandHandler(
         if (store is null)
             return new OpenCashierShiftResult(OpenCashierShiftOutcome.StoreNotFound, null);
 
-        // No separate "cashier" sub-role exists yet (CLAUDE.md §9 open question) — for now only
-        // the store owner can open a shift for their own store, acting as their own cashier.
-        if (store.OwnerUserId != command.PerformedByUserId)
+        // The owner or any employee added via AddStoreEmployeeCommand (CLAUDE.md §9 cashier
+        // sub-role) can open a shift for this store.
+        if (store.OwnerUserId != command.PerformedByUserId
+            && !await storeEmployeeRepository.IsEmployeeAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new OpenCashierShiftResult(OpenCashierShiftOutcome.Forbidden, null);
 
         var shift = new CashierShift

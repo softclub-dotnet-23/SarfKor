@@ -14,11 +14,18 @@ public class GetStoreDashboardQueryHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<ISaleTransactionRepository> _saleTransactionRepository = new();
     private readonly Mock<IStockLevelRepository> _stockLevelRepository = new();
 
+    public GetStoreDashboardQueryHandlerTests() =>
+        _storeEmployeeRepository
+            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
     private GetStoreDashboardQueryHandler CreateHandler() => new(
         _storeRepository.Object,
+        _storeEmployeeRepository.Object,
         _saleTransactionRepository.Object,
         _stockLevelRepository.Object);
 

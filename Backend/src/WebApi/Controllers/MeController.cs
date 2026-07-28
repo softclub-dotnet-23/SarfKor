@@ -5,6 +5,7 @@ using Application.Identity.Commands.UpdateUserProfile;
 using Application.Identity.Queries.GetSecurityEvents;
 using Application.Identity.Queries.GetUserConsents;
 using Application.Identity.Queries.GetUserProfile;
+using Application.Stores.Queries.GetMyStores;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -105,6 +106,27 @@ public sealed class MeController : ControllerBase
             return Unauthorized();
 
         var query = new GetSecurityEventsQuery(userId);
+        var validationResult = await validator.ValidateAsync(query, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        return Ok(await handler.Handle(query, cancellationToken));
+    }
+
+    // The backend never handed the frontend a way to recover which store(s) an owner/cashier
+    // belongs to after a fresh login (see StoresController comments on employee auth) — this is
+    // that missing lookup, combining owned stores and stores the caller is a registered employee of.
+    [HttpGet("stores")]
+    public async Task<IActionResult> GetMyStores(
+        [FromServices] IQueryHandler<GetMyStoresQuery, GetMyStoresResult> handler,
+        [FromServices] IValidator<GetMyStoresQuery> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var query = new GetMyStoresQuery(userId);
         var validationResult = await validator.ValidateAsync(query, cancellationToken);
         if (!validationResult.IsValid)
             return this.ToValidationProblem(validationResult);

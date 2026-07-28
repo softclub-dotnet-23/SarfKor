@@ -13,10 +13,17 @@ public class OpenCashierShiftCommandHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<ICashierShiftRepository> _cashierShiftRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    private OpenCashierShiftCommandHandler CreateHandler() => new(_storeRepository.Object, _cashierShiftRepository.Object, _unitOfWork.Object);
+    public OpenCashierShiftCommandHandlerTests() =>
+        _storeEmployeeRepository
+            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+    private OpenCashierShiftCommandHandler CreateHandler() =>
+        new(_storeRepository.Object, _storeEmployeeRepository.Object, _cashierShiftRepository.Object, _unitOfWork.Object);
 
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()

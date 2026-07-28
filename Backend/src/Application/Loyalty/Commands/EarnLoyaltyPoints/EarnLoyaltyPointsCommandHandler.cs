@@ -9,6 +9,7 @@ public sealed class EarnLoyaltyPointsCommandHandler(
     ILoyaltyProgramRepository loyaltyProgramRepository,
     ILoyaltyTransactionRepository loyaltyTransactionRepository,
     IStoreRepository storeRepository,
+    IStoreEmployeeRepository storeEmployeeRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<EarnLoyaltyPointsCommand, EarnLoyaltyPointsResult>
 {
     public async Task<EarnLoyaltyPointsResult> Handle(EarnLoyaltyPointsCommand command, CancellationToken cancellationToken)
@@ -19,7 +20,11 @@ public sealed class EarnLoyaltyPointsCommandHandler(
 
         var program = await loyaltyProgramRepository.GetByIdAsync(account.LoyaltyProgramId, cancellationToken);
         var store = program is null ? null : await storeRepository.GetByIdAsync(program.StoreId, cancellationToken);
-        if (store is null || store.OwnerUserId != command.PerformedByUserId)
+        if (store is null)
+            return new EarnLoyaltyPointsResult(EarnLoyaltyPointsOutcome.Forbidden, null);
+
+        if (store.OwnerUserId != command.PerformedByUserId
+            && !await storeEmployeeRepository.IsEmployeeAsync(store.Id, command.PerformedByUserId, cancellationToken))
             return new EarnLoyaltyPointsResult(EarnLoyaltyPointsOutcome.Forbidden, null);
 
         account.PointsBalance += command.Points;

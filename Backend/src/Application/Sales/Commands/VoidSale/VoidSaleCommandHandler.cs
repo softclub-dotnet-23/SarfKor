@@ -8,6 +8,7 @@ namespace Application.Sales.Commands.VoidSale;
 public sealed class VoidSaleCommandHandler(
     ISaleTransactionRepository saleTransactionRepository,
     IStoreRepository storeRepository,
+    IStoreEmployeeRepository storeEmployeeRepository,
     IStockLevelRepository stockLevelRepository,
     IStockMovementRepository stockMovementRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<VoidSaleCommand, VoidSaleResult>
@@ -19,7 +20,11 @@ public sealed class VoidSaleCommandHandler(
             return new VoidSaleResult(VoidSaleOutcome.NotFound, null);
 
         var store = await storeRepository.GetByIdAsync(saleTransaction.StoreId, cancellationToken);
-        if (store is null || store.OwnerUserId != command.VoidedByUserId)
+        if (store is null)
+            return new VoidSaleResult(VoidSaleOutcome.Forbidden, null);
+
+        if (store.OwnerUserId != command.VoidedByUserId
+            && !await storeEmployeeRepository.IsEmployeeAsync(store.Id, command.VoidedByUserId, cancellationToken))
             return new VoidSaleResult(VoidSaleOutcome.Forbidden, null);
 
         if (saleTransaction.Status == SaleStatus.Voided)

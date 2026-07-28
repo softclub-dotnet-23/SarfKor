@@ -6,6 +6,7 @@ namespace Application.Sales.Queries.GetReturnsForSale;
 public sealed class GetReturnsForSaleQueryHandler(
     ISaleTransactionRepository saleTransactionRepository,
     IStoreRepository storeRepository,
+    IStoreEmployeeRepository storeEmployeeRepository,
     ISaleReturnRepository saleReturnRepository) : IQueryHandler<GetReturnsForSaleQuery, GetReturnsForSaleResult>
 {
     public async Task<GetReturnsForSaleResult> Handle(GetReturnsForSaleQuery query, CancellationToken cancellationToken)
@@ -15,7 +16,11 @@ public sealed class GetReturnsForSaleQueryHandler(
             return new GetReturnsForSaleResult(GetReturnsForSaleOutcome.SaleNotFound, null);
 
         var store = await storeRepository.GetByIdAsync(sale.StoreId, cancellationToken);
-        if (store is null || store.OwnerUserId != query.RequestedByUserId)
+        if (store is null)
+            return new GetReturnsForSaleResult(GetReturnsForSaleOutcome.Forbidden, null);
+
+        if (store.OwnerUserId != query.RequestedByUserId
+            && !await storeEmployeeRepository.IsEmployeeAsync(store.Id, query.RequestedByUserId, cancellationToken))
             return new GetReturnsForSaleResult(GetReturnsForSaleOutcome.Forbidden, null);
 
         var returns = await saleReturnRepository.GetBySaleTransactionIdAsync(query.SaleTransactionId, cancellationToken);

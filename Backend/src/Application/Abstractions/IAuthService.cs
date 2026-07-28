@@ -8,4 +8,6 @@ public interface IAuthService
     Task<AuthResult?> LoginAsync(string email, string password, string? ipAddress, string? userAgent, CancellationToken cancellationToken);
     Task<AuthResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken);
     Task AssignRoleAsync(string userId, string role, CancellationToken cancellationToken);
+    Task RemoveFromRoleAsync(string userId, string role, CancellationToken cancellationToken);
+    Task<string?> FindUserIdByEmailAsync(string email, CancellationToken cancellationToken);
 }

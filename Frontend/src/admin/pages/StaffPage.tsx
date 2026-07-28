@@ -71,7 +71,7 @@ function EmployeesSection() {
       } else if (res.outcome === 'AlreadyEmployed') {
         setFormError('Этот пользователь уже числится сотрудником магазина')
       } else if (res.outcome === 'EmployeeNotFound') {
-        setFormError('Нет зарегистрированного пользователя с таким email')
+        setFormError('Нет пользователя с таким email — попросите сотрудника сначала зарегистрироваться в приложении')
       } else if (res.outcome === 'Forbidden') {
         setFormError('Нет доступа к этому магазину')
       } else {
@@ -160,7 +160,7 @@ function EmployeesSection() {
           >
             <div className="min-w-0">
               <div className="truncate text-[13px] font-semibold text-[color:var(--admin-text)]">
-                {emp.userId === user?.userId ? 'Вы' : emp.userId}
+                {shortId(emp.userId, user?.userId)}
               </div>
               <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
                 {emp.role === 'Owner' ? 'Владелец' : 'Кассир'} · с {new Date(emp.addedAt).toLocaleDateString('ru-RU')}
@@ -190,6 +190,7 @@ export function StaffPage() {
   const { storeId, user } = useAuth()
   const [shifts, setShifts] = useState<CashierShift[] | null>(null)
   const [anomalies, setAnomalies] = useState<CashierAnomaly[]>([])
+  const [anomaliesForbidden, setAnomaliesForbidden] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -197,20 +198,28 @@ export function StaffPage() {
     if (!storeId) return
     let cancelled = false
     async function load() {
+      // Independent try/catch per endpoint — cost/profit-adjacent metrics like cashier
+      // anomalies are owner-only (see the "Роли и доступ" note below), so a 403 there
+      // shouldn't blank out the shifts/KPI sections a non-owner employee can still see.
       try {
-        const [shiftsRes, anomaliesRes] = await Promise.all([
-          salesApi.getCashierShifts(storeId!),
-          storesApi.getCashierAnomalies(storeId!, daysAgo(29), today()),
-        ])
+        const shiftsRes = await salesApi.getCashierShifts(storeId!)
         if (cancelled) return
         setShifts(shiftsRes.shifts ?? [])
-        setAnomalies(anomaliesRes.cashiers ?? [])
       } catch (err) {
         if (cancelled) return
         setError(err instanceof ApiError ? err.message : 'Не удалось загрузить данные о сотрудниках')
-      } finally {
-        if (!cancelled) setLoading(false)
       }
+
+      try {
+        const anomaliesRes = await storesApi.getCashierAnomalies(storeId!, daysAgo(29), today())
+        if (cancelled) return
+        setAnomalies(anomaliesRes.cashiers ?? [])
+      } catch (err) {
+        if (cancelled) return
+        if (err instanceof ApiError && err.status === 403) setAnomaliesForbidden(true)
+      }
+
+      if (!cancelled) setLoading(false)
     }
     load()
     return () => {
@@ -309,41 +318,47 @@ export function StaffPage() {
         <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
           Аномальным считается кассир с необычно высокой долей отмен продаж — эта метрика считается на бэкенде.
         </p>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] border-collapse text-left text-[13px]">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
-                <th className="pb-3 font-semibold">Кассир</th>
-                <th className="pb-3 font-semibold">Продаж</th>
-                <th className="pb-3 font-semibold">Отмен</th>
-                <th className="pb-3 font-semibold">% отмен</th>
-                <th className="pb-3 font-semibold" />
-              </tr>
-            </thead>
-            <tbody>
-              {anomalies.map((a) => (
-                <tr key={a.cashierUserId} className="border-t border-[color:var(--admin-border)]">
-                  <td className="py-3 pr-3 font-semibold text-[color:var(--admin-text)]">{shortId(a.cashierUserId, user?.userId)}</td>
-                  <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{a.totalSales}</td>
-                  <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{a.voidedSales}</td>
-                  <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{(a.voidRate * 100).toFixed(1)}%</td>
-                  <td className="py-3">
-                    {a.isAnomalous && (
-                      <span className="rounded-full bg-[#f8717122] px-2.5 py-1 text-[11px] font-semibold text-[#f87171]">Аномалия</span>
-                    )}
-                  </td>
+        {anomaliesForbidden ? (
+          <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">
+            Эта метрика видна только владельцу магазина
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] border-collapse text-left text-[13px]">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
+                  <th className="pb-3 font-semibold">Кассир</th>
+                  <th className="pb-3 font-semibold">Продаж</th>
+                  <th className="pb-3 font-semibold">Отмен</th>
+                  <th className="pb-3 font-semibold">% отмен</th>
+                  <th className="pb-3 font-semibold" />
                 </tr>
-              ))}
-              {anomalies.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-10 text-center text-[color:var(--admin-text-tertiary)]">
-                    Нет продаж за последние 30 дней
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {anomalies.map((a) => (
+                  <tr key={a.cashierUserId} className="border-t border-[color:var(--admin-border)]">
+                    <td className="py-3 pr-3 font-semibold text-[color:var(--admin-text)]">{shortId(a.cashierUserId, user?.userId)}</td>
+                    <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{a.totalSales}</td>
+                    <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{a.voidedSales}</td>
+                    <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{(a.voidRate * 100).toFixed(1)}%</td>
+                    <td className="py-3">
+                      {a.isAnomalous && (
+                        <span className="rounded-full bg-[#f8717122] px-2.5 py-1 text-[11px] font-semibold text-[#f87171]">Аномалия</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {anomalies.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-[color:var(--admin-text-tertiary)]">
+                      Нет продаж за последние 30 дней
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       <Card className="p-5">
@@ -352,8 +367,9 @@ export function StaffPage() {
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Роли и доступ</span>
         </div>
         <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-          Отдельной суб-роли «кассир» с урезанным доступом в бэкенде пока нет — все, кто работает с кассой этого
-          магазина, входят под ролью StorePartner.
+          Отдельной JWT-роли «кассир» пока нет — все, кто работает с кассой этого магазина, входят под ролью
+          StorePartner. Доступ к себестоимости и отчётам о прибыли ограничен отдельно: только владелец магазина, не
+          добавленные сотрудники.
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {ROLE_ACCESS.map((r) => (

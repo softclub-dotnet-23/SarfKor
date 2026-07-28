@@ -800,4 +800,77 @@
 
 Playwright-сценарий: `/login` → переключение на «Зарегистрироваться» → реальная регистрация → редирект на `/admin/onboarding` → заполнение формы магазина → клик «Создать магазин». До фикса: URL остаётся на `/admin/onboarding`, поля пустые. После обоих фиксов: URL становится `/admin`, дашборд полностью рендерится (KPI карточки, график выручки за 7 дней как плоская линия на нуле, кольцевые диаграммы, блок смен, блок «требует внимания»), **ноль** ошибок/предупреждений в консоли браузера и ноль неуспешных сетевых запросов за весь прогон. Скриншот сохранён и визуально проверен. `npx tsc -b` — 0 ошибок. `npm run lint` — только 2 существовавших ранее предупреждения, не связанных с изменёнными файлами.
 
+## 2026-07-21 — SubmitNewProductCommand: закрыт пробел "нет способа добавить новый товар в каталог"
+
+Пользователь спросил "как добавить товар на склад, удалить и изменить". Проверка показала: приход существующего товара (`RecordStockReceiptCommand`) работает; списание остатка (`WriteOff`) и ручная корректировка остатка не реализованы вовсе (только заложены в `StockMovementType`, ни разу не используются); но главное — **не было способа добавить в каталог товар, которого там ещё вообще нет**. `ModerateNewProductCommand` умел одобрить/отклонить `ProductSubmission`, но ни один Command/Handler во всём Application-слое эту `ProductSubmission` не создавал — путь был физически недостижим с любой стороны (ни юзер, ни партнёр не могли инициировать заявку). Пользователь выбрал это как приоритет №1 из трёх найденных пробелов (списание и ручная коррекция остатка — отложены).
+
+### Что добавлено
+
+- `SubmitNewProductCommand` (`Application/Products/Commands/SubmitNewProduct`) — штрихкод/название/категория/бренд/страна + `SubmittedByUserId` из JWT. Проверки по порядку: штрихкод уже существует как реальный `Product` → `DuplicateBarcode`; `CategoryId`/`BrandId` не существуют → `CategoryNotFound`/`BrandNotFound` (для чего в `IBrandRepository` добавлен `ExistsAsync` — `ICategoryRepository` он уже был); уже есть **другая** заявка на этот штрихкод в статусе `Pending` → `DuplicatePendingSubmission` (два покупателя сканируют один и тот же неизвестный штрихкод — это ожидаемый случай, а не исключение, без этой проверки каждый создавал бы свою заявку-дубликат). Только после всех проверок — создаётся `ProductSubmission` в статусе `Pending`.
+- `GetPendingProductSubmissionsQuery` (`Application/Products/Queries/GetPendingProductSubmissions`) — без него заявки создавались бы, но Admin не имел бы способа их найти (`ModerateNewProductCommand` требует уже известный `ProductSubmissionId`). Мирроринг уже существующего паттерна `GetPendingReportDisputesQuery`/`GetPendingPriceEntryDisputesQuery`.
+- `IProductSubmissionRepository` дополнен `Add`, `GetPendingByBarcodeAsync`, `GetPendingAsync`.
+- WebApi: `POST /api/products/submissions` (`[Authorize]`, rate-limit `contributions` — как и другие пользовательские вклады) и `GET /api/admin/products/submissions/pending` (`[Authorize("Admin")]`) в `AdminController`, замыкая цикл модерации, который раньше никогда не мог начаться.
+- Миграций не потребовалось — `ProductSubmission` как таблица уже существовала (создана в исходной доменной модели, просто никогда не заполнялась).
+
+### Проверено вручную end-to-end (полный цикл, реальный сервер + реальная БД)
+
+Через `dotnet run` + `curl`: обычный пользователь подаёт заявку на новый штрихкод → `200`, `productSubmissionId` возвращён. Повторная заявка на **тот же** штрихкод другим запросом → `409 DuplicatePendingSubmission`. Заявка с несуществующей категорией (`categoryId: 9999`) → `404`. Без токена → `401`. Логин под сидированным Admin-аккаунтом → `GET /api/admin/products/submissions/pending` реально возвращает поданную заявку. `POST /api/admin/products/{id}/moderate` с `approve: true` → `200`, создан реальный `Product` (`productId` в ответе); заявка сразу пропадает из pending-списка; `GET /api/products/scan/{тот же штрихкод}` — товар **реально находится** по своему настоящему id и названию, сразу после одобрения. Повторная заявка на тот же штрихкод **после** одобрения → корректно `409 DuplicateBarcode` (не `DuplicatePendingSubmission` — правильная ветка сработала).
+
+**Результат**: `dotnet build` — 0 ошибок; `dotnet test` — **236/236 пройдено** (+5 новых тестов на `SubmitNewProductCommandHandler`: дубликат штрихкода, несуществующая категория/бренд, дубликат pending-заявки, успешный путь).
+
+**Не сделано (по явному выбору пользователя, следующие шаги при необходимости)**: списание остатка (`WriteOff`, порча/просрочка, требование CLAUDE.md §4) и ручная корректировка остатка (`Correction` как отдельная операция, не только побочный эффект возврата/трансфера) — сознательно отложены, не забыты.
+
 **Результат**: онбординг нового партнёра (регистрация → создание магазина → дашборд) теперь работает end-to-end через реальный UI, не только через API напрямую. Изменения затронули только `Frontend/src/lib/api/jwt.ts` и `Frontend/src/admin/components/LineChart.tsx` — Backend не менялся, т.к. проблема была исключительно в интерпретации уже корректного ответа сервера.
+
+## 2026-07-24 — Отдельная Admin-панель (Frontend) + GetPendingReportsQuery (Backend)
+
+Пользователь спросил "почему все роли выглядят одинаково при входе" — проверено: весь `Frontend/` исторически был построен только как кабинет `StorePartner`; для `User` и `Admin` отдельных экранов не было вообще — оба попадали на один и тот же экран `/admin/onboarding` ("создайте свой магазин"), потому что `RequireStore` проверяет только `hasRole('StorePartner') && storeId !== null`, не различая остальные роли. Пользователь выбрал: добавить отдельную Admin-панель.
+
+### Backend — последний недостающий "pending"-список
+
+По аналогии с `ProductSubmission` (закрыто прошлым шагом) обнаружен тот же паттерн пробела для `Report`: `ModerateReportCommand` мог одобрить/отклонить репорт по id, но ни одного способа узнать *какие* id ожидают модерации не существовало. Добавлено `GetPendingReportsQuery` (`Application/Feedback/Queries/GetPendingReports`) + `IReportRepository.GetPendingAsync` + `GET /api/admin/reports/pending`, зеркалируя уже существующий паттерн `GetPendingReportDisputesQuery`. Миграций не потребовалось.
+
+### Frontend — новая ветка маршрутов `/console`, независимая от `/admin`
+
+- `RequireAdmin.tsx` — новый guard, проверяет `hasRole('Admin')`, не связан с `RequireStore`/`storeId` (модерация не имеет отношения к владению магазином).
+- `ConsoleLayout.tsx` — намеренно **не** переиспользует `AdminLayout` (тот жёстко заточен под магазин: касса/склад/сотрудники в навигации, виджет кассовой смены в сайдбаре) — вместо этого простой independent shell с бейджем "Admin console".
+- `ConsolePage.tsx` — одна страница с 4 вкладками (счётчик pending-элементов на каждой): заявки на товары, жалобы, споры о ценах, споры о жалобах. Одобрение — сразу; отклонение — модалка с необязательной причиной (переиспользован существующий `AdminModal`).
+- `lib/api/admin.ts` — новый клиент для всех 4 admin-эндпоинтов (существующих трёх + новый `GetPendingReports`).
+- **Ключевой фикс редиректа после логина**: раньше `LoginPage` всегда вела на `/admin` (или на `state.from`, если guard откуда-то редиректнул) — для Admin-аккаунта это привело бы прямиком на `/admin/onboarding` (тот же экран, от которого мы уходим). `AuthContext.login`/`register` теперь возвращают `roles` вместе с `{ok: true}` (иначе `LoginPage` читал бы `user` из контекста и ловил ещё не обновившееся значение — `setUser` не флашит ре-рендер синхронно в этом же замыкании), и `LoginPage` использует эти роли: `state.from` побеждает всегда (глубокие ссылки), иначе — `/console` для Admin, `/admin` для всех остальных.
+
+### Проверено вручную end-to-end (реальный браузер, Playwright)
+
+Логин под сидированным Admin-аккаунтом → **реально попадает на `/console`** (не `/admin`). Вкладка "Жалобы" показывает реальный pending-репорт из БД (тип, товар, магазин, описание, дата — всё совпадает). Клик "Разрешить" → реальный `POST /api/admin/reports/2/moderate` → `200` → элемент пропадает из списка; отдельным `curl`-запросом подтверждено, что `GET /api/admin/reports/pending` после этого возвращает пустой список — значит модерация прошла по-настоящему на сервере, а не просто визуально скрылась. Обратная проверка guard'а: обычный `User` логинится → попадает на `/admin/onboarding`; при прямом переходе на `/console` — редиректится обратно на `/admin/onboarding` (через `RequireAdmin` → `/admin` → `RequireStore`), `/console` для не-Admin недостижим ни одним путём. `npx tsc -b` — 0 ошибок; `npm run lint` — только 2 предсуществовавших предупреждения, не связанных с новыми файлами. `dotnet build`/`dotnet test` — 0 ошибок, 236/236.
+
+**Не сделано (сознательно, не запрошено)**: `ConsolePage` не показывает историю уже обработанных решений (только текущую pending-очередь) — если понадобится аудит прошлых модераций, для этого уже есть `AuditLog` на бэкенде, но отдельного эндпоинта его чтения нет.
+
+## 2026-07-24 (продолжение) — Полный CRUD для Category/Brand/TaxRate/Supplier
+
+Пользователь спросил "как добавить категорию товара и остальные CRUD'ы". Проверка показала: на бэкенде существовали только Create + List для всех четырёх справочников (Category/Brand/TaxRate — Admin-курируемые, Supplier — StorePartner-управляемый) — ни Update, ни Delete не было нигде, и ни одного экрана в Frontend для управления ими тоже не было. Пользователь выбрал: сразу полный CRUD (не только Create+List), с UI в Admin console (Category/Brand/TaxRate) и в кабинете StorePartner (Supplier).
+
+### Backend — 8 новых команд (Update + Delete × 4 сущности)
+
+Ключевое архитектурное решение: `Category`/`Brand`/`TaxRate`/`Supplier` — **слабые ссылки** (обычные `int`-колонки без EF-навигации, без FK на уровне БД — уже устоявшийся в проекте паттерн). Значит `Delete` может молча оставить "битые" ссылки у `Product`/`StockMovement`/`PurchaseOrder`/`ReorderRule`. Вместо повторения паттерна "слабая ссылка = не проверяем" (как для мелких листовых сущностей типа `Report.ProductId`), для этих четырёх — платформенных справочников, на которые массово ссылаются другие таблицы, — решено проверять использование перед удалением:
+
+- `ICategoryRepository`/`IBrandRepository`/`ITaxRateRepository`/`ISupplierRepository` получили `GetByIdAsync`, `IsInUseAsync`, `Remove`.
+- `IsInUseAsync` реализован в Infrastructure-слое прямыми запросами к связанным таблицам: Category → `Product.CategoryId` + `TaxRate.CategoryId` + `Category.ParentCategoryId` (дочерние категории); Brand → `Product.BrandId`; TaxRate → `Product.TaxRateId`; Supplier → `StockMovement.SupplierId` + `PurchaseOrder.SupplierId` + `ReorderRule.PreferredSupplierId`.
+- `UpdateCategoryCommand` дополнительно проверяет `SelfReference` (категория не может быть своим же родителем) и `ParentCategoryNotFound`.
+- `UpdateTaxRateCommand` проверяет `CategoryNotFound`, если указана новая `CategoryId`.
+- Все `Delete*Command` возвращают `InUse` (409), а не молча удаляют или падают с ошибкой БД.
+
+### WebApi — `PUT`/`DELETE` эндпоинты
+
+`CatalogController`: `PUT/DELETE /api/catalog/brands/{id}`, `.../categories/{id}`, `.../tax-rates/{id}` (все `[Authorize("Admin")]`, как и существующие `POST`). `SuppliersController`: `PUT/DELETE /api/suppliers/{id}` (`[Authorize("StorePartner")]`).
+
+### Frontend
+
+- `lib/api/catalog.ts` (новый) — полный клиент для Brand/Category/TaxRate CRUD.
+- `lib/api/suppliers.ts` (новый) — полный клиент для Supplier CRUD.
+- `admin/pages/CatalogTab.tsx` (новый) — три секции (Бренды/Категории/Налоговые ставки) с инлайн-редактированием (клик на карандаш → поля становятся редактируемыми на месте, без модалки) и формой добавления снизу. Добавлен как 5-я вкладка "Справочники" в уже существующий `/console`.
+- `admin/pages/SuppliersSection.tsx` (новый) — тот же паттерн для поставщиков, встроен в `SettingsPage` (кабинет StorePartner) между "Уведомления" и "Аккаунт".
+
+### Проверено вручную end-to-end (реальный сервер + реальный браузер, Playwright)
+
+Через `curl`: создание/переименование/удаление бренда — 200; попытка удалить `BrandId=2` (Coca-Cola, реально используется сидированным товаром) → **`409` "This brand is still referenced by one or more products."**; та же проверка для категории (`Beverages`, тоже в использовании) → 409; self-reference на категории (parentCategoryId = свой же id) → 409; обновление несуществующего бренда → 404. Через Playwright (реальный браузер): вход под Admin → вкладка "Справочники" → создание бренда "PW Test Brand" → инлайн-редактирование в "PW Test Brand RENAMED" → удаление — все три шага отражены в UI и подтверждены визуально скриншотами. Вход под `demo.partner` (StorePartner, владеет магазином #27) → `/admin/settings` → создание/удаление поставщика "PW Test Supplier" — работает, встроено в общий экран настроек магазина без нареканий.
+
+**Результат**: `dotnet build`/`dotnet test` — 0 ошибок, **259/259 пройдено** (+23 новых теста: по 3-4 на каждую из 8 команд — not-found, use-case-специфичные проверки типа `InUse`/`SelfReference`/`ParentCategoryNotFound`, успешный путь). `npx tsc -b` — 0 ошибок; `npm run lint` — только 2 предсуществовавших предупреждения.

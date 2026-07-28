@@ -6,6 +6,7 @@ import { useThemeTransition } from '../../theme/useThemeTransition'
 import { useAuth } from '../../auth/AuthContext'
 import { SunIcon, MoonIcon } from '../../components/icons'
 import { StoreIcon, BellIcon, KeyIcon, CheckIcon } from '../components/icons'
+import { SuppliersSection } from './SuppliersSection'
 
 const DAILY_GOAL_KEY = 'sarfkor-daily-goal'
 
@@ -122,6 +123,8 @@ export function SettingsPage() {
           Посмотреть уведомления
         </button>
       </Card>
+
+      <SuppliersSection />
 
       <Card className="p-6">
         <div className="mb-5 flex items-center gap-2">

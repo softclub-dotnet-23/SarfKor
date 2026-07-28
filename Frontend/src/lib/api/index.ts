@@ -6,6 +6,7 @@ export * as productsApi from './products'
 export * as salesApi from './sales'
 export * as inventoryApi from './inventory'
 export * as adminApi from './admin'
+export * as catalogApi from './catalog'
 export * as favoritesApi from './favorites'
 export * as shoppingListsApi from './shoppingLists'
 export * as priceAlertsApi from './priceAlerts'
@@ -55,11 +56,9 @@ export type {
   ReportDispute,
   ProductSubmission,
   Report,
-  Brand,
-  Category,
-  TaxRate,
   AuditLogEntry,
 } from './admin'
+export type { Brand, Category, TaxRate } from './catalog'
 export type { FavoriteType, Favorite } from './favorites'
 export type { ShoppingList, ShoppingListItem } from './shoppingLists'
 export type { PriceAlert } from './priceAlerts'

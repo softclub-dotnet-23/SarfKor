@@ -7,6 +7,9 @@ export interface AuthUser {
   roles: string[]
 }
 
+// `roles` on success lets the caller (LoginPage) decide where to redirect without racing the
+// context's own async state update — reading `user` right after awaiting login() would still see
+// the pre-login value, since setUser() hasn't flushed a re-render yet in this same closure.
 type AuthResult = { ok: true; roles: string[] } | { ok: false; error: string }
 
 interface AuthContextValue {

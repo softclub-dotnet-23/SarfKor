@@ -87,7 +87,9 @@ export interface StoreEmployee {
 
 export type AddStoreEmployeeOutcome = 'Added' | 'StoreNotFound' | 'Forbidden' | 'AlreadyEmployed' | 'EmployeeNotFound'
 
-export function addStoreEmployee(storeId: number, employeeEmail: string, role: StoreEmployeeRole) {
+// The owner only has the employee's email to go on (there's no user directory) -- the backend
+// resolves it to a real UserId and reports EmployeeNotFound if nobody's registered with it.
+export function addStoreEmployee(storeId: number, employeeEmail: string, role: StoreEmployeeRole = 'Cashier') {
   return apiFetch<{ outcome: AddStoreEmployeeOutcome; storeEmployeeId?: number }>(`/api/stores/${storeId}/employees`, {
     method: 'POST',
     body: { employeeEmail, role },

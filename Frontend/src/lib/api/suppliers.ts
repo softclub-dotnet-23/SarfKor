@@ -9,6 +9,10 @@ export interface Supplier {
 
 // Suppliers are global (not scoped to a store) — confirmed against the
 // backend source, which has no storeId on either endpoint below.
+export function getSuppliers() {
+  return apiFetch<{ suppliers: Supplier[] }>('/api/suppliers')
+}
+
 export function createSupplier(name: string, contactPhone?: string, contactEmail?: string) {
   return apiFetch<{ supplierId: number }>('/api/suppliers', {
     method: 'POST',
@@ -16,6 +20,13 @@ export function createSupplier(name: string, contactPhone?: string, contactEmail
   })
 }
 
-export function getSuppliers() {
-  return apiFetch<{ suppliers: Supplier[] }>('/api/suppliers')
+export function updateSupplier(supplierId: number, name: string, contactPhone?: string, contactEmail?: string) {
+  return apiFetch<{ outcome: string }>(`/api/suppliers/${supplierId}`, {
+    method: 'PUT',
+    body: { name, contactPhone, contactEmail },
+  })
+}
+
+export function deleteSupplier(supplierId: number) {
+  return apiFetch<{ outcome: string }>(`/api/suppliers/${supplierId}`, { method: 'DELETE' })
 }

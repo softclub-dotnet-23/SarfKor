@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { authApi, ApiError, decodeJwt, rolesFromToken, getTokens, setTokens, clearTokens } from '../lib/api'
+import { authApi, meApi, ApiError, decodeJwt, rolesFromToken, getTokens, setTokens, clearTokens, type MyStore } from '../lib/api'
 
 export interface AuthUser {
   userId: string
@@ -12,14 +12,20 @@ type AuthResult = { ok: true; roles: string[] } | { ok: false; error: string }
 interface AuthContextValue {
   user: AuthUser | null
   storeId: number | null
+  /** Stores the caller owns or is a registered employee of — null until resolved at least once, [] once resolved with none found. */
+  myStores: MyStore[] | null
   /** True only while resolving the session on first load (deciding whether a stored token is still valid). */
   loading: boolean
   login: (email: string, password: string) => Promise<AuthResult>
   register: (email: string, password: string) => Promise<AuthResult>
   logout: () => void
   setStoreId: (id: number) => void
+  /** Drops a locally-cached storeId that no longer resolves (store deleted, or stale from a different account that once shared this browser) — sends the caller back to the picker instead of a dead retry loop. */
+  clearStoreId: () => void
   /** Re-pulls the JWT after an action that changes the caller's roles server-side (e.g. creating a store grants StorePartner) — the previously-issued token doesn't carry the new role until this runs. */
   refreshRoles: () => Promise<void>
+  /** Re-fetches the owned/employed store list — call after creating a store or being added as an employee. */
+  refreshMyStores: () => Promise<void>
   hasRole: (role: string) => boolean
 }
 
@@ -48,7 +54,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const raw = localStorage.getItem(STORE_ID_KEY)
     return raw ? Number(raw) : null
   })
+  const [myStores, setMyStores] = useState<MyStore[] | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Fetches the caller's owned/employed stores and, if none is cached locally yet and there's
+  // exactly one, adopts it automatically — this is what recovers a StorePartner's/cashier's store
+  // on a fresh browser instead of stranding them on the onboarding screen (GET /api/me/stores).
+  async function fetchAndApplyMyStores(roles: string[]): Promise<MyStore[]> {
+    if (!roles.includes('StorePartner')) {
+      setMyStores([])
+      return []
+    }
+    try {
+      const res = await meApi.getMyStores()
+      setMyStores(res.stores)
+      if (!localStorage.getItem(STORE_ID_KEY) && res.stores.length === 1) {
+        const onlyStoreId = res.stores[0].storeId
+        localStorage.setItem(STORE_ID_KEY, String(onlyStoreId))
+        setStoreIdState(onlyStoreId)
+      }
+      return res.stores
+    } catch {
+      setMyStores([])
+      return []
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -61,8 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const decoded = decodeJwt(tokens.accessToken)
       const isExpired = !decoded || decoded.exp * 1000 < Date.now() + 5000
       if (!isExpired) {
-        setUser(userFromAccessToken(tokens.accessToken))
-        setLoading(false)
+        const nextUser = userFromAccessToken(tokens.accessToken)
+        setUser(nextUser)
+        await fetchAndApplyMyStores(nextUser?.roles ?? [])
+        if (!cancelled) setLoading(false)
         return
       }
       // Access token is stale on load (15 min lifetime) — proactively refresh
@@ -72,7 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const result = await authApi.refresh(tokens.refreshToken)
         if (cancelled) return
         setTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
-        setUser(userFromAccessToken(result.accessToken))
+        const nextUser = userFromAccessToken(result.accessToken)
+        setUser(nextUser)
+        await fetchAndApplyMyStores(nextUser?.roles ?? [])
       } catch {
         if (cancelled) return
         clearTokens()
@@ -91,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       storeId,
+      myStores,
       loading,
       login: async (email, password) => {
         try {
@@ -98,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
           const nextUser = userFromAccessToken(result.accessToken)
           setUser(nextUser)
+          await fetchAndApplyMyStores(nextUser?.roles ?? [])
           return { ok: true, roles: nextUser?.roles ?? [] }
         } catch (err) {
           return { ok: false, error: friendlyAuthError(err, 'Не удалось войти') }
@@ -119,10 +155,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(STORE_ID_KEY)
         setUser(null)
         setStoreIdState(null)
+        setMyStores(null)
       },
       setStoreId: (id: number) => {
         localStorage.setItem(STORE_ID_KEY, String(id))
         setStoreIdState(id)
+      },
+      clearStoreId: () => {
+        localStorage.removeItem(STORE_ID_KEY)
+        setStoreIdState(null)
       },
       refreshRoles: async () => {
         const tokens = getTokens()
@@ -131,9 +172,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
         setUser(userFromAccessToken(result.accessToken))
       },
+      refreshMyStores: async () => {
+        await fetchAndApplyMyStores(user?.roles ?? [])
+      },
       hasRole: (role: string) => user?.roles.includes(role) ?? false,
     }),
-    [user, storeId, loading],
+    [user, storeId, myStores, loading],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

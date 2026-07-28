@@ -85,10 +85,12 @@ export interface StoreEmployee {
   addedAt: string
 }
 
-export function addStoreEmployee(storeId: number, employeeUserId: string, role: StoreEmployeeRole) {
-  return apiFetch<{ outcome: string; storeEmployeeId?: number }>(`/api/stores/${storeId}/employees`, {
+export type AddStoreEmployeeOutcome = 'Added' | 'StoreNotFound' | 'Forbidden' | 'AlreadyEmployed' | 'EmployeeNotFound'
+
+export function addStoreEmployee(storeId: number, employeeEmail: string, role: StoreEmployeeRole) {
+  return apiFetch<{ outcome: AddStoreEmployeeOutcome; storeEmployeeId?: number }>(`/api/stores/${storeId}/employees`, {
     method: 'POST',
-    body: { employeeUserId, role },
+    body: { employeeEmail, role },
   })
 }
 

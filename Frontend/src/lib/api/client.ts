@@ -146,11 +146,19 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     } catch {
       // no JSON body
     }
-    const message =
-      (parsedBody && typeof parsedBody === 'object' && 'title' in parsedBody
-        ? String((parsedBody as { title?: unknown }).title)
-        : undefined) ?? `${res.status} ${res.statusText}`
-    throw new ApiError(res.status, message, parsedBody)
+    // Two distinct shapes come back from the backend for a non-2xx response:
+    // FluentValidation failures serialize as ASP.NET ProblemDetails (an object with `.title`,
+    // via ToValidationProblem), while a plain `NotFound("...")`/`Conflict("...")`/`BadRequest("...")`
+    // — used all over the controllers for outcome-mapped errors — serializes as a bare JSON string.
+    // Missing the second case meant every one of those (e.g. "Store not found.") silently fell back
+    // to the generic "404 Not Found"/"409 Conflict" text instead of the real backend message.
+    let message: string | undefined
+    if (parsedBody && typeof parsedBody === 'object' && 'title' in parsedBody) {
+      message = String((parsedBody as { title?: unknown }).title)
+    } else if (typeof parsedBody === 'string' && parsedBody.trim()) {
+      message = parsedBody
+    }
+    throw new ApiError(res.status, message ?? `${res.status} ${res.statusText}`, parsedBody)
   }
 
   if (res.status === 204) return undefined as T

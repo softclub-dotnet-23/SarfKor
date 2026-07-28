@@ -63,7 +63,7 @@ export type {
 export type { FavoriteType, Favorite } from './favorites'
 export type { ShoppingList, ShoppingListItem } from './shoppingLists'
 export type { PriceAlert } from './priceAlerts'
-export type { UserProfile, ConsentType, UserConsent, SecurityEventType, SecurityEvent } from './me'
+export type { UserProfile, ConsentType, UserConsent, SecurityEventType, SecurityEvent, MyStore, MyStoreRole } from './me'
 export type { Review } from './reviews'
 export type { Supplier } from './suppliers'
 export type { PurchaseOrder, PurchaseOrderLine } from './purchaseOrders'

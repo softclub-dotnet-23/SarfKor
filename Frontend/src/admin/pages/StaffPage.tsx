@@ -32,7 +32,7 @@ function EmployeesSection() {
   const { storeId, user } = useAuth()
   const [employees, setEmployees] = useState<StoreEmployee[] | null>(null)
   const [error, setError] = useState('')
-  const [employeeUserId, setEmployeeUserId] = useState('')
+  const [employeeEmail, setEmployeeEmail] = useState('')
   const [role, setRole] = useState<StoreEmployeeRole>('Cashier')
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState('')
@@ -59,17 +59,19 @@ function EmployeesSection() {
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault()
-    if (!storeId || !employeeUserId.trim() || busy) return
+    if (!storeId || !employeeEmail.trim() || busy) return
     setBusy(true)
     setFormError('')
     try {
-      const res = await storesApi.addStoreEmployee(storeId, employeeUserId.trim(), role)
+      const res = await storesApi.addStoreEmployee(storeId, employeeEmail.trim(), role)
       if (res.outcome === 'Added') {
-        setEmployeeUserId('')
+        setEmployeeEmail('')
         setRole('Cashier')
         await load()
       } else if (res.outcome === 'AlreadyEmployed') {
         setFormError('Этот пользователь уже числится сотрудником магазина')
+      } else if (res.outcome === 'EmployeeNotFound') {
+        setFormError('Нет зарегистрированного пользователя с таким email')
       } else if (res.outcome === 'Forbidden') {
         setFormError('Нет доступа к этому магазину')
       } else {
@@ -110,11 +112,12 @@ function EmployeesSection() {
 
       <form onSubmit={handleAdd} className="mb-4 flex flex-col gap-2.5 sm:flex-row sm:items-end">
         <label className="flex flex-1 flex-col gap-1.5">
-          <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">ID пользователя</span>
+          <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Email сотрудника</span>
           <input
-            value={employeeUserId}
-            onChange={(e) => setEmployeeUserId(e.target.value)}
-            placeholder="Идентификатор аккаунта сотрудника"
+            type="email"
+            value={employeeEmail}
+            onChange={(e) => setEmployeeEmail(e.target.value)}
+            placeholder="cashier@sarfkor.tj"
             className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
           />
         </label>
@@ -131,7 +134,7 @@ function EmployeesSection() {
         </label>
         <button
           type="submit"
-          disabled={busy || !employeeUserId.trim()}
+          disabled={busy || !employeeEmail.trim()}
           className="flex items-center justify-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
         >
           <PlusIcon width={14} height={14} />
@@ -140,8 +143,8 @@ function EmployeesSection() {
       </form>
       {formError && <div className="mb-3 text-[12px] font-medium text-[#f87171]">{formError}</div>}
       <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-        Пока в бэкенде нет поиска пользователей по email — добавить можно только по точному идентификатору аккаунта
-        (userId).
+        Сотрудник должен уже быть зарегистрирован в Sarfkor под этим email — добавление автоматически выдаёт ему
+        доступ к панели StorePartner для этого магазина.
       </p>
 
       {error && <div className="mb-3 text-[12px] font-medium text-[#f87171]">{error}</div>}

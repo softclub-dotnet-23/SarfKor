@@ -46,3 +46,15 @@ export interface SecurityEvent {
 export function getSecurityEvents() {
   return apiFetch<{ events: SecurityEvent[] }>('/api/me/security-events')
 }
+
+export type MyStoreRole = 'Owner' | 'Cashier'
+
+export interface MyStore {
+  storeId: number
+  name: string
+  role: MyStoreRole
+}
+
+export function getMyStores() {
+  return apiFetch<{ stores: MyStore[] }>('/api/me/stores')
+}

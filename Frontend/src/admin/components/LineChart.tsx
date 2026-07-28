@@ -116,7 +116,7 @@ export function LineChart({ data }: LineChartProps) {
           </g>
         )}
         {data.map((d, i) => (
-          <text key={d.day} x={pts[i].x} y={h + 22} textAnchor="middle" fill="var(--admin-text-tertiary)" fontSize={11}>
+          <text key={i} x={pts[i].x} y={h + 22} textAnchor="middle" fill="var(--admin-text-tertiary)" fontSize={11}>
             {d.day}
           </text>
         ))}

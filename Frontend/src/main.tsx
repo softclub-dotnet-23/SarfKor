@@ -26,6 +26,7 @@ import { ScanPage } from './app/pages/ScanPage'
 import { FavoritesPage } from './app/pages/FavoritesPage'
 import { ShoppingListsPage } from './app/pages/ShoppingListsPage'
 import { PriceAlertsPage } from './app/pages/PriceAlertsPage'
+import { ExpiringOffersPage } from './app/pages/ExpiringOffersPage'
 import { NotificationsPage } from './app/pages/NotificationsPage'
 import { ReceiptsPage } from './app/pages/ReceiptsPage'
 import { AccountPage } from './app/pages/AccountPage'
@@ -43,6 +44,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route index element={<ScanPage />} />
                 <Route path="favorites" element={<FavoritesPage />} />
                 <Route path="lists" element={<ShoppingListsPage />} />
+                <Route path="expiring" element={<ExpiringOffersPage />} />
                 <Route path="alerts" element={<PriceAlertsPage />} />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="receipts" element={<ReceiptsPage />} />

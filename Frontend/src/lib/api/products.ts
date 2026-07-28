@@ -6,6 +6,7 @@ export interface ScanResultStore {
   price: number
   currency: string
   distanceKm?: number
+  priceEntryId: number
 }
 
 export interface ScanBarcodeResult {
@@ -28,6 +29,19 @@ export function getTopSellingProducts(storeId?: number, limit = 10) {
     '/api/products/top-selling',
     { query: { storeId, limit }, auth: false },
   )
+}
+
+export interface MostScannedProduct {
+  productId: number
+  productName: string
+  totalScans: number
+}
+
+export function getMostScannedProducts(limit = 10) {
+  return apiFetch<{ products: MostScannedProduct[] }>('/api/products/most-scanned', {
+    query: { limit },
+    auth: false,
+  })
 }
 
 export interface SubmitNewProductRequest {

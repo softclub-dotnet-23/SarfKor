@@ -38,3 +38,11 @@ export function getExpiringOffersForStore(storeId: number) {
     auth: false,
   })
 }
+
+// Consumer-facing browse: nearby offers across all stores instead of one store's own list.
+export function getExpiringOffersNearby(lat?: number, lng?: number) {
+  return apiFetch<{ offers: ExpiringOffer[] }>('/api/offers/expiring', {
+    query: { lat, lng },
+    auth: false,
+  })
+}

@@ -85,6 +85,15 @@ public sealed class AuthService(
         await userManager.AddToRoleAsync(user, role);
     }
 
+    public async Task RemoveFromRoleAsync(string userId, string role, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null || !await userManager.IsInRoleAsync(user, role))
+            return;
+
+        await userManager.RemoveFromRoleAsync(user, role);
+    }
+
     public async Task<string?> FindUserIdByEmailAsync(string email, CancellationToken cancellationToken)
     {
         var user = await userManager.FindByEmailAsync(email);

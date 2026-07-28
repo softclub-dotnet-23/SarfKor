@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { storesApi, ApiError } from '../../lib/api'
@@ -10,7 +10,7 @@ const DEFAULT_LAT = 38.5598
 const DEFAULT_LNG = 68.787
 
 export function StoreOnboardingPage() {
-  const { hasRole, storeId, setStoreId, refreshRoles, logout } = useAuth()
+  const { hasRole, storeId, myStores, setStoreId, refreshRoles, refreshMyStores, logout } = useAuth()
   const navigate = useNavigate()
 
   const [name, setName] = useState('')
@@ -20,8 +20,25 @@ export function StoreOnboardingPage() {
   const [locating, setLocating] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [storesLoading, setStoresLoading] = useState(false)
 
   const [manualStoreId, setManualStoreId] = useState('')
+  const [showManualEntry, setShowManualEntry] = useState(false)
+
+  // A StorePartner landing here means GET /api/me/stores either hasn't run yet for this
+  // session or came back with 2+ stores (a single match is auto-adopted by AuthContext,
+  // which skips this screen entirely) — refresh once so a stale/empty list doesn't strand
+  // a real multi-store owner on the "create a new store" form.
+  useEffect(() => {
+    if (!hasRole('StorePartner') || myStores !== null) return
+    setStoresLoading(true)
+    refreshMyStores().finally(() => setStoresLoading(false))
+  }, [hasRole, myStores, refreshMyStores])
+
+  function pickStore(pickedStoreId: number) {
+    setStoreId(pickedStoreId)
+    navigate('/admin', { replace: true })
+  }
 
   function useMyLocation() {
     if (!navigator.geolocation) return
@@ -71,7 +88,7 @@ export function StoreOnboardingPage() {
   }
 
   const alreadyPartnerWithoutStore = hasRole('StorePartner') && storeId === null
-  const canPickManually = hasRole('StorePartner')
+  const hasPickableStores = !!myStores && myStores.length > 0
 
   return (
     <div className="admin-shell flex min-h-screen items-center justify-center bg-[color:var(--admin-content)] p-6 text-[color:var(--admin-text)]">
@@ -83,16 +100,50 @@ export function StoreOnboardingPage() {
           <StoreIcon width={22} height={22} />
         </span>
 
-        {canPickManually && (
-          <div className="mb-6 rounded-xl bg-[#fbbf2418] p-4 text-[12.5px] leading-relaxed text-[color:var(--admin-text-secondary)]">
-            {alreadyPartnerWithoutStore
-              ? 'У вашего аккаунта уже есть права партнёра, но в этом браузере не сохранён ID вашего магазина — сервер пока не даёт способа получить список своих магазинов.'
-              : 'Если у вас несколько магазинов, сервер пока не даёт способа получить их список.'}{' '}
-            Если вы знаете ID нужного магазина, введите его ниже, либо создайте новый.
+        {storesLoading && (
+          <div className="mb-6 text-[13px] text-[color:var(--admin-text-tertiary)]">Ищем ваши магазины…</div>
+        )}
+
+        {hasPickableStores && (
+          <div className="mb-6 border-b border-[color:var(--admin-border)] pb-6">
+            <h2 className="mb-1 text-[15px] font-bold text-[color:var(--admin-text)]">Выберите магазин</h2>
+            <p className="mb-3 text-[12.5px] text-[color:var(--admin-text-tertiary)]">
+              Этот браузер их ещё не запоминал — выберите, с каким работать сейчас.
+            </p>
+            <div className="flex flex-col gap-2">
+              {myStores!.map((s) => (
+                <button
+                  key={s.storeId}
+                  onClick={() => pickStore(s.storeId)}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-[color:var(--admin-hover)] px-4 py-3 text-left hover:bg-[color:var(--admin-border)]"
+                >
+                  <span className="min-w-0 truncate text-[13.5px] font-semibold text-[color:var(--admin-text)]">{s.name}</span>
+                  <span className="shrink-0 rounded-full bg-[color:var(--admin-accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--admin-accent)]">
+                    {s.role === 'Owner' ? 'Владелец' : 'Кассир'}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        {canPickManually && (
+        {alreadyPartnerWithoutStore && !hasPickableStores && !storesLoading && (
+          <div className="mb-6 rounded-xl bg-[#fbbf2418] p-4 text-[12.5px] leading-relaxed text-[color:var(--admin-text-secondary)]">
+            У вашего аккаунта есть права партнёра, но за ним пока не числится ни одного магазина. Создайте новый ниже
+            {!showManualEntry && (
+              <>
+                {' '}
+                или{' '}
+                <button type="button" onClick={() => setShowManualEntry(true)} className="font-semibold text-[color:var(--admin-accent)] underline">
+                  введите ID вручную
+                </button>
+              </>
+            )}
+            .
+          </div>
+        )}
+
+        {showManualEntry && (
           <form onSubmit={handleUseManualId} className="mb-6 flex gap-2 border-b border-[color:var(--admin-border)] pb-6">
             <input
               value={manualStoreId}
@@ -110,7 +161,9 @@ export function StoreOnboardingPage() {
           </form>
         )}
 
-        <h1 className="mb-1.5 text-[20px] font-extrabold tracking-tight">Создайте свой магазин</h1>
+        <h1 className="mb-1.5 text-[20px] font-extrabold tracking-tight">
+          {hasPickableStores ? 'Или создайте ещё один' : 'Создайте свой магазин'}
+        </h1>
         <p className="mb-6 text-[13px] text-[color:var(--admin-text-tertiary)]">
           Это займёт минуту — после создания сразу откроется панель управления
         </p>

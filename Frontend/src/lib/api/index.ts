@@ -27,9 +27,21 @@ export * as expiringOffersApi from './expiringOffers'
 export * as notificationsApi from './notifications'
 export * as deviceTokensApi from './deviceTokens'
 export * as receiptsApi from './receipts'
-export type { CashierShift, ProcessSaleRequest, ProcessSaleResult, SaleLine } from './sales'
+export * as feedbackApi from './feedback'
+export type {
+  CashierShift,
+  ProcessSaleRequest,
+  ProcessSaleResult,
+  ProcessSaleResultLine,
+  SaleLine,
+  BundleLine,
+  Commission,
+  SaleReturn,
+  ReturnLine,
+  ReturnLineDetail,
+} from './sales'
 export type { StockLevel } from './inventory'
-export type { ScanBarcodeResult, ScanResultStore, StoreBasket } from './products'
+export type { ScanBarcodeResult, ScanResultStore, StoreBasket, MostScannedProduct } from './products'
 export type {
   StoreDashboard,
   DailySalesReport,
@@ -50,7 +62,7 @@ export type { Brand, Category, TaxRate } from './catalog'
 export type { FavoriteType, Favorite } from './favorites'
 export type { ShoppingList, ShoppingListItem } from './shoppingLists'
 export type { PriceAlert } from './priceAlerts'
-export type { UserProfile, ConsentType, UserConsent, SecurityEventType, SecurityEvent } from './me'
+export type { UserProfile, ConsentType, UserConsent, SecurityEventType, SecurityEvent, MyStore, MyStoreRole } from './me'
 export type { Review } from './reviews'
 export type { Supplier } from './suppliers'
 export type { PurchaseOrder, PurchaseOrderLine } from './purchaseOrders'

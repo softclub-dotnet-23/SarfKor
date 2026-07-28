@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type SVGProps } from 'react'
 import {
   productsApi,
   favoritesApi,
@@ -10,7 +10,38 @@ import {
   type ShoppingList,
 } from '../../lib/api'
 import { getReviews, submitReview, type Review } from '../../lib/api/reviews'
+import { reportOutOfStock } from '../../lib/api/feedback'
+import { raisePriceEntryDispute } from '../../lib/api/pricing'
+import { getMostScannedProducts, type MostScannedProduct } from '../../lib/api/products'
 import { BarcodeIcon, MapPinIcon, HeartIcon, BellIcon, ListIcon, CloseIcon, StarIcon } from '../../components/icons'
+
+function FlagIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <line x1="4" y1="22" x2="4" y2="15" />
+    </svg>
+  )
+}
+
+function AlertCircleIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  )
+}
+
+function TrendingIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+      <polyline points="17 6 23 6 23 12" />
+    </svg>
+  )
+}
 
 const BARCODE_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf']
 
@@ -258,6 +289,160 @@ function PriceAlertButton({ productId, cheapest }: { productId: number; cheapest
         </form>
       )}
     </div>
+  )
+}
+
+function DisputePriceButton({ priceEntryId }: { priceEntryId: number }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState('')
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!reason.trim() || busy) return
+    setBusy(true)
+    setStatus('')
+    try {
+      const res = await raisePriceEntryDispute(priceEntryId, reason.trim())
+      if (res.outcome === 'Raised') {
+        setStatus('Спор отправлен на рассмотрение')
+        setReason('')
+        setTimeout(() => setOpen(false), 1200)
+      } else {
+        setStatus('Эта цена больше не существует')
+      }
+    } catch (err) {
+      setStatus(err instanceof ApiError ? err.message : 'Не удалось отправить спор')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 text-[11px] font-medium text-[color:var(--text-tertiary)] hover:text-[color:var(--text-primary)]"
+      >
+        <FlagIcon />
+        Оспорить цену
+      </button>
+      {open && (
+        <form
+          onSubmit={submit}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0 top-full z-10 mt-2 w-60 rounded-2xl bg-[color:var(--bg-card)] p-3.5 text-left shadow-[var(--shadow-lift)] ring-1 ring-[color:var(--border-subtle)]"
+        >
+          <p className="mb-2 text-[12px] font-medium text-[color:var(--text-secondary)]">Почему эта цена неверна?</p>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={2}
+            autoFocus
+            placeholder="Например: на ценнике другая сумма"
+            className="w-full resize-none rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--bg-section)] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[color:var(--color-brand)]"
+          />
+          <button
+            type="submit"
+            disabled={busy || !reason.trim()}
+            className="mt-2 w-full rounded-lg bg-[color:var(--color-brand)] px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-50"
+          >
+            {busy ? 'Отправляем…' : 'Отправить'}
+          </button>
+          {status && <p className="mt-1.5 text-[11.5px] text-[color:var(--text-secondary)]">{status}</p>}
+        </form>
+      )}
+    </div>
+  )
+}
+
+function OutOfStockButton({ productId, storeId }: { productId: number; storeId: number }) {
+  const [open, setOpen] = useState(false)
+  const [description, setDescription] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState('')
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (busy) return
+    setBusy(true)
+    setStatus('')
+    try {
+      await reportOutOfStock(productId, description.trim() || 'Нет в наличии', storeId)
+      setStatus('Спасибо, сообщили магазину')
+      setTimeout(() => setOpen(false), 1200)
+    } catch (err) {
+      setStatus(err instanceof ApiError ? err.message : 'Не удалось отправить')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 text-[11px] font-medium text-[color:var(--text-tertiary)] hover:text-[color:var(--text-primary)]"
+      >
+        <AlertCircleIcon />
+        Нет в наличии
+      </button>
+      {open && (
+        <form
+          onSubmit={submit}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0 top-full z-10 mt-2 w-60 rounded-2xl bg-[color:var(--bg-card)] p-3.5 text-left shadow-[var(--shadow-lift)] ring-1 ring-[color:var(--border-subtle)]"
+        >
+          <p className="mb-2 text-[12px] font-medium text-[color:var(--text-secondary)]">Сообщить, что товара нет в этом магазине</p>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            autoFocus
+            placeholder="Комментарий (необязательно)"
+            className="w-full resize-none rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--bg-section)] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[color:var(--color-brand)]"
+          />
+          <button
+            type="submit"
+            disabled={busy}
+            className="mt-2 w-full rounded-lg bg-[color:var(--color-brand)] px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-50"
+          >
+            {busy ? 'Отправляем…' : 'Сообщить'}
+          </button>
+          {status && <p className="mt-1.5 text-[11.5px] text-[color:var(--text-secondary)]">{status}</p>}
+        </form>
+      )}
+    </div>
+  )
+}
+
+function MostScannedSection() {
+  const [products, setProducts] = useState<MostScannedProduct[] | null>(null)
+
+  useEffect(() => {
+    getMostScannedProducts(6)
+      .then((res) => setProducts(res.products))
+      .catch(() => setProducts([]))
+  }, [])
+
+  if (products === null || products.length === 0) return null
+
+  return (
+    <Card className="mt-4">
+      <div className="mb-3 flex items-center gap-2 text-[14px] font-bold">
+        <TrendingIcon />
+        Часто сканируют
+      </div>
+      <div className="flex flex-col divide-y divide-[color:var(--border-subtle)]">
+        {products.map((p) => (
+          <div key={p.productId} className="flex items-center justify-between gap-2 py-2.5 text-[13.5px]">
+            <span className="truncate font-medium">{p.productName}</span>
+            <span className="shrink-0 text-[11.5px] text-[color:var(--text-tertiary)]">{p.totalScans} сканирований</span>
+          </div>
+        ))}
+      </div>
+    </Card>
   )
 }
 
@@ -553,6 +738,8 @@ export function ScanPage() {
         </form>
       </Card>
 
+      {!result && !notFound && !error && <MostScannedSection />}
+
       {error && (
         <Card className="mt-4 text-center text-[14px] text-[color:var(--text-secondary)]">{error}</Card>
       )}
@@ -600,8 +787,14 @@ export function ScanPage() {
                       {s.distanceKm != null && <div className="text-[12px] text-[color:var(--text-tertiary)]">{s.distanceKm.toFixed(1)} км</div>}
                     </div>
                   </div>
-                  <div className="shrink-0 text-[19px] font-extrabold">
-                    {s.price.toFixed(2)} <span className="text-[13px] font-semibold text-[color:var(--text-tertiary)]">{s.currency}</span>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <div className="text-[19px] font-extrabold">
+                      {s.price.toFixed(2)} <span className="text-[13px] font-semibold text-[color:var(--text-tertiary)]">{s.currency}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <DisputePriceButton priceEntryId={s.priceEntryId} />
+                      <OutOfStockButton productId={result.productId} storeId={s.storeId} />
+                    </div>
                   </div>
                 </Card>
               ))}

@@ -1,18 +1,17 @@
-using Domain.Stores;
+using Domain.Auditing;
 using Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations;
 
-public class StoreConfiguration : IEntityTypeConfiguration<Store>
+public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 {
-    public void Configure(EntityTypeBuilder<Store> builder)
+    public void Configure(EntityTypeBuilder<AuditLog> builder)
     {
-        builder.ComplexProperty(x => x.Location);
         builder.HasOne<ApplicationUser>()
             .WithMany()
-            .HasForeignKey(x => x.OwnerUserId)
+            .HasForeignKey(x => x.PerformedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -1,15 +1,14 @@
-using Domain.Identity;
+using Domain.ShoppingLists;
 using Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations;
 
-public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
+public class ShoppingListConfiguration : IEntityTypeConfiguration<ShoppingList>
 {
-    public void Configure(EntityTypeBuilder<RefreshToken> builder)
+    public void Configure(EntityTypeBuilder<ShoppingList> builder)
     {
-        builder.HasIndex(x => x.Token).IsUnique();
         builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(x => x.UserId)

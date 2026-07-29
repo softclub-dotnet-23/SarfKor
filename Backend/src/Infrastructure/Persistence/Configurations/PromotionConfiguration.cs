@@ -1,4 +1,5 @@
-using Domain.Inventory;
+using Domain.Offers;
+using Domain.Catalog;
 using Domain.Products;
 using Domain.Stores;
 using Microsoft.EntityFrameworkCore;
@@ -6,15 +7,18 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations;
 
-public class StockLevelConfiguration : IEntityTypeConfiguration<StockLevel>
+public class PromotionConfiguration : IEntityTypeConfiguration<Promotion>
 {
-    public void Configure(EntityTypeBuilder<StockLevel> builder)
+    public void Configure(EntityTypeBuilder<Promotion> builder)
     {
-        builder.HasIndex(x => new { x.ProductId, x.StoreId }).IsUnique();
+        builder.HasOne<Category>()
+            .WithMany()
+            .HasForeignKey(x => x.CategoryId)
+            .OnDelete(DeleteBehavior.SetNull);
         builder.HasOne<Product>()
             .WithMany()
             .HasForeignKey(x => x.ProductId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.SetNull);
         builder.HasOne<Store>()
             .WithMany()
             .HasForeignKey(x => x.StoreId)

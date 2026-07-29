@@ -1,19 +1,21 @@
-using Domain.Payments;
 using Domain.Sales;
+using Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations;
 
-public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
+public class SaleReturnConfiguration : IEntityTypeConfiguration<SaleReturn>
 {
-    public void Configure(EntityTypeBuilder<Payment> builder)
+    public void Configure(EntityTypeBuilder<SaleReturn> builder)
     {
-        builder.ComplexProperty(x => x.Amount, b => b.Property(m => m.Amount).HasPrecision(18, 2));
-        builder.ComplexProperty(x => x.ProviderToken);
         builder.HasOne<SaleTransaction>()
             .WithMany()
             .HasForeignKey(x => x.SaleTransactionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(x => x.ProcessedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

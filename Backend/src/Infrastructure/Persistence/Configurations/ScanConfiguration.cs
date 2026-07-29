@@ -1,17 +1,16 @@
-using Domain.Pricing;
+using Domain.Analytics;
 using Domain.Products;
-using Infrastructure.Identity;
 using Domain.Stores;
+using Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations;
 
-public class PriceEntryConfiguration : IEntityTypeConfiguration<PriceEntry>
+public class ScanConfiguration : IEntityTypeConfiguration<Scan>
 {
-    public void Configure(EntityTypeBuilder<PriceEntry> builder)
+    public void Configure(EntityTypeBuilder<Scan> builder)
     {
-        builder.ComplexProperty(x => x.Price, b => b.Property(m => m.Amount).HasPrecision(18, 2));
         builder.HasOne<Product>()
             .WithMany()
             .HasForeignKey(x => x.ProductId)
@@ -19,10 +18,10 @@ public class PriceEntryConfiguration : IEntityTypeConfiguration<PriceEntry>
         builder.HasOne<Store>()
             .WithMany()
             .HasForeignKey(x => x.StoreId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.SetNull);
         builder.HasOne<ApplicationUser>()
             .WithMany()
-            .HasForeignKey(x => x.SubmittedByUserId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

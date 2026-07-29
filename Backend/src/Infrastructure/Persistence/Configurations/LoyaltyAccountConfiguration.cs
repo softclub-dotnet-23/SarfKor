@@ -1,23 +1,21 @@
-using Domain.Payments;
+using Domain.Loyalty;
 using Domain.Customers;
-using Domain.Stores;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations;
 
-public class StoreCreditConfiguration : IEntityTypeConfiguration<StoreCredit>
+public class LoyaltyAccountConfiguration : IEntityTypeConfiguration<LoyaltyAccount>
 {
-    public void Configure(EntityTypeBuilder<StoreCredit> builder)
+    public void Configure(EntityTypeBuilder<LoyaltyAccount> builder)
     {
-        builder.ComplexProperty(x => x.Balance, b => b.Property(m => m.Amount).HasPrecision(18, 2));
         builder.HasOne<Customer>()
             .WithMany()
             .HasForeignKey(x => x.CustomerId)
             .OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<Store>()
+        builder.HasOne<LoyaltyProgram>()
             .WithMany()
-            .HasForeignKey(x => x.StoreId)
+            .HasForeignKey(x => x.LoyaltyProgramId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -7,3 +7,5 @@ appsettings.json
 appsettings.*.json
 
 App_Data/
+
+logs/

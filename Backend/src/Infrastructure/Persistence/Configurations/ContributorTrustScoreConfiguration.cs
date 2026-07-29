@@ -1,15 +1,14 @@
-using Domain.Identity;
+using Domain.Reputation;
 using Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations;
 
-public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
+public class ContributorTrustScoreConfiguration : IEntityTypeConfiguration<ContributorTrustScore>
 {
-    public void Configure(EntityTypeBuilder<RefreshToken> builder)
+    public void Configure(EntityTypeBuilder<ContributorTrustScore> builder)
     {
-        builder.HasIndex(x => x.Token).IsUnique();
         builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(x => x.UserId)

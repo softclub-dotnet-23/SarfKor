@@ -1,17 +1,19 @@
-using Domain.Pricing;
+using Domain.Inventory;
 using Domain.Products;
-using Infrastructure.Identity;
 using Domain.Stores;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations;
 
-public class PriceEntryConfiguration : IEntityTypeConfiguration<PriceEntry>
+public class ReorderRuleConfiguration : IEntityTypeConfiguration<ReorderRule>
 {
-    public void Configure(EntityTypeBuilder<PriceEntry> builder)
+    public void Configure(EntityTypeBuilder<ReorderRule> builder)
     {
-        builder.ComplexProperty(x => x.Price, b => b.Property(m => m.Amount).HasPrecision(18, 2));
+        builder.HasOne<Supplier>()
+            .WithMany()
+            .HasForeignKey(x => x.PreferredSupplierId)
+            .OnDelete(DeleteBehavior.SetNull);
         builder.HasOne<Product>()
             .WithMany()
             .HasForeignKey(x => x.ProductId)
@@ -19,10 +21,6 @@ public class PriceEntryConfiguration : IEntityTypeConfiguration<PriceEntry>
         builder.HasOne<Store>()
             .WithMany()
             .HasForeignKey(x => x.StoreId)
-            .OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<ApplicationUser>()
-            .WithMany()
-            .HasForeignKey(x => x.SubmittedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

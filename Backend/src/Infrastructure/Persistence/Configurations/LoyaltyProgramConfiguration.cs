@@ -1,15 +1,14 @@
-using Domain.Catalog;
+using Domain.Loyalty;
 using Domain.Stores;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations;
 
-public class ProductBundleConfiguration : IEntityTypeConfiguration<ProductBundle>
+public class LoyaltyProgramConfiguration : IEntityTypeConfiguration<LoyaltyProgram>
 {
-    public void Configure(EntityTypeBuilder<ProductBundle> builder)
+    public void Configure(EntityTypeBuilder<LoyaltyProgram> builder)
     {
-        builder.ComplexProperty(x => x.BundlePrice, b => b.Property(m => m.Amount).HasPrecision(18, 2));
         builder.HasOne<Store>()
             .WithMany()
             .HasForeignKey(x => x.StoreId)

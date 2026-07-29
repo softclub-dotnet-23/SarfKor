@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="./support.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+  }
+}
+</script>
 </head>
 <body>
 <x-dc>
@@ -148,8 +156,8 @@ html.sk-wipe::view-transition-new(root){animation:sk-reveal .8s cubic-bezier(.16
         </div>
       </div>
 
-      <!-- PHONE STAGE -->
-      <div ref="{{ stageRef }}" style="position:relative;display:flex;align-items:center;justify-content:center;min-height:560px;perspective:1400px;cursor:grab;touch-action:none">
+      <!-- PHONE STAGE (old CSS 3D phone — hidden, not removed, for easy rollback: just delete ";display:none" below) -->
+      <div ref="{{ stageRef }}" style="position:relative;display:flex;align-items:center;justify-content:center;min-height:560px;perspective:1400px;cursor:grab;touch-action:none;display:none">
         <div ref="{{ phoneWrapRef }}" style="position:relative;transform-style:preserve-3d">
           <div ref="{{ phoneRef }}" style="position:relative;width:300px;height:616px;transform-style:preserve-3d;transform:rotateX(6deg) rotateY(-22deg)">
             <!-- back -->
@@ -166,41 +174,49 @@ html.sk-wipe::view-transition-new(root){animation:sk-reveal .8s cubic-bezier(.16
             <div style="position:absolute;inset:-3px;border-radius:47px;background:linear-gradient(160deg,#ffca8a,#d1732e 30%,#a8531c 50%,#d1732e 70%,#ffca8a);transform:translateZ(-1px)"></div>
             <!-- front -->
             <div style="position:absolute;inset:0;border-radius:44px;padding:7px;background:linear-gradient(160deg,#f0994f,#a8531c 50%,#dd7a30);transform:translateZ(13px);box-shadow:var(--shadow-pop),0 1px 0 rgba(255,255,255,.35) inset">
-              <div ref="{{ screenRef }}" style="position:relative;width:100%;height:100%;border-radius:37px;overflow:hidden;background:#000;touch-action:pan-y;container-type:inline-size">
-                <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:88px;height:26px;border-radius:999px;background:#000;z-index:5"></div>
-                <div style="position:absolute;inset:0;background:radial-gradient(130% 80% at 50% 0%,#4a7ee0,#1a3b8f 55%,#241a5c);padding:44px 16px 12px;display:flex;flex-direction:column;transition:transform .5s var(--ease-out),opacity .45s var(--ease-out);transform:scale({{ homeScale }});opacity:{{ homeOpacity }};pointer-events:{{ homePE }}">
-                  <div style="position:absolute;top:15px;left:20px;right:20px;z-index:4;display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:13px;font-weight:700;pointer-events:none">
-                    <span data-clock="12">9:41</span>
-                    <span style="display:flex;align-items:center;gap:5px">
-                      <svg width="14" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 5.5a12 12 0 0 1 16 0"/><path d="M4.2 8.7a7.5 7.5 0 0 1 9.6 0"/><path d="M7.5 11.8a3 3 0 0 1 3 0"/></svg>
-                      <span style="font-size:10px;font-weight:700">92%</span>
-                      <svg width="22" height="11" viewBox="0 0 25 12" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="21" height="11" rx="2.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor" stroke="none"/><rect x="22.5" y="4" width="2" height="4" rx="1" fill="currentColor" stroke="none"/></svg>
-                    </span>
-                  </div>
-                  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px 10px;flex:1;align-content:start">
-                    <sc-for list="{{ homeApps }}" as="a" hint-placeholder-count="16">
-                      <button data-app="{{ a.id }}" onClick="{{ openAppFn }}" style="border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;font-family:inherit">
-                        <span style="width:100%;aspect-ratio:1;border-radius:14px;background:{{ a.g }};box-shadow:0 3px 8px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.3) inset;display:flex;align-items:center;justify-content:center;color:{{ a.gc }};{{ a.ring }}">{{ a.glyph }}</span>
-                        <span style="font-size:9px;color:#fff;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,.4);white-space:nowrap">{{ a.label }}</span>
-                      </button>
-                    </sc-for>
-                  </div>
-                  <div style="display:flex;gap:14px;justify-content:center;padding:11px 14px;border-radius:26px;background:rgba(255,255,255,.16);backdrop-filter:blur(12px);margin-top:8px">
-                    <sc-for list="{{ dockApps }}" as="d" hint-placeholder-count="4">
-                      <button data-app="{{ d.id }}" onClick="{{ openAppFn }}" style="border:0;padding:0;cursor:pointer;width:46px;height:46px;border-radius:12px;background:{{ d.g }};box-shadow:0 2px 6px rgba(0,0,0,.3),0 1px 0 rgba(255,255,255,.25) inset;display:flex;align-items:center;justify-content:center;color:#fff">{{ d.glyph }}</button>
-                    </sc-for>
-                  </div>
-                </div>
-                <div style="position:absolute;inset:0;background:#000;transition:transform .5s var(--ease-out),opacity .4s var(--ease-out);transform:scale({{ appScale }});opacity:{{ appOpacity }};pointer-events:{{ appPE }};display:flex;flex-direction:column">
-                  <div style="flex:1;min-height:0;position:relative;overflow:hidden">{{ appContent }}</div>
-                  <div onClick="{{ closeAppFn }}" style="position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:118px;height:5px;border-radius:999px;background:rgba(90,95,110,.55);cursor:pointer;z-index:20"></div>
-                </div>
-              </div>
+              <!-- screenRef's live content moved to #phone-3d-container below (Step 3: GLB screen
+                   overlay) — it's a single React-managed subtree so it can only exist in one place;
+                   if this CSS phone is ever un-hidden it'll show a plain black screen, not the apps. -->
+              <div style="position:relative;width:100%;height:100%;border-radius:37px;overflow:hidden;background:#000"></div>
             </div>
           </div>
         </div>
         <div ref="{{ hintRef }}" style="position:absolute;bottom:22px;right:8px;display:flex;align-items:center;gap:8px;padding:9px 15px;border-radius:999px;background:var(--bg-card);border:1px solid var(--border-subtle);box-shadow:var(--shadow-lift);font-size:13px;font-weight:600;color:var(--text-secondary);pointer-events:none;transition:opacity .6s">
           <span style="font-size:15px">↔</span>Крути телефон · тапни приложение
+        </div>
+      </div>
+
+      <!-- PHONE STAGE — 3D (GLB), replacing the CSS phone above -->
+      <div id="phone-3d-container" style="position:relative;width:340px;height:680px;flex-shrink:0">
+        <div ref="{{ screenRef }}" id="phone-screen-overlay" style="position:absolute;left:0;top:0;width:100%;height:100%;border-radius:37px;overflow:hidden;background:#000;touch-action:pan-y;z-index:2;transform-origin:center center;container-type:inline-size">
+          <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:88px;height:26px;border-radius:999px;background:#000;z-index:5"></div>
+          <div style="position:absolute;inset:0;background:radial-gradient(130% 80% at 50% 0%,#4a7ee0,#1a3b8f 55%,#241a5c);padding:44px 16px 12px;display:flex;flex-direction:column;transition:transform .5s var(--ease-out),opacity .45s var(--ease-out);transform:scale({{ homeScale }});opacity:{{ homeOpacity }};pointer-events:{{ homePE }}">
+            <div style="position:absolute;top:15px;left:20px;right:20px;z-index:4;display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:13px;font-weight:700;pointer-events:none">
+              <span data-clock="12">9:41</span>
+              <span style="display:flex;align-items:center;gap:5px">
+                <svg width="14" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 5.5a12 12 0 0 1 16 0"/><path d="M4.2 8.7a7.5 7.5 0 0 1 9.6 0"/><path d="M7.5 11.8a3 3 0 0 1 3 0"/></svg>
+                <span style="font-size:10px;font-weight:700">92%</span>
+                <svg width="22" height="11" viewBox="0 0 25 12" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="21" height="11" rx="2.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor" stroke="none"/><rect x="22.5" y="4" width="2" height="4" rx="1" fill="currentColor" stroke="none"/></svg>
+              </span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px 10px;flex:1;align-content:start">
+              <sc-for list="{{ homeApps }}" as="a" hint-placeholder-count="16">
+                <button data-app="{{ a.id }}" onClick="{{ openAppFn }}" style="border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;font-family:inherit">
+                  <span style="width:100%;aspect-ratio:1;border-radius:14px;background:{{ a.g }};box-shadow:0 3px 8px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.3) inset;display:flex;align-items:center;justify-content:center;color:{{ a.gc }};{{ a.ring }}">{{ a.glyph }}</span>
+                  <span style="font-size:9px;color:#fff;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,.4);white-space:nowrap">{{ a.label }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:14px;justify-content:center;padding:11px 14px;border-radius:26px;background:rgba(255,255,255,.16);backdrop-filter:blur(12px);margin-top:8px">
+              <sc-for list="{{ dockApps }}" as="d" hint-placeholder-count="4">
+                <button data-app="{{ d.id }}" onClick="{{ openAppFn }}" style="border:0;padding:0;cursor:pointer;width:46px;height:46px;border-radius:12px;background:{{ d.g }};box-shadow:0 2px 6px rgba(0,0,0,.3),0 1px 0 rgba(255,255,255,.25) inset;display:flex;align-items:center;justify-content:center;color:#fff">{{ d.glyph }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="position:absolute;inset:0;background:#000;transition:transform .5s var(--ease-out),opacity .4s var(--ease-out);transform:scale({{ appScale }});opacity:{{ appOpacity }};pointer-events:{{ appPE }};display:flex;flex-direction:column">
+            <div style="flex:1;min-height:0;position:relative;overflow:hidden">{{ appContent }}</div>
+            <div onClick="{{ closeAppFn }}" style="position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:118px;height:5px;border-radius:999px;background:rgba(90,95,110,.55);cursor:pointer;z-index:20"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -924,6 +940,231 @@ class Component extends DCLogic {
         R('div',{style:{marginTop:'12px',fontSize:'11px',color:'var(--text-tertiary)',maxWidth:'170px'}},'Выбрали самую низкую цену в магазине «Ёвар»'))
     );
   }
+}
+</script>
+
+<!-- 3D phone (GLB) — replaces the CSS phone in the Hero (now display:none above).
+     Standalone <script type="module">: this file is a raw HTML doc loaded in an
+     iframe by src/StaticLanding.tsx, not part of the Vite/React build, so this
+     can't be a React component yet — plain three.js against #phone-3d-container. -->
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// The DC compiler (support.js) replaces <x-dc> with a freshly React-rendered
+// root on DOMContentLoaded — same event this module script's execution races
+// against — so #phone-3d-container may not exist in the live DOM yet the
+// instant this runs. Poll a few frames instead of assuming it's already there.
+function waitForElement(id, cb, attempts = 0) {
+  const el = document.getElementById(id);
+  if (el) { cb(el); return; }
+  if (attempts > 200) { console.warn('[phone-3d] #' + id + ' never appeared in the DOM'); return; }
+  requestAnimationFrame(() => waitForElement(id, cb, attempts + 1));
+}
+
+waitForElement('phone-3d-container', initPhone3D);
+
+function initPhone3D(container) {
+  const width = container.clientWidth || 340;
+  const height = container.clientHeight || 680;
+
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(width, height);
+  renderer.domElement.style.touchAction = 'none';
+  renderer.domElement.style.cursor = 'grab';
+  renderer.domElement.style.position = 'absolute';
+  renderer.domElement.style.inset = '0';
+  container.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+  camera.position.z = 5;
+
+  // Screen-content overlay (icons/apps/clock) — reused as-is from the old CSS
+  // phone's screenRef block, which the DC template now renders as a child of
+  // #phone-3d-container instead, so it's already in the DOM right here.
+  const screenOverlayEl = container.querySelector('#phone-screen-overlay');
+  let screenMesh = null;
+  let screenTrueHeight = 0;
+  let screenLocalNormal = null;
+  let screenLocalCenter = null;
+  container.style.perspective = (height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2))) + 'px';
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+  dirLight.position.set(5, 5, 5);
+  scene.add(dirLight);
+
+  let model = null;
+  new GLTFLoader().load(
+    '/models/phone.glb',
+    (gltf) => {
+      model = gltf.scene;
+      // Center + normalize scale so the model is framed the same way regardless
+      // of whatever arbitrary size/origin it was exported from Blender with.
+      const box = new THREE.Box3().setFromObject(model);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box.getSize(size);
+      box.getCenter(center);
+      model.position.sub(center);
+      const targetHeight = 2.5;
+      model.scale.setScalar(size.y > 0 ? targetHeight / size.y : 1);
+      scene.add(model);
+      // getWorldScale()/getWorldPosition() below read matrixWorld, which three.js
+      // only recomputes during a render pass — force it now so those calls see
+      // the position/scale just set above instead of stale identity matrices.
+      model.updateMatrixWorld(true);
+
+      model.traverse((node) => { if (node.name === 'BasePhone_Screen_0') screenMesh = node; });
+      if (screenMesh) {
+        // Calibrate at a known, canonical rotation (screen facing the camera,
+        // no sway/drag yet) so this one-time world-space measurement isn't
+        // foreshortened by whatever rotation the idle sway happens to be at
+        // the moment the async GLB load resolves. World-space (not local
+        // geometry * world scale) also sidesteps any mismatch between the
+        // mesh's own local axes and which one is visually "up".
+        const savedRotY = model.rotation.y, savedRotX = model.rotation.x;
+        model.rotation.set(0, Math.PI, 0);
+        model.updateMatrixWorld(true);
+
+        const worldBox = new THREE.Box3().setFromObject(screenMesh);
+        const worldSize = new THREE.Vector3();
+        worldBox.getSize(worldSize);
+        screenTrueHeight = worldSize.y;
+
+        // Cache the box's world-space center in the mesh's LOCAL space, so
+        // every later frame can re-derive the correct world position (true
+        // visual center of the screen quad, not the mesh's own origin/pivot,
+        // which may not be centered on it) at whatever rotation is current.
+        const worldCenter = new THREE.Vector3();
+        worldBox.getCenter(worldCenter);
+        screenLocalCenter = screenMesh.worldToLocal(worldCenter);
+
+        model.rotation.set(savedRotY, savedRotX, 0);
+        model.updateMatrixWorld(true);
+
+        // Local-space outward normal of the (flat) screen face, read straight
+        // from the mesh's own normal attribute rather than assumed/calibrated
+        // at runtime — used below to hide the overlay once it turns away from
+        // the camera, since a flat CSS layer has no backface culling of its own.
+        const normalAttr = screenMesh.geometry.attributes.normal;
+        if (normalAttr) {
+          screenLocalNormal = new THREE.Vector3(normalAttr.getX(0), normalAttr.getY(0), normalAttr.getZ(0)).normalize();
+        }
+      } else {
+        console.warn('[phone-3d] BasePhone_Screen_0 not found in model — screen overlay will not track it');
+      }
+    },
+    undefined,
+    (err) => console.error('[phone-3d] failed to load /models/phone.glb', err),
+  );
+
+  // Drag-to-rotate with the same inertia feel as the CSS phone's setupPhone()
+  // above (0.94 per-frame velocity decay) — added as an offset on top of the
+  // idle sway so releasing mid-spin coasts to a stop instead of snapping back.
+  let dragging = false, lastX = 0, lastY = 0;
+  let velY = 0, velX = 0, dragRotY = 0, dragRotX = 0;
+  const canvas = renderer.domElement;
+
+  canvas.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    lastX = e.clientX; lastY = e.clientY;
+    canvas.style.cursor = 'grabbing';
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    velY = THREE.MathUtils.degToRad(dx * 0.4);
+    velX = THREE.MathUtils.degToRad(-dy * 0.26);
+  });
+  const releaseDrag = () => { dragging = false; canvas.style.cursor = 'grab'; };
+  canvas.addEventListener('pointerup', releaseDrag);
+  canvas.addEventListener('pointerleave', releaseDrag);
+
+  window.addEventListener('resize', () => {
+    const w = container.clientWidth || width;
+    const h = container.clientHeight || height;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    container.style.perspective = (h / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2))) + 'px';
+  });
+
+  // Sticks the HTML overlay to screenMesh each frame: project the mesh's
+  // world-space CENTER to pixel space for translate, derive scale from pure
+  // camera distance (not a rotated bounding box — that would double-count
+  // foreshortening once the CSS rotateX/rotateY below is applied on top),
+  // and rotate the flat overlay by the model's current rotation so it tilts
+  // the same way the mesh does (the container's `perspective` set above
+  // keeps that CSS tilt visually consistent with the WebGL camera's own).
+  function worldToScreenPx(vec3, w, h) {
+    const p = vec3.clone().project(camera);
+    return { x: (p.x * 0.5 + 0.5) * w, y: (-p.y * 0.5 + 0.5) * h };
+  }
+
+  const _worldPos = new THREE.Vector3();
+  const _worldQuat = new THREE.Quaternion();
+  const _normal = new THREE.Vector3();
+  const _viewDir = new THREE.Vector3();
+
+  function updateScreenOverlay() {
+    if (!model || !screenMesh || !screenOverlayEl || !screenTrueHeight || !screenLocalCenter) return;
+    const w = container.clientWidth || width;
+    const h = container.clientHeight || height;
+
+    _worldPos.copy(screenLocalCenter).applyMatrix4(screenMesh.matrixWorld);
+    const p = worldToScreenPx(_worldPos, w, h);
+    const dist = camera.position.distanceTo(_worldPos);
+    const pixelHeight = (screenTrueHeight * h) / (2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+    const scale = pixelHeight / h;
+    window.__phone3dDebug = { dist, screenTrueHeight, scale, worldPos: _worldPos.toArray(), modelRotY: model.rotation.y, swayRotY, modelRotX: model.rotation.x, camFov: camera.fov };
+
+    screenOverlayEl.style.transform =
+      `translate(${(p.x - w / 2).toFixed(1)}px, ${(p.y - h / 2).toFixed(1)}px) ` +
+      `rotateY(${swayRotY.toFixed(4)}rad) rotateX(${(-model.rotation.x).toFixed(4)}rad) ` +
+      `scale(${scale.toFixed(4)})`;
+
+    // A flat CSS layer has no backface culling of its own, so without this it
+    // would keep floating visibly even once the mesh has rotated to show the
+    // phone's back/edge — fade it out as the screen's own face turns away
+    // from the camera, using its real geometric normal (not an assumed axis).
+    if (screenLocalNormal) {
+      screenMesh.getWorldQuaternion(_worldQuat);
+      _normal.copy(screenLocalNormal).applyQuaternion(_worldQuat).normalize();
+      _viewDir.copy(camera.position).sub(_worldPos).normalize();
+      const facing = _normal.dot(_viewDir);
+      screenOverlayEl.style.opacity = String(THREE.MathUtils.clamp(facing * 6, 0, 1));
+      screenOverlayEl.style.pointerEvents = facing > 0.05 ? 'auto' : 'none';
+    }
+  }
+
+  let t = 0;
+  let swayRotY = 0; // sway+drag part of model.rotation.y, WITHOUT the +PI base
+                     // offset below — the CSS overlay needs this one, not the
+                     // mesh's actual rotation.y, since the overlay's own 0deg
+                     // is already authored facing front (see updateScreenOverlay).
+  renderer.setAnimationLoop(() => {
+    t += 0.009;
+    if (!dragging) {
+      dragRotY += velY; dragRotX += velX;
+      velY *= 0.94; velX *= 0.94;
+    }
+    if (model) {
+      // +PI base offset: the GLB's default (identity-rotation) pose faces its
+      // back toward the camera, not its screen — without this the phone would
+      // idle back-first and the screen overlay (correctly, per the facing
+      // check above) would stay hidden almost all the time.
+      swayRotY = Math.sin(t * 0.5) * 0.3 + dragRotY;
+      model.rotation.y = Math.PI + swayRotY;
+      model.rotation.x = 0.1 + Math.cos(t * 0.4) * 0.05 + dragRotX;
+    }
+    renderer.render(scene, camera);
+    updateScreenOverlay();
+  });
 }
 </script>
 </body>

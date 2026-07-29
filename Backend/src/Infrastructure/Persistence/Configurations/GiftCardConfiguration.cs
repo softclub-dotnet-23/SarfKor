@@ -8,7 +8,7 @@ public class GiftCardConfiguration : IEntityTypeConfiguration<GiftCard>
 {
     public void Configure(EntityTypeBuilder<GiftCard> builder)
     {
-        builder.ComplexProperty(x => x.Balance, b => b.Property(m => m.Amount).HasPrecision(18, 2));
+        builder.ComplexProperty(x => x.Balance);
         builder.HasIndex(x => x.Code).IsUnique();
     }
 }

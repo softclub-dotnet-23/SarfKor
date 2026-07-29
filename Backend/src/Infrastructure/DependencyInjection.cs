@@ -13,12 +13,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        // EnableRetryOnFailure absorbs the transient connection-pool-exhaustion/timeout errors seen
-        // right after a fresh restart under concurrent load (several requests opening brand-new
-        // pooled connections at once) instead of surfacing them as a 500 to the client.
         services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"),
-                npgsql => npgsql.EnableRetryOnFailure(maxRetryCount: 3)));
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
         services.AddIdentityCore<ApplicationUser>()
             .AddRoles<IdentityRole>()

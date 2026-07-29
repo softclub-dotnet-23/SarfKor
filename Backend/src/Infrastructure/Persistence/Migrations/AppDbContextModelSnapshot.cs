@@ -45,12 +45,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("StoreId");
-
-                    b.HasIndex("UserId");
-
                     b.ToTable("Scans");
                 });
 
@@ -84,8 +78,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("PerformedByUserId");
 
                     b.ToTable("AuditLogs");
                 });
@@ -124,8 +116,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ParentCategoryId");
-
                     b.ToTable("Categories");
                 });
 
@@ -149,8 +139,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -158,8 +147,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("StoreId");
 
                     b.ToTable("ProductBundles");
                 });
@@ -184,8 +171,6 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ProductBundleId");
-
-                    b.HasIndex("ProductId");
 
                     b.ToTable("ProductBundleItems");
                 });
@@ -213,8 +198,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId");
-
                     b.ToTable("ProductImages");
                 });
 
@@ -237,8 +220,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CategoryId");
 
                     b.ToTable("TaxRates");
                 });
@@ -289,8 +270,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
-
                     b.ToTable("Favorites");
                 });
 
@@ -333,14 +312,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("ResolvedByAdminUserId");
-
-                    b.HasIndex("StoreId");
-
-                    b.HasIndex("UserId");
-
                     b.ToTable("Reports");
                 });
 
@@ -370,10 +341,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DisputedByUserId");
-
-                    b.HasIndex("ReportId");
 
                     b.ToTable("ReportDisputes");
                 });
@@ -408,12 +375,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("StoreId");
-
-                    b.HasIndex("UserId");
-
                     b.ToTable("Reviews");
                 });
 
@@ -440,10 +401,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ReviewId");
-
-                    b.HasIndex("StorePartnerUserId");
 
                     b.ToTable("ReviewReplies");
                 });
@@ -481,8 +438,6 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasIndex("Token")
                         .IsUnique();
 
-                    b.HasIndex("UserId");
-
                     b.ToTable("RefreshTokens");
                 });
 
@@ -508,8 +463,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("UserConsents");
                 });
@@ -538,8 +491,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("UserProfiles");
                 });
@@ -570,8 +521,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -579,12 +529,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("SetByUserId");
-
-                    b.HasIndex("StoreId");
 
                     b.ToTable("CostPrices");
                 });
@@ -618,12 +562,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedByUserId");
-
-                    b.HasIndex("StoreId");
-
-                    b.HasIndex("SupplierId");
-
                     b.ToTable("PurchaseOrders");
                 });
 
@@ -649,8 +587,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -658,8 +595,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
 
                     b.HasIndex("PurchaseOrderId");
 
@@ -694,12 +629,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PreferredSupplierId");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("StoreId");
-
                     b.ToTable("ReorderRules");
                 });
 
@@ -721,8 +650,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("StoreId");
 
                     b.HasIndex("ProductId", "StoreId")
                         .IsUnique();
@@ -768,16 +695,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PerformedByUserId");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("RelatedSaleTransactionId");
-
-                    b.HasIndex("StoreId");
-
-                    b.HasIndex("SupplierId");
-
                     b.ToTable("StockMovements");
                 });
 
@@ -815,14 +732,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("FromStoreId");
-
-                    b.HasIndex("InitiatedByUserId");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("ToStoreId");
 
                     b.ToTable("StockTransfers");
                 });
@@ -869,10 +778,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CustomerId");
-
-                    b.HasIndex("LoyaltyProgramId");
-
                     b.ToTable("LoyaltyAccounts");
                 });
 
@@ -898,8 +803,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("StoreId");
-
                     b.ToTable("LoyaltyPrograms");
                 });
 
@@ -924,10 +827,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("LoyaltyAccountId");
-
-                    b.HasIndex("SaleTransactionId");
 
                     b.ToTable("LoyaltyTransactions");
                 });
@@ -955,8 +854,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("DeviceTokens");
                 });
@@ -988,8 +885,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
-
                     b.ToTable("Notifications");
                 });
 
@@ -1019,8 +914,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1028,10 +922,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("PriceAlerts");
                 });
@@ -1061,8 +951,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1074,8 +963,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1083,10 +971,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("StoreId");
 
                     b.ToTable("ExpiringOffers");
                 });
@@ -1122,12 +1006,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CategoryId");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("StoreId");
-
                     b.ToTable("Promotions");
                 });
 
@@ -1157,8 +1035,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1201,8 +1078,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1221,8 +1097,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("SaleTransactionId");
 
                     b.ToTable("Payments");
                 });
@@ -1249,8 +1123,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1258,10 +1131,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CustomerId");
-
-                    b.HasIndex("StoreId");
 
                     b.ToTable("StoreCredits");
                 });
@@ -1291,8 +1160,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1300,12 +1168,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("StoreId");
-
-                    b.HasIndex("SubmittedByUserId");
 
                     b.ToTable("PriceEntries");
                 });
@@ -1336,10 +1198,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DisputedByUserId");
-
-                    b.HasIndex("PriceEntryId");
 
                     b.ToTable("PriceEntryDisputes");
                 });
@@ -1385,12 +1243,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BrandId");
-
-                    b.HasIndex("CategoryId");
-
-                    b.HasIndex("TaxRateId");
 
                     b.ToTable("Products");
                 });
@@ -1444,14 +1296,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BrandId");
-
-                    b.HasIndex("CategoryId");
-
-                    b.HasIndex("ModeratedByAdminUserId");
-
-                    b.HasIndex("SubmittedByUserId");
-
                     b.ToTable("ProductSubmissions");
                 });
 
@@ -1485,10 +1329,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("StoreId");
-
-                    b.HasIndex("UserId");
-
                     b.ToTable("Receipts");
                 });
 
@@ -1517,8 +1357,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1526,8 +1365,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
 
                     b.HasIndex("ReceiptId");
 
@@ -1553,8 +1390,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("ContributorTrustScores");
                 });
@@ -1583,8 +1418,7 @@ namespace Infrastructure.Persistence.Migrations
                     b.ComplexProperty<Dictionary<string, object>>("ClosingCash", "Domain.Sales.CashierShift.ClosingCash#Money", b1 =>
                         {
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1594,8 +1428,7 @@ namespace Infrastructure.Persistence.Migrations
                     b.ComplexProperty<Dictionary<string, object>>("ExpectedCash", "Domain.Sales.CashierShift.ExpectedCash#Money", b1 =>
                         {
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1607,8 +1440,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1616,10 +1448,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CashierUserId");
-
-                    b.HasIndex("StoreId");
 
                     b.ToTable("CashierShifts");
                 });
@@ -1647,8 +1475,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1656,10 +1483,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CashierUserId");
-
-                    b.HasIndex("SaleTransactionId");
 
                     b.ToTable("Commissions");
                 });
@@ -1687,8 +1510,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SaleTransactionId");
-
                     b.ToTable("FiscalReceipts");
                 });
 
@@ -1714,8 +1535,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1723,8 +1543,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("SaleLineItemId");
 
                     b.HasIndex("SaleReturnId");
 
@@ -1753,8 +1571,7 @@ namespace Infrastructure.Persistence.Migrations
                             b1.IsRequired();
 
                             b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)");
+                                .HasColumnType("numeric");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
@@ -1762,8 +1579,6 @@ namespace Infrastructure.Persistence.Migrations
                         });
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
 
                     b.HasIndex("SaleTransactionId");
 
@@ -1793,10 +1608,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProcessedByUserId");
-
-                    b.HasIndex("SaleTransactionId");
 
                     b.ToTable("SaleReturns");
                 });
@@ -1844,12 +1655,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CashierUserId");
-
-                    b.HasIndex("CustomerId");
-
-                    b.HasIndex("VoidedByUserId");
-
                     b.HasIndex("StoreId", "IdempotencyKey")
                         .IsUnique();
 
@@ -1882,8 +1687,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
-
                     b.ToTable("SecurityEvents");
                 });
 
@@ -1908,8 +1711,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
-
                     b.ToTable("ShoppingLists");
                 });
 
@@ -1931,8 +1732,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
 
                     b.HasIndex("ShoppingListId");
 
@@ -1972,8 +1771,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OwnerUserId");
-
                     b.ToTable("Stores");
                 });
 
@@ -1999,10 +1796,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("StoreId");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("StoreEmployees");
                 });
@@ -2203,51 +1996,6 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Domain.Analytics.Scan", b =>
-                {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("Domain.Auditing.AuditLog", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("PerformedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Catalog.Category", b =>
-                {
-                    b.HasOne("Domain.Catalog.Category", null)
-                        .WithMany()
-                        .HasForeignKey("ParentCategoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("Domain.Catalog.ProductBundle", b =>
-                {
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Domain.Catalog.ProductBundleItem", b =>
                 {
                     b.HasOne("Domain.Catalog.ProductBundle", null)
@@ -2255,192 +2003,10 @@ namespace Infrastructure.Persistence.Migrations
                         .HasForeignKey("ProductBundleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Catalog.ProductImage", b =>
-                {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Catalog.TaxRate", b =>
-                {
-                    b.HasOne("Domain.Catalog.Category", null)
-                        .WithMany()
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("Domain.Engagement.Favorite", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Feedback.Report", b =>
-                {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("ResolvedByAdminUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Feedback.ReportDispute", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("DisputedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Feedback.Report", null)
-                        .WithMany()
-                        .HasForeignKey("ReportId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Feedback.Review", b =>
-                {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Feedback.ReviewReply", b =>
-                {
-                    b.HasOne("Domain.Feedback.Review", null)
-                        .WithMany()
-                        .HasForeignKey("ReviewId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("StorePartnerUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Identity.RefreshToken", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Identity.UserConsent", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Identity.UserProfile", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Inventory.CostPrice", b =>
-                {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("SetByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Inventory.PurchaseOrder", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Inventory.Supplier", null)
-                        .WithMany()
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Domain.Inventory.PurchaseOrderLineItem", b =>
                 {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Domain.Inventory.PurchaseOrder", null)
                         .WithMany("Lines")
                         .HasForeignKey("PurchaseOrderId")
@@ -2448,330 +2014,8 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Domain.Inventory.ReorderRule", b =>
-                {
-                    b.HasOne("Domain.Inventory.Supplier", null)
-                        .WithMany()
-                        .HasForeignKey("PreferredSupplierId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Inventory.StockLevel", b =>
-                {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Inventory.StockMovement", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("PerformedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Sales.SaleTransaction", null)
-                        .WithMany()
-                        .HasForeignKey("RelatedSaleTransactionId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Inventory.Supplier", null)
-                        .WithMany()
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("Domain.Inventory.StockTransfer", b =>
-                {
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("FromStoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("InitiatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("ToStoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Loyalty.LoyaltyAccount", b =>
-                {
-                    b.HasOne("Domain.Customers.Customer", null)
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Loyalty.LoyaltyProgram", null)
-                        .WithMany()
-                        .HasForeignKey("LoyaltyProgramId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Loyalty.LoyaltyProgram", b =>
-                {
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Loyalty.LoyaltyTransaction", b =>
-                {
-                    b.HasOne("Domain.Loyalty.LoyaltyAccount", null)
-                        .WithMany()
-                        .HasForeignKey("LoyaltyAccountId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Sales.SaleTransaction", null)
-                        .WithMany()
-                        .HasForeignKey("SaleTransactionId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("Domain.Notifications.DeviceToken", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Notifications.Notification", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Notifications.PriceAlert", b =>
-                {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Offers.ExpiringOffer", b =>
-                {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Offers.Promotion", b =>
-                {
-                    b.HasOne("Domain.Catalog.Category", null)
-                        .WithMany()
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Payments.Payment", b =>
-                {
-                    b.HasOne("Domain.Sales.SaleTransaction", null)
-                        .WithMany()
-                        .HasForeignKey("SaleTransactionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Payments.StoreCredit", b =>
-                {
-                    b.HasOne("Domain.Customers.Customer", null)
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Pricing.PriceEntry", b =>
-                {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("SubmittedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-                });
-
-            modelBuilder.Entity("Domain.Pricing.PriceEntryDispute", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("DisputedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Pricing.PriceEntry", null)
-                        .WithMany()
-                        .HasForeignKey("PriceEntryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Products.Product", b =>
-                {
-                    b.HasOne("Domain.Catalog.Brand", null)
-                        .WithMany()
-                        .HasForeignKey("BrandId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Catalog.Category", null)
-                        .WithMany()
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Catalog.TaxRate", null)
-                        .WithMany()
-                        .HasForeignKey("TaxRateId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("Domain.Products.ProductSubmission", b =>
-                {
-                    b.HasOne("Domain.Catalog.Brand", null)
-                        .WithMany()
-                        .HasForeignKey("BrandId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Catalog.Category", null)
-                        .WithMany()
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("ModeratedByAdminUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("SubmittedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Receipts.Receipt", b =>
-                {
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Domain.Receipts.ReceiptLineItem", b =>
                 {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("Domain.Receipts.Receipt", null)
                         .WithMany("Lines")
                         .HasForeignKey("ReceiptId")
@@ -2779,62 +2023,8 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Domain.Reputation.ContributorTrustScore", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Sales.CashierShift", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CashierUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Sales.Commission", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CashierUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Sales.SaleTransaction", null)
-                        .WithMany()
-                        .HasForeignKey("SaleTransactionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Sales.FiscalReceipt", b =>
-                {
-                    b.HasOne("Domain.Sales.SaleTransaction", null)
-                        .WithMany()
-                        .HasForeignKey("SaleTransactionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Domain.Sales.ReturnLineItem", b =>
                 {
-                    b.HasOne("Domain.Sales.SaleLineItem", null)
-                        .WithMany()
-                        .HasForeignKey("SaleLineItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Domain.Sales.SaleReturn", null)
                         .WithMany("Lines")
                         .HasForeignKey("SaleReturnId")
@@ -2844,12 +2034,6 @@ namespace Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Domain.Sales.SaleLineItem", b =>
                 {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Domain.Sales.SaleTransaction", null)
                         .WithMany("Lines")
                         .HasForeignKey("SaleTransactionId")
@@ -2857,100 +2041,12 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Domain.Sales.SaleReturn", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("ProcessedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Sales.SaleTransaction", null)
-                        .WithMany()
-                        .HasForeignKey("SaleTransactionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Sales.SaleTransaction", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CashierUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Customers.Customer", null)
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("VoidedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("Domain.Security.SecurityEvent", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.ShoppingLists.ShoppingList", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Domain.ShoppingLists.ShoppingListItem", b =>
                 {
-                    b.HasOne("Domain.Products.Product", null)
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Domain.ShoppingLists.ShoppingList", null)
                         .WithMany("Items")
                         .HasForeignKey("ShoppingListId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Stores.Store", b =>
-                {
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("OwnerUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Stores.StoreEmployee", b =>
-                {
-                    b.HasOne("Domain.Stores.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

@@ -27,7 +27,7 @@ public sealed class ScanBarcodeQueryHandler(
                     ? GeoDistance.CalculateKm(query.UserLatitude.Value, query.UserLongitude.Value, store.Location.Latitude, store.Location.Longitude)
                     : null;
 
-                return new StorePriceDto(store.Id, store.Name, p.Price.Amount, p.Price.Currency, distanceKm, p.Id);
+                return new StorePriceDto(store.Id, store.Name, p.Price.Amount, p.Price.Currency, distanceKm);
             })
             .OrderBy(s => s.DistanceKm ?? double.MaxValue)
             .ThenBy(s => s.Price)

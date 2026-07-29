@@ -8,30 +8,9 @@ using Infrastructure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
-using Serilog;
 using WebApi.Swagger;
 
-// Structured logging (CLAUDE.md §10: "нужен дашборд состояния системы") — plain
-// ILogger text lines aren't queryable; JSON-shaped console output is what a log
-// aggregator (Grafana Loki, ELK, etc.) actually needs to build that dashboard on.
-// Configured before CreateBuilder so startup failures (bad connection string, etc.)
-// are logged too, not just requests handled after the host is already up.
-Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
-    .Enrich.FromLogContext()
-    .WriteTo.Console(new Serilog.Formatting.Json.JsonFormatter())
-    .WriteTo.File(new Serilog.Formatting.Json.JsonFormatter(), "logs/sarfkor-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 14)
-    .CreateBootstrapLogger();
-
 var builder = WebApplication.CreateBuilder(args);
-builder.Host.UseSerilog((context, services, configuration) => configuration
-    .ReadFrom.Configuration(context.Configuration)
-    .ReadFrom.Services(services)
-    .Enrich.FromLogContext()
-    .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
-    .WriteTo.Console(new Serilog.Formatting.Json.JsonFormatter())
-    .WriteTo.File(new Serilog.Formatting.Json.JsonFormatter(), "logs/sarfkor-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 14));
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -110,8 +89,6 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
-
-app.UseSerilogRequestLogging();
 
 using (var scope = app.Services.CreateScope())
 {

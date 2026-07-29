@@ -11,16 +11,21 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using WebApi.Swagger;
 
-// Structured logging (CLAUDE.md §10: "нужен дашборд состояния системы") — plain
-// ILogger text lines aren't queryable; JSON-shaped console output is what a log
-// aggregator (Grafana Loki, ELK, etc.) actually needs to build that dashboard on.
-// Configured before CreateBuilder so startup failures (bad connection string, etc.)
-// are logged too, not just requests handled after the host is already up.
+// Structured logging (CLAUDE.md §10: "нужен дашборд состояния системы") — the file sink is
+// JSON because a log aggregator (Grafana Loki, ELK, etc.) needs that shape to build a dashboard
+// on; the console sink is plain text because a human watches that one directly in a terminal.
+// EF Core's per-query "Executed DbCommand" logging is dropped to Warning on both — it's the
+// single noisiest category by far and isn't useful outside active query debugging.
+// Configured before CreateBuilder so startup failures (bad connection string, etc.) are logged
+// too, not just requests handled after the host is already up.
+const string consoleTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
+
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
     .Enrich.FromLogContext()
-    .WriteTo.Console(new Serilog.Formatting.Json.JsonFormatter())
+    .WriteTo.Console(outputTemplate: consoleTemplate)
     .WriteTo.File(new Serilog.Formatting.Json.JsonFormatter(), "logs/sarfkor-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 14)
     .CreateBootstrapLogger();
 
@@ -30,7 +35,8 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
     .ReadFrom.Services(services)
     .Enrich.FromLogContext()
     .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
-    .WriteTo.Console(new Serilog.Formatting.Json.JsonFormatter())
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
+    .WriteTo.Console(outputTemplate: consoleTemplate)
     .WriteTo.File(new Serilog.Formatting.Json.JsonFormatter(), "logs/sarfkor-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 14));
 
 builder.Services.AddApplication();

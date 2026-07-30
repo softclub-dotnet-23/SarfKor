@@ -51,9 +51,13 @@ export class ApiError extends Error {
 // the same moment, they must share one refresh attempt — a second call with
 // the same (now-consumed) refresh token would just fail — so concurrent
 // refreshes are collapsed into a single in-flight promise.
+// Exported because AuthContext's session-restore path needs the *same* collapse:
+// calling authApi.refresh() directly from there raced this one (two callers, one
+// single-use token — the loser 401s and the session is dropped even though it was
+// valid). Every refresh in the app must go through this function.
 let refreshPromise: Promise<AuthTokens | null> | null = null
 
-async function refreshTokens(): Promise<AuthTokens | null> {
+export async function refreshTokens(): Promise<AuthTokens | null> {
   const current = getTokens()
   if (!current) return null
 

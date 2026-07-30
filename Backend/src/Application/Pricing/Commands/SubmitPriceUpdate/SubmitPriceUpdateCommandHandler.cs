@@ -9,19 +9,25 @@ namespace Application.Pricing.Commands.SubmitPriceUpdate;
 public sealed class SubmitPriceUpdateCommandHandler(
     IProductRepository productRepository,
     IStoreRepository storeRepository,
+    IStoreEmployeeRepository storeEmployeeRepository,
     IPriceEntryRepository priceEntryRepository,
     IContributorTrustScoreRepository trustScoreRepository,
-    IUnitOfWork unitOfWork) : ICommandHandler<SubmitPriceUpdateCommand, SubmitPriceUpdateResult?>
+    IUnitOfWork unitOfWork) : ICommandHandler<SubmitPriceUpdateCommand, SubmitPriceUpdateResult>
 {
     private const double DefaultTrustScore = 50;
 
-    public async Task<SubmitPriceUpdateResult?> Handle(SubmitPriceUpdateCommand command, CancellationToken cancellationToken)
+    public async Task<SubmitPriceUpdateResult> Handle(SubmitPriceUpdateCommand command, CancellationToken cancellationToken)
     {
         if (!await productRepository.ExistsAsync(command.ProductId, cancellationToken))
-            return null;
+            return new SubmitPriceUpdateResult(SubmitPriceUpdateOutcome.ProductNotFound, null, null);
 
-        if (!await storeRepository.ExistsAsync(command.StoreId, cancellationToken))
-            return null;
+        var store = await storeRepository.GetByIdAsync(command.StoreId, cancellationToken);
+        if (store is null)
+            return new SubmitPriceUpdateResult(SubmitPriceUpdateOutcome.StoreNotFound, null, null);
+
+        if (store.OwnerUserId != command.UserId
+            && !await storeEmployeeRepository.IsEmployeeAsync(command.StoreId, command.UserId, cancellationToken))
+            return new SubmitPriceUpdateResult(SubmitPriceUpdateOutcome.Forbidden, null, null);
 
         var priceEntry = new PriceEntry
         {
@@ -47,6 +53,6 @@ public sealed class SubmitPriceUpdateCommandHandler(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new SubmitPriceUpdateResult(priceEntry.Id, priceEntry.RecordedAt);
+        return new SubmitPriceUpdateResult(SubmitPriceUpdateOutcome.Submitted, priceEntry.Id, priceEntry.RecordedAt);
     }
 }

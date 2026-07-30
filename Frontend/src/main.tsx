@@ -8,6 +8,7 @@ import { AuthProvider } from './auth/AuthContext'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireStore } from './auth/RequireStore'
 import { RequireAdmin } from './auth/RequireAdmin'
+import { RequireOwner } from './auth/RequireOwner'
 import { LoginPage } from './auth/LoginPage'
 import { AdminLayout } from './admin/AdminLayout'
 import { StoreOnboardingPage } from './admin/pages/StoreOnboardingPage'
@@ -39,15 +40,17 @@ createRoot(document.getElementById('root')!).render(
               <Route element={<RequireStore />}>
                 <Route path="pos/display" element={<CustomerDisplayPage />} />
                 <Route element={<AdminLayout />}>
-                  <Route index element={<DashboardPage />} />
                   <Route path="pos" element={<PosPage />} />
                   <Route path="inventory" element={<InventoryPage />} />
-                  <Route path="supply" element={<SupplyPage />} />
                   <Route path="customers" element={<CustomersPage />} />
-                  <Route path="marketing" element={<MarketingPage />} />
-                  <Route path="staff" element={<StaffPage />} />
-                  <Route path="reports" element={<ReportsPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
+                  <Route element={<RequireOwner />}>
+                    <Route index element={<DashboardPage />} />
+                    <Route path="supply" element={<SupplyPage />} />
+                    <Route path="marketing" element={<MarketingPage />} />
+                    <Route path="staff" element={<StaffPage />} />
+                    <Route path="reports" element={<ReportsPage />} />
+                    <Route path="settings" element={<SettingsPage />} />
+                  </Route>
                 </Route>
               </Route>
             </Route>

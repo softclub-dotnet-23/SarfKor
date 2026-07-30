@@ -17,6 +17,8 @@ interface AuthContextValue {
   storeId: number | null
   /** Stores the caller owns or is a registered employee of — null until resolved at least once, [] once resolved with none found. */
   myStores: MyStore[] | null
+  /** The caller's role in the currently-selected store, from `myStores` — null until `myStores`/`storeId` resolve. */
+  currentStoreRole: MyStore['role'] | null
   /** True only while resolving the session on first load (deciding whether a stored token is still valid). */
   loading: boolean
   login: (email: string, password: string) => Promise<AuthResult>
@@ -129,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       storeId,
       myStores,
+      currentStoreRole: myStores?.find((s) => s.storeId === storeId)?.role ?? null,
       loading,
       login: async (email, password) => {
         try {

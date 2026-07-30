@@ -23,15 +23,15 @@ import {
 } from './components/icons'
 
 const NAV_ITEMS = [
-  { to: '/admin', label: 'Дашборд', icon: GridIcon, end: true },
-  { to: '/admin/pos', label: 'Касса', icon: RegisterIcon },
-  { to: '/admin/inventory', label: 'Склад', icon: PackageIcon },
-  { to: '/admin/supply', label: 'Поставки', icon: TruckIcon },
-  { to: '/admin/customers', label: 'Клиенты', icon: CashIcon },
-  { to: '/admin/marketing', label: 'Маркетинг', icon: TagIcon },
-  { to: '/admin/staff', label: 'Сотрудники', icon: UsersIcon },
-  { to: '/admin/reports', label: 'Отчёты', icon: ReportIcon },
-  { to: '/admin/settings', label: 'Настройки', icon: SettingsIcon },
+  { to: '/admin', label: 'Дашборд', icon: GridIcon, end: true, ownerOnly: true },
+  { to: '/admin/pos', label: 'Касса', icon: RegisterIcon, ownerOnly: false },
+  { to: '/admin/inventory', label: 'Склад', icon: PackageIcon, ownerOnly: false },
+  { to: '/admin/supply', label: 'Поставки', icon: TruckIcon, ownerOnly: true },
+  { to: '/admin/customers', label: 'Клиенты', icon: CashIcon, ownerOnly: false },
+  { to: '/admin/marketing', label: 'Маркетинг', icon: TagIcon, ownerOnly: true },
+  { to: '/admin/staff', label: 'Сотрудники', icon: UsersIcon, ownerOnly: true },
+  { to: '/admin/reports', label: 'Отчёты', icon: ReportIcon, ownerOnly: true },
+  { to: '/admin/settings', label: 'Настройки', icon: SettingsIcon, ownerOnly: true },
 ]
 
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
@@ -134,9 +134,10 @@ export function AdminLayout() {
   const { runThemeTransition } = useThemeTransition()
   const isDark = theme === 'dark'
   const location = useLocation()
-  const { user, logout } = useAuth()
+  const { user, logout, currentStoreRole } = useAuth()
   const page = PAGE_TITLES[location.pathname] ?? PAGE_TITLES['/admin']
   const initial = user?.email?.charAt(0).toUpperCase() ?? '?'
+  const visibleNavItems = NAV_ITEMS.filter((item) => currentStoreRole !== 'Cashier' || !item.ownerOnly)
 
   // RequireAuth (the parent route) redirects to /login the moment `user`
   // goes null, so logging out doesn't need its own navigate() — a manual one
@@ -160,7 +161,7 @@ export function AdminLayout() {
         </Link>
 
         <nav className="flex flex-1 flex-col gap-1">
-          {NAV_ITEMS.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -255,7 +256,7 @@ export function AdminLayout() {
                 {user?.email}
               </div>
               <div className="text-[11px] leading-tight text-[color:var(--admin-text-tertiary)]">
-                {user?.roles.includes('StorePartner') ? 'Владелец' : 'Пользователь'}
+                {currentStoreRole === 'Cashier' ? 'Кассир' : user?.roles.includes('StorePartner') ? 'Владелец' : 'Пользователь'}
               </div>
             </div>
           </div>

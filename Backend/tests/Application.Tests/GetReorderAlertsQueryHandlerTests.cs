@@ -13,17 +13,11 @@ public class GetReorderAlertsQueryHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
-    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<IReorderRuleRepository> _reorderRuleRepository = new();
     private readonly Mock<IStockLevelRepository> _stockLevelRepository = new();
 
-    public GetReorderAlertsQueryHandlerTests() =>
-        _storeEmployeeRepository
-            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
     private GetReorderAlertsQueryHandler CreateHandler() =>
-        new(_storeRepository.Object, _storeEmployeeRepository.Object, _reorderRuleRepository.Object, _stockLevelRepository.Object);
+        new(_storeRepository.Object, _reorderRuleRepository.Object, _stockLevelRepository.Object);
 
     private void SetupOwnedStore() =>
         _storeRepository
@@ -39,6 +33,17 @@ public class GetReorderAlertsQueryHandlerTests
         var result = await handler.Handle(new GetReorderAlertsQuery(StoreId, OwnerId), CancellationToken.None);
 
         Assert.Equal(GetReorderAlertsOutcome.StoreNotFound, result.Outcome);
+    }
+
+    [Fact]
+    public async Task Handle_CallerIsNotStoreOwner_ReturnsForbidden()
+    {
+        SetupOwnedStore();
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(new GetReorderAlertsQuery(StoreId, "someone-else"), CancellationToken.None);
+
+        Assert.Equal(GetReorderAlertsOutcome.Forbidden, result.Outcome);
     }
 
     [Fact]

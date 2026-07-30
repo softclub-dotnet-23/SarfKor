@@ -18,7 +18,7 @@ public sealed class PricingController : ControllerBase
     [EnableRateLimiting("contributions")]
     public async Task<IActionResult> SubmitPriceUpdate(
         SubmitPriceUpdateRequest request,
-        [FromServices] ICommandHandler<SubmitPriceUpdateCommand, SubmitPriceUpdateResult?> handler,
+        [FromServices] ICommandHandler<SubmitPriceUpdateCommand, SubmitPriceUpdateResult> handler,
         [FromServices] IValidator<SubmitPriceUpdateCommand> validator,
         CancellationToken cancellationToken)
     {
@@ -33,7 +33,14 @@ public sealed class PricingController : ControllerBase
             return this.ToValidationProblem(validationResult);
 
         var result = await handler.Handle(command, cancellationToken);
-        return result is null ? NotFound() : Ok(result);
+        return result.Outcome switch
+        {
+            SubmitPriceUpdateOutcome.Submitted => Ok(result),
+            SubmitPriceUpdateOutcome.ProductNotFound => NotFound(),
+            SubmitPriceUpdateOutcome.StoreNotFound => NotFound(),
+            SubmitPriceUpdateOutcome.Forbidden => Forbid(),
+            _ => Problem()
+        };
     }
 
     [HttpPost("price-entries/{priceEntryId:int}/dispute")]

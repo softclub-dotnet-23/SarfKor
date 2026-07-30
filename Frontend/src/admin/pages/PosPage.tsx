@@ -10,7 +10,6 @@ import {
   AlertIcon,
   ChevronDownIcon,
   CashIcon,
-  CardIcon,
   EyeIcon,
 } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
@@ -449,12 +448,7 @@ export function PosPage() {
   const [cartBundles, setCartBundles] = useState<{ productBundleId: number; name: string; bundlePrice: number; currency: string; quantity: number }[]>([])
   const [checkoutBusy, setCheckoutBusy] = useState(false)
   const [checkoutError, setCheckoutError] = useState('')
-  const [successInfo, setSuccessInfo] = useState<{ totalAmount: number; currency: string; amountDue?: number; giftCardAmountApplied?: number; storeCreditAmountApplied?: number } | null>(null)
-
-  const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [customerId, setCustomerId] = useState('')
-  const [giftCardCode, setGiftCardCode] = useState('')
-  const [applyStoreCredit, setApplyStoreCredit] = useState(false)
+  const [successInfo, setSuccessInfo] = useState<{ totalAmount: number; currency: string } | null>(null)
 
   const [recentSales, setRecentSales] = useState<RecentSale[]>(() => loadRecentSales())
 
@@ -556,17 +550,11 @@ export function PosPage() {
         currency: CURRENCY,
         lines: cart.map((l) => ({ productId: l.productId, quantity: l.quantity })),
         bundleLines: bundleLines.length > 0 ? bundleLines : undefined,
-        customerId: customerId ? Number(customerId) : undefined,
-        giftCardCode: giftCardCode.trim() || undefined,
-        applyStoreCredit: customerId ? applyStoreCredit : false,
       })
       if (result.outcome === 'Completed') {
         setSuccessInfo({
           totalAmount: result.totalAmount ?? total,
           currency: result.currency ?? CURRENCY,
-          amountDue: result.amountDue,
-          giftCardAmountApplied: result.giftCardAmountApplied,
-          storeCreditAmountApplied: result.storeCreditAmountApplied,
         })
         publishCustomerDisplayState({
           storeId: storeId ?? null,
@@ -593,8 +581,6 @@ export function PosPage() {
         setCart([])
         setCartBundles([])
         setLastScan(null)
-        setGiftCardCode('')
-        setApplyStoreCredit(false)
         idempotencyKeyRef.current = null
         setTimeout(() => setSuccessInfo(null), 3600)
       } else {
@@ -786,46 +772,6 @@ export function PosPage() {
           </div>
         </div>
 
-        <div className="border-t border-[color:var(--admin-border)] pt-3">
-          <button
-            onClick={() => setAdvancedOpen((v) => !v)}
-            className="flex w-full items-center justify-between text-[12.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
-          >
-            <span className="flex items-center gap-1.5">
-              <CardIcon width={13} height={13} />
-              Клиент, подарочная карта, кредит
-            </span>
-            <ChevronDownIcon width={14} height={14} className={`transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {advancedOpen && (
-            <div className="mt-3 flex flex-col gap-2.5">
-              <input
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-                type="number"
-                min={0}
-                placeholder="ID клиента (необязательно)"
-                className="rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-2 text-[12.5px] text-[color:var(--admin-text)] outline-none"
-              />
-              <label className="flex items-center gap-2 text-[12px] text-[color:var(--admin-text-secondary)]">
-                <input
-                  type="checkbox"
-                  checked={applyStoreCredit}
-                  disabled={!customerId}
-                  onChange={(e) => setApplyStoreCredit(e.target.checked)}
-                />
-                Списать магазинный кредит клиента
-              </label>
-              <input
-                value={giftCardCode}
-                onChange={(e) => setGiftCardCode(e.target.value)}
-                placeholder="Код подарочной карты (необязательно)"
-                className="rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-2 text-[12.5px] text-[color:var(--admin-text)] outline-none"
-              />
-            </div>
-          )}
-        </div>
-
         {checkoutError && (
           <div className="flex items-center gap-2 rounded-xl bg-[#f87171]/10 px-3.5 py-2.5 text-[12.5px] font-medium text-[#f87171]">
             <AlertIcon width={14} height={14} className="shrink-0" />
@@ -883,11 +829,6 @@ export function PosPage() {
               <div className="text-sm font-bold">Продажа оформлена</div>
               <div className="text-xs text-white/60">
                 {fmt(successInfo.totalAmount)} {successInfo.currency}
-                {successInfo.giftCardAmountApplied ? ` · картой: ${fmt(successInfo.giftCardAmountApplied)}` : ''}
-                {successInfo.storeCreditAmountApplied ? ` · кредитом: ${fmt(successInfo.storeCreditAmountApplied)}` : ''}
-                {successInfo.amountDue != null && successInfo.amountDue !== successInfo.totalAmount
-                  ? ` · к оплате: ${fmt(successInfo.amountDue)}`
-                  : ''}
               </div>
             </div>
           </motion.div>

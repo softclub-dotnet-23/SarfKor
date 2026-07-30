@@ -17,7 +17,6 @@ import { DashboardPage } from './admin/pages/DashboardPage'
 import { PosPage } from './admin/pages/PosPage'
 import { InventoryPage } from './admin/pages/InventoryPage'
 import { SupplyPage } from './admin/pages/SupplyPage'
-import { CustomersPage } from './admin/pages/CustomersPage'
 import { MarketingPage } from './admin/pages/MarketingPage'
 import { StaffPage } from './admin/pages/StaffPage'
 import { ReportsPage } from './admin/pages/ReportsPage'
@@ -42,7 +41,6 @@ createRoot(document.getElementById('root')!).render(
                 <Route element={<AdminLayout />}>
                   <Route path="pos" element={<PosPage />} />
                   <Route path="inventory" element={<InventoryPage />} />
-                  <Route path="customers" element={<CustomersPage />} />
                   <Route element={<RequireOwner />}>
                     <Route index element={<DashboardPage />} />
                     <Route path="supply" element={<SupplyPage />} />

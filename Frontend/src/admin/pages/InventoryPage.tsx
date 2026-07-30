@@ -8,6 +8,7 @@ import {
   productsApi,
   storesApi,
   catalogApi,
+  pricingApi,
   ApiError,
   type StockLevel,
   type ReorderAlert,
@@ -75,6 +76,12 @@ export function InventoryPage() {
   const [costBusy, setCostBusy] = useState(false)
   const [costError, setCostError] = useState('')
   const [costDone, setCostDone] = useState(false)
+
+  const [priceFor, setPriceFor] = useState<ReceiptTarget | null>(null)
+  const [priceAmount, setPriceAmount] = useState('')
+  const [priceBusy, setPriceBusy] = useState(false)
+  const [priceError, setPriceError] = useState('')
+  const [priceDone, setPriceDone] = useState(false)
 
   const [ruleOpen, setRuleOpen] = useState(false)
   const [ruleProductId, setRuleProductId] = useState('')
@@ -232,6 +239,27 @@ export function InventoryPage() {
     }
   }
 
+  async function confirmSetPrice() {
+    if (!priceFor || !storeId || priceBusy) return
+    const amount = Number(priceAmount)
+    if (!amount || amount <= 0) return
+    setPriceBusy(true)
+    setPriceError('')
+    try {
+      await pricingApi.submitPriceUpdate(priceFor.productId, storeId, amount, 'TJS')
+      setPriceDone(true)
+      setTimeout(() => {
+        setPriceFor(null)
+        setPriceAmount('')
+        setPriceDone(false)
+      }, 1200)
+    } catch (err) {
+      setPriceError(err instanceof ApiError ? err.message : 'Не удалось сохранить цену')
+    } finally {
+      setPriceBusy(false)
+    }
+  }
+
   async function confirmCreateRule() {
     if (!storeId || ruleBusy) return
     const productId = Number(ruleProductId)
@@ -382,6 +410,17 @@ export function InventoryPage() {
                         >
                           <TruckIcon width={13} height={13} />
                           Приход
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPriceFor({ productId: s.productId, productName: name })
+                            setPriceAmount('')
+                            setPriceDone(false)
+                            setPriceError('')
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-hover)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+                        >
+                          Цена продажи
                         </button>
                         <button
                           onClick={() => {
@@ -595,6 +634,40 @@ export function InventoryPage() {
               {costDone ? 'Сохранено ✓' : costBusy ? 'Сохраняем…' : 'Сохранить'}
             </button>
             {costError && <div className="text-[12px] font-medium text-[#f87171]">{costError}</div>}
+          </div>
+        )}
+      </AdminModal>
+
+      <AdminModal open={!!priceFor} onClose={() => setPriceFor(null)} title="Установить цену продажи">
+        {priceFor && (
+          <div className="flex flex-col gap-4">
+            <div className="text-[13px] font-semibold text-[color:var(--admin-text)]">
+              {priceFor.productName ?? `Товар #${priceFor.productId}`}
+            </div>
+            <p className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">
+              Эта цена — то, что видит касса при сканировании и что сравнивается с другими магазинами. Отличается от
+              себестоимости (внутренней закупочной цены).
+            </p>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Цена продажи, TJS</span>
+              <input
+                type="number"
+                value={priceAmount}
+                onChange={(e) => setPriceAmount(e.target.value)}
+                min={0}
+                step="0.01"
+                placeholder="0.00"
+                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[15px] font-bold text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+              />
+            </label>
+            <button
+              onClick={confirmSetPrice}
+              disabled={priceBusy || !priceAmount}
+              className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+            >
+              {priceDone ? 'Сохранено ✓' : priceBusy ? 'Сохраняем…' : 'Сохранить'}
+            </button>
+            {priceError && <div className="text-[12px] font-medium text-[#f87171]">{priceError}</div>}
           </div>
         )}
       </AdminModal>

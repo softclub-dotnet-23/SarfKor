@@ -1,4 +1,4 @@
-export { apiFetch, apiUpload, ApiError, getTokens, setTokens, clearTokens } from './client'
+export { apiFetch, apiUpload, ApiError, getTokens, setTokens, clearTokens, refreshTokens } from './client'
 export { decodeJwt, rolesFromToken } from './jwt'
 export * as authApi from './auth'
 export * as storesApi from './stores'

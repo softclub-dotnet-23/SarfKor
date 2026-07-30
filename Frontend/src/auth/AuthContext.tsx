@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { authApi, meApi, ApiError, decodeJwt, rolesFromToken, getTokens, setTokens, clearTokens, type MyStore } from '../lib/api'
+import { authApi, meApi, ApiError, decodeJwt, rolesFromToken, getTokens, setTokens, clearTokens, refreshTokens, type MyStore } from '../lib/api'
 
 export interface AuthUser {
   userId: string
@@ -105,11 +105,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Access token is stale on load (15 min lifetime) — proactively refresh
       // once before rendering anything gated, instead of flashing protected
       // content and then failing every API call.
+      //
+      // Must go through refreshTokens(), not authApi.refresh(): refresh tokens are
+      // single-use, and this effect can run twice (StrictMode) or alongside a 401
+      // retry. Two direct calls would spend the same token, and the loser's 401
+      // would clear a session that is actually still good.
       try {
-        const result = await authApi.refresh(tokens.refreshToken)
+        const refreshed = await refreshTokens()
         if (cancelled) return
-        setTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
-        const nextUser = userFromAccessToken(result.accessToken)
+        if (!refreshed) {
+          setUser(null)
+          return
+        }
+        const nextUser = userFromAccessToken(refreshed.accessToken)
         setUser(nextUser)
         await fetchAndApplyMyStores(nextUser?.roles ?? [])
       } catch {
@@ -172,11 +180,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setStoreIdState(null)
       },
       refreshRoles: async () => {
-        const tokens = getTokens()
-        if (!tokens) return
-        const result = await authApi.refresh(tokens.refreshToken)
-        setTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
-        setUser(userFromAccessToken(result.accessToken))
+        // Same single-use constraint as the restore path above — share the collapse.
+        const refreshed = await refreshTokens()
+        if (!refreshed) return
+        setUser(userFromAccessToken(refreshed.accessToken))
       },
       refreshMyStores: async () => {
         await fetchAndApplyMyStores(user?.roles ?? [])

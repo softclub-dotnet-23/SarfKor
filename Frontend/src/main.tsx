@@ -9,7 +9,7 @@ import { RequireAuth } from './auth/RequireAuth'
 import { RequireStore } from './auth/RequireStore'
 import { RequireAdmin } from './auth/RequireAdmin'
 import { RequireOwner } from './auth/RequireOwner'
-import { LoginPage } from './auth/LoginPage'
+import { LoginPage, RegisterPage } from './auth/AuthPage'
 import { AdminLayout } from './admin/AdminLayout'
 import { StoreOnboardingPage } from './admin/pages/StoreOnboardingPage'
 import { ModerationPage } from './admin/pages/ModerationPage'
@@ -32,6 +32,7 @@ createRoot(document.getElementById('root')!).render(
           <Routes>
             <Route path="/" element={<StaticLanding />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
             <Route path="/admin" element={<RequireAuth />}>
               <Route path="onboarding" element={<StoreOnboardingPage />} />
               <Route element={<RequireAdmin />}>

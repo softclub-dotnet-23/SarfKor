@@ -641,34 +641,24 @@ export function PosPage() {
           </div>
         )}
 
-        {lastScan && (
-          <Card className="p-5">
-            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
-              Найдено по штрихкоду
-            </div>
-            <div className="mb-4 text-[16px] font-bold text-[color:var(--admin-text)]">{lastScan.productName}</div>
-            <div className="flex flex-col gap-2">
-              {lastScan.stores.map((s) => (
-                <div
-                  key={s.storeId}
-                  className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 text-[13px] ${
-                    s.storeId === storeId
-                      ? 'bg-[color:var(--admin-accent-soft)] font-semibold text-[color:var(--admin-accent)]'
-                      : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
-                  }`}
-                >
-                  <span>
-                    {s.storeName}
-                    {s.storeId === storeId ? ' (ваш магазин)' : ''}
-                  </span>
-                  <span className="font-bold">
-                    {fmt(s.price)} {s.currency}
-                  </span>
+        {lastScan &&
+          (() => {
+            const here = lastScan.stores.find((s) => s.storeId === storeId)
+            if (!here) return null
+            return (
+              <Card className="p-5">
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
+                  Найдено по штрихкоду
                 </div>
-              ))}
-            </div>
-          </Card>
-        )}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[16px] font-bold text-[color:var(--admin-text)]">{lastScan.productName}</div>
+                  <div className="text-[16px] font-bold text-[color:var(--admin-accent)]">
+                    {fmt(here.price)} {here.currency}
+                  </div>
+                </div>
+              </Card>
+            )
+          })()}
 
         {!lastScan && !scanError && (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-[16px] border border-dashed border-[color:var(--admin-border)] py-20 text-center text-[color:var(--admin-text-tertiary)]">

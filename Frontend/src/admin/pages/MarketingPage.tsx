@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import { Card } from '../components/Card'
+import { Select } from '../components/Select'
 import { TagIcon, PercentIcon, ClockIcon, AlertIcon, CheckIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { StarIcon } from '../../components/icons'
 import { useAuth } from '../../auth/AuthContext'
@@ -287,15 +288,15 @@ function PromotionsSection({ storeId }: { storeId: number }) {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
               <span className={labelCls()}>Тип скидки</span>
-              <select
+              <Select
                 value={discountType}
-                onChange={(e) => setDiscountType(e.target.value as PromotionDiscountType)}
-                className={inputCls()}
-              >
-                <option value="PercentageOff">Процент от цены</option>
-                <option value="FixedAmountOff">Фиксированная сумма</option>
-                <option value="BuyOneGetOne">1+1</option>
-              </select>
+                onChange={(v) => setDiscountType(v as PromotionDiscountType)}
+                options={[
+                  { value: 'PercentageOff', label: 'Процент от цены' },
+                  { value: 'FixedAmountOff', label: 'Фиксированная сумма' },
+                  { value: 'BuyOneGetOne', label: '1+1' },
+                ]}
+              />
             </label>
             <label className="flex flex-col gap-1.5">
               <span className={labelCls()}>Значение скидки</span>

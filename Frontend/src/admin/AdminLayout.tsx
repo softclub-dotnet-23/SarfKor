@@ -18,7 +18,6 @@ import {
   LogOutIcon,
   SearchIcon,
   TruckIcon,
-  CashIcon,
   TagIcon,
 } from './components/icons'
 
@@ -27,7 +26,6 @@ const NAV_ITEMS = [
   { to: '/admin/pos', label: 'Касса', icon: RegisterIcon, ownerOnly: false },
   { to: '/admin/inventory', label: 'Склад', icon: PackageIcon, ownerOnly: false },
   { to: '/admin/supply', label: 'Поставки', icon: TruckIcon, ownerOnly: true },
-  { to: '/admin/customers', label: 'Клиенты', icon: CashIcon, ownerOnly: false },
   { to: '/admin/marketing', label: 'Маркетинг', icon: TagIcon, ownerOnly: true },
   { to: '/admin/staff', label: 'Сотрудники', icon: UsersIcon, ownerOnly: true },
   { to: '/admin/reports', label: 'Отчёты', icon: ReportIcon, ownerOnly: true },
@@ -39,7 +37,6 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   '/admin/pos': { title: 'Касса', subtitle: 'Сканируйте штрихкод и оформляйте продажи' },
   '/admin/inventory': { title: 'Склад', subtitle: 'Остатки и приход товаров' },
   '/admin/supply': { title: 'Поставки', subtitle: 'Поставщики, заказы и перемещения между магазинами' },
-  '/admin/customers': { title: 'Клиенты', subtitle: 'Клиенты, лояльность, подарочные карты и магазинный кредит' },
   '/admin/marketing': { title: 'Маркетинг', subtitle: 'Акции, наборы товаров, скоро истекает и ответы на отзывы' },
   '/admin/staff': { title: 'Сотрудники', subtitle: 'Сотрудники магазина и кассовые смены' },
   '/admin/reports': { title: 'Отчёты', subtitle: 'Выручка, прибыль и динамика продаж' },

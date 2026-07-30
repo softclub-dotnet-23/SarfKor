@@ -1,7 +1,9 @@
 using Application.Common;
+using Application.Identity.Commands.ForgotPassword;
 using Application.Identity.Commands.Login;
 using Application.Identity.Commands.RefreshToken;
 using Application.Identity.Commands.Register;
+using Application.Identity.Commands.ResetPassword;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -66,5 +68,43 @@ public sealed class AuthController : ControllerBase
 
         var result = await handler.Handle(command, cancellationToken);
         return result is null ? Unauthorized() : Ok(result);
+    }
+
+    [HttpPost("forgot-password")]
+    [EnableRateLimiting("password-reset")]
+    public async Task<IActionResult> ForgotPassword(
+        ForgotPasswordCommand command,
+        [FromServices] ICommandHandler<ForgotPasswordCommand, ForgotPasswordResult> handler,
+        [FromServices] IValidator<ForgotPasswordCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        // Always 200 regardless of outcome — the handler's generic-response guarantee only holds
+        // if this action doesn't add a branch on top of it (email enumeration protection).
+        await handler.Handle(command, cancellationToken);
+        return Ok();
+    }
+
+    [HttpPost("reset-password")]
+    [EnableRateLimiting("password-reset")]
+    public async Task<IActionResult> ResetPassword(
+        ResetPasswordCommand command,
+        [FromServices] ICommandHandler<ResetPasswordCommand, ResetPasswordResult> handler,
+        [FromServices] IValidator<ResetPasswordCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            ResetPasswordOutcome.Reset => Ok(),
+            _ => BadRequest("Invalid or expired reset link.")
+        };
     }
 }

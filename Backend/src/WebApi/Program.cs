@@ -5,8 +5,10 @@ using Application;
 using Application.Sales.Commands.ProcessSale;
 using Infrastructure;
 using Infrastructure.Identity;
+using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using WebApi.Swagger;
@@ -38,6 +40,15 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
     .WriteTo.Console(outputTemplate: consoleTemplate)
     .WriteTo.File(new Serilog.Formatting.Json.JsonFormatter(), "logs/sarfkor-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 14));
+
+// Fail fast with a clear message at startup rather than a confusing NullReferenceException the
+// first time a request tries to sign/validate a JWT — a missing env var in a fresh deploy should
+// be obvious from the logs immediately, not discovered on the first login attempt.
+foreach (var key in new[] { "Jwt:Issuer", "Jwt:Audience", "Jwt:Key" })
+{
+    if (string.IsNullOrWhiteSpace(builder.Configuration[key]))
+        throw new InvalidOperationException($"Configuration key '{key}' is not set — set it via User Secrets (dev) or the {key.Replace(":", "__")} environment variable (prod).");
+}
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -104,6 +115,11 @@ builder.Services.AddRateLimiter(options =>
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(15) }));
 
+    // Забыли пароль / сброс — против спама на чужой email и перебора токена.
+    options.AddPolicy("password-reset", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1) }));
+
     // Пользовательский контент (цены, жалобы, сверка чека) — против спама/накрутки.
     options.AddPolicy("contributions", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -121,6 +137,15 @@ app.UseSerilogRequestLogging();
 
 using (var scope = app.Services.CreateScope())
 {
+    // Applies any pending EF Core migrations before anything below touches the database — a fresh
+    // environment (e.g. a new Railway deploy against an empty Postgres) has no tables at all yet,
+    // so RoleManager.RoleExistsAsync would otherwise fail with "relation does not exist" before the
+    // app ever serves a request. Idempotent: a no-op if every migration is already applied.
+    var migrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    migrationLogger.LogInformation("Applying database migrations...");
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    migrationLogger.LogInformation("Database migrations applied successfully.");
+
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     foreach (var role in new[] { "User", "StorePartner", "Admin" })
     {

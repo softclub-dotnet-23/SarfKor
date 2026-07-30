@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Card } from '../components/Card'
+import { Select } from '../components/Select'
 import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import {
@@ -123,14 +124,14 @@ function EmployeesSection() {
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Роль</span>
-          <select
+          <Select
             value={role}
-            onChange={(e) => setRole(e.target.value as StoreEmployeeRole)}
-            className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
-          >
-            <option value="Cashier">Кассир</option>
-            <option value="Owner">Владелец</option>
-          </select>
+            onChange={(v) => setRole(v as StoreEmployeeRole)}
+            options={[
+              { value: 'Cashier', label: 'Кассир' },
+              { value: 'Owner', label: 'Владелец' },
+            ]}
+          />
         </label>
         <button
           type="submit"

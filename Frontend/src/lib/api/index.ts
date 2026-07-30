@@ -7,11 +7,7 @@ export * as salesApi from './sales'
 export * as inventoryApi from './inventory'
 export * as adminApi from './admin'
 export * as catalogApi from './catalog'
-export * as favoritesApi from './favorites'
-export * as shoppingListsApi from './shoppingLists'
-export * as priceAlertsApi from './priceAlerts'
 export * as meApi from './me'
-export * as pricingApi from './pricing'
 export * as reviewsApi from './reviews'
 export * as suppliersApi from './suppliers'
 export * as purchaseOrdersApi from './purchaseOrders'
@@ -24,10 +20,6 @@ export * as storeCreditApi from './storeCredit'
 export * as promotionsApi from './promotions'
 export * as bundlesApi from './bundles'
 export * as expiringOffersApi from './expiringOffers'
-export * as notificationsApi from './notifications'
-export * as deviceTokensApi from './deviceTokens'
-export * as receiptsApi from './receipts'
-export * as feedbackApi from './feedback'
 export type {
   CashierShift,
   ProcessSaleRequest,
@@ -41,7 +33,7 @@ export type {
   ReturnLineDetail,
 } from './sales'
 export type { StockLevel } from './inventory'
-export type { ScanBarcodeResult, ScanResultStore, StoreBasket, MostScannedProduct } from './products'
+export type { ScanBarcodeResult, ScanResultStore } from './products'
 export type {
   StoreDashboard,
   DailySalesReport,
@@ -59,9 +51,6 @@ export type {
   AuditLogEntry,
 } from './admin'
 export type { Brand, Category, TaxRate } from './catalog'
-export type { FavoriteType, Favorite } from './favorites'
-export type { ShoppingList, ShoppingListItem } from './shoppingLists'
-export type { PriceAlert } from './priceAlerts'
 export type { UserProfile, ConsentType, UserConsent, SecurityEventType, SecurityEvent, MyStore, MyStoreRole } from './me'
 export type { Review } from './reviews'
 export type { Supplier } from './suppliers'
@@ -74,6 +63,3 @@ export type { StoreCreditBalance } from './storeCredit'
 export type { Promotion, PromotionDiscountType, CreatePromotionInput } from './promotions'
 export type { ProductBundle, BundleItem } from './bundles'
 export type { ExpiringOffer } from './expiringOffers'
-export type { Notification, NotificationType } from './notifications'
-export type { DevicePlatform } from './deviceTokens'
-export type { ReceiptLineInput, ReceiptLineComparison, VerifyReceiptOutcome } from './receipts'

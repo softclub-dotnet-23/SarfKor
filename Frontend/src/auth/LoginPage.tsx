@@ -70,12 +70,14 @@ export function LoginPage() {
     // a fresh login has no "from", and defaulting that case to /admin sent
     // plain consumer accounts straight into "create a store" (the same bug
     // fixed for the Admin role in RequireStore). Route by role instead.
+    // A plain User (no StorePartner/Admin role) has no dashboard of their
+    // own — the consumer app was removed, so they just go home.
     const from = (location.state as { from?: Location })?.from?.pathname
     const fallback = result.roles.includes('Admin')
       ? '/admin/moderation'
       : result.roles.includes('StorePartner')
         ? '/admin'
-        : '/app'
+        : '/'
     navigate(from ?? fallback, { replace: true })
   }
 

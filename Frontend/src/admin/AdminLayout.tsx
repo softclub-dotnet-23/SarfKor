@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { NavLink, Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import { LogoMark } from '../components/Logo'
 import { useTheme } from '../theme/ThemeProvider'
@@ -17,7 +17,6 @@ import {
   RefreshIcon,
   LogOutIcon,
   SearchIcon,
-  BellIcon,
   TruckIcon,
   CashIcon,
   TagIcon,
@@ -135,7 +134,6 @@ export function AdminLayout() {
   const { runThemeTransition } = useThemeTransition()
   const isDark = theme === 'dark'
   const location = useLocation()
-  const navigate = useNavigate()
   const { user, logout } = useAuth()
   const page = PAGE_TITLES[location.pathname] ?? PAGE_TITLES['/admin']
   const initial = user?.email?.charAt(0).toUpperCase() ?? '?'
@@ -236,14 +234,6 @@ export function AdminLayout() {
               className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2 pl-9 pr-3 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
             />
           </div>
-
-          <button
-            onClick={() => navigate('/app/notifications')}
-            aria-label="Уведомления"
-            className="relative grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]"
-          >
-            <BellIcon width={17} height={17} />
-          </button>
 
           <button
             onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}

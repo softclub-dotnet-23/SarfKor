@@ -5,7 +5,7 @@ import { useTheme } from '../../theme/ThemeProvider'
 import { useThemeTransition } from '../../theme/useThemeTransition'
 import { useAuth } from '../../auth/AuthContext'
 import { SunIcon, MoonIcon } from '../../components/icons'
-import { StoreIcon, BellIcon, KeyIcon, CheckIcon } from '../components/icons'
+import { StoreIcon, KeyIcon, CheckIcon } from '../components/icons'
 import { SuppliersSection } from './SuppliersSection'
 
 const DAILY_GOAL_KEY = 'sarfkor-daily-goal'
@@ -104,24 +104,6 @@ export function SettingsPage() {
             Тёмная
           </button>
         </div>
-      </Card>
-
-      <Card className="p-6">
-        <div className="mb-1 flex items-center gap-2">
-          <BellIcon width={18} height={18} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Уведомления</span>
-        </div>
-        <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-          Бэкенд сам решает, когда создавать уведомления (низкий остаток, снижение цены, рассмотренная жалоба,
-          новая акция с истекающим сроком) — настройки того, какие типы получать, бэкенд пока не поддерживает.
-        </p>
-        <button
-          onClick={() => navigate('/app/notifications')}
-          className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-hover)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--admin-text)] hover:bg-[color:var(--admin-border)]"
-        >
-          <BellIcon width={15} height={15} />
-          Посмотреть уведомления
-        </button>
       </Card>
 
       <SuppliersSection />

@@ -21,15 +21,6 @@ import { MarketingPage } from './admin/pages/MarketingPage'
 import { StaffPage } from './admin/pages/StaffPage'
 import { ReportsPage } from './admin/pages/ReportsPage'
 import { SettingsPage } from './admin/pages/SettingsPage'
-import { AppLayout } from './app/AppLayout'
-import { ScanPage } from './app/pages/ScanPage'
-import { FavoritesPage } from './app/pages/FavoritesPage'
-import { ShoppingListsPage } from './app/pages/ShoppingListsPage'
-import { PriceAlertsPage } from './app/pages/PriceAlertsPage'
-import { ExpiringOffersPage } from './app/pages/ExpiringOffersPage'
-import { NotificationsPage } from './app/pages/NotificationsPage'
-import { ReceiptsPage } from './app/pages/ReceiptsPage'
-import { AccountPage } from './app/pages/AccountPage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -39,18 +30,6 @@ createRoot(document.getElementById('root')!).render(
           <Routes>
             <Route path="/" element={<StaticLanding />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/app" element={<RequireAuth />}>
-              <Route element={<AppLayout />}>
-                <Route index element={<ScanPage />} />
-                <Route path="favorites" element={<FavoritesPage />} />
-                <Route path="lists" element={<ShoppingListsPage />} />
-                <Route path="expiring" element={<ExpiringOffersPage />} />
-                <Route path="alerts" element={<PriceAlertsPage />} />
-                <Route path="notifications" element={<NotificationsPage />} />
-                <Route path="receipts" element={<ReceiptsPage />} />
-                <Route path="account" element={<AccountPage />} />
-              </Route>
-            </Route>
             <Route path="/admin" element={<RequireAuth />}>
               <Route path="onboarding" element={<StoreOnboardingPage />} />
               <Route element={<RequireAdmin />}>

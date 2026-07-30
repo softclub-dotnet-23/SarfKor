@@ -1,8 +1,20 @@
-import { useRef, useState, type FormEvent, type SVGProps } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type SVGProps } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Card } from '../components/Card'
-import { BarcodeIcon, PlusIcon, MinusIcon, TrashIcon, CheckIcon, AlertIcon, ChevronDownIcon, CashIcon, CardIcon } from '../components/icons'
+import {
+  BarcodeIcon,
+  PlusIcon,
+  MinusIcon,
+  TrashIcon,
+  CheckIcon,
+  AlertIcon,
+  ChevronDownIcon,
+  CashIcon,
+  CardIcon,
+  EyeIcon,
+} from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
+import { publishCustomerDisplayState } from '../lib/customerDisplay'
 import {
   productsApi,
   salesApi,
@@ -516,6 +528,20 @@ export function PosPage() {
     cartBundles.reduce((sum, b) => sum + b.bundlePrice * b.quantity, 0)
   const itemCount = cart.reduce((sum, l) => sum + l.quantity, 0) + cartBundles.reduce((sum, b) => sum + b.quantity, 0)
 
+  // Mirrors the cart to a customer-facing display window in real time — see
+  // admin/lib/customerDisplay.ts for why this is a same-tab broadcast, not an API call.
+  useEffect(() => {
+    publishCustomerDisplayState({
+      storeId: storeId ?? null,
+      lines: [
+        ...cart.map((l) => ({ key: `p${l.productId}`, name: l.productName, unitPrice: l.unitPrice, quantity: l.quantity })),
+        ...cartBundles.map((b) => ({ key: `b${b.productBundleId}`, name: `Набор: ${b.name}`, unitPrice: b.bundlePrice, quantity: b.quantity })),
+      ],
+      total,
+      currency: CURRENCY,
+    })
+  }, [cart, cartBundles, total, storeId])
+
   async function completeSale() {
     if ((cart.length === 0 && cartBundles.length === 0) || checkoutBusy || !storeId) return
     setCheckoutBusy(true)
@@ -541,6 +567,13 @@ export function PosPage() {
           amountDue: result.amountDue,
           giftCardAmountApplied: result.giftCardAmountApplied,
           storeCreditAmountApplied: result.storeCreditAmountApplied,
+        })
+        publishCustomerDisplayState({
+          storeId: storeId ?? null,
+          lines: [],
+          total: 0,
+          currency: CURRENCY,
+          completedTotal: { amount: result.totalAmount ?? total, currency: result.currency ?? CURRENCY },
         })
         if (result.saleTransactionId != null) {
           const next = [
@@ -649,20 +682,30 @@ export function PosPage() {
 
       {/* Cart / checkout */}
       <Card className="flex h-fit flex-col gap-4 p-5 lg:sticky lg:top-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Текущий чек</span>
-          {(cart.length > 0 || cartBundles.length > 0) && (
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                setCart([])
-                setCartBundles([])
-                idempotencyKeyRef.current = null
-              }}
-              className="text-xs font-medium text-[color:var(--admin-text-tertiary)] hover:text-[#f87171]"
+              onClick={() => window.open('/admin/pos/display', 'sarfkor-customer-display', 'width=900,height=700')}
+              title="Открыть на втором мониторе для покупателя"
+              className="flex items-center gap-1 text-xs font-medium text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-accent)]"
             >
-              Очистить
+              <EyeIcon width={13} height={13} />
+              Экран покупателя
             </button>
-          )}
+            {(cart.length > 0 || cartBundles.length > 0) && (
+              <button
+                onClick={() => {
+                  setCart([])
+                  setCartBundles([])
+                  idempotencyKeyRef.current = null
+                }}
+                className="text-xs font-medium text-[color:var(--admin-text-tertiary)] hover:text-[#f87171]"
+              >
+                Очистить
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex max-h-[360px] flex-col gap-2 overflow-y-auto">

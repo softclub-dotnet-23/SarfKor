@@ -21,6 +21,7 @@ import { MarketingPage } from './admin/pages/MarketingPage'
 import { StaffPage } from './admin/pages/StaffPage'
 import { ReportsPage } from './admin/pages/ReportsPage'
 import { SettingsPage } from './admin/pages/SettingsPage'
+import { CustomerDisplayPage } from './admin/pages/CustomerDisplayPage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -36,6 +37,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="moderation" element={<ModerationPage />} />
               </Route>
               <Route element={<RequireStore />}>
+                <Route path="pos/display" element={<CustomerDisplayPage />} />
                 <Route element={<AdminLayout />}>
                   <Route index element={<DashboardPage />} />
                   <Route path="pos" element={<PosPage />} />

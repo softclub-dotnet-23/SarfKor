@@ -16,8 +16,15 @@ public sealed class SmtpEmailSender(IConfiguration configuration) : IEmailSender
 
         var fromName = configuration["Smtp:FromName"] ?? "Sarfkor";
         var username = configuration["Smtp:Username"];
+        var password = configuration["Smtp:Password"];
         var host = configuration["Smtp:Host"] ?? "smtp.gmail.com";
         var port = int.Parse(configuration["Smtp:Port"] ?? "587");
+
+        // A clear, specific failure here matters: this is caught and logged (not rethrown) by
+        // ForgotPasswordCommandHandler, so a missing credential must not surface as some opaque
+        // MimeKit ArgumentNullException in the logs — that's much harder to root-cause on a fresh deploy.
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            throw new InvalidOperationException("Smtp:Username / Smtp:Password are not configured — set them via User Secrets (dev) or Smtp__Username / Smtp__Password environment variables (prod).");
 
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(fromName, username));
@@ -34,7 +41,7 @@ public sealed class SmtpEmailSender(IConfiguration configuration) : IEmailSender
 
         using var client = new SmtpClient();
         await client.ConnectAsync(host, port, SecureSocketOptions.StartTls, cancellationToken);
-        await client.AuthenticateAsync(username, configuration["Smtp:Password"], cancellationToken);
+        await client.AuthenticateAsync(username, password, cancellationToken);
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
     }

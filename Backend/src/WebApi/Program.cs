@@ -39,6 +39,15 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
     .WriteTo.Console(outputTemplate: consoleTemplate)
     .WriteTo.File(new Serilog.Formatting.Json.JsonFormatter(), "logs/sarfkor-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 14));
 
+// Fail fast with a clear message at startup rather than a confusing NullReferenceException the
+// first time a request tries to sign/validate a JWT — a missing env var in a fresh deploy should
+// be obvious from the logs immediately, not discovered on the first login attempt.
+foreach (var key in new[] { "Jwt:Issuer", "Jwt:Audience", "Jwt:Key" })
+{
+    if (string.IsNullOrWhiteSpace(builder.Configuration[key]))
+        throw new InvalidOperationException($"Configuration key '{key}' is not set — set it via User Secrets (dev) or the {key.Replace(":", "__")} environment variable (prod).");
+}
+
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { LogoMark } from '../../components/Logo'
+import { Select } from '../components/Select'
 import { useAuth } from '../../auth/AuthContext'
 import { useTheme } from '../../theme/ThemeProvider'
 import { useThemeTransition } from '../../theme/useThemeTransition'
@@ -685,18 +686,14 @@ function CategoriesSubsection() {
           placeholder="Название категории"
           className="min-w-[160px] flex-1 rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
         />
-        <select
+        <Select
           value={parentId}
-          onChange={(e) => setParentId(e.target.value)}
-          className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
-        >
-          <option value="">Без родителя</option>
-          {(items ?? []).map((c) => (
-            <option key={c.categoryId} value={c.categoryId}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          onChange={setParentId}
+          scheme="mod"
+          className="min-w-[160px]"
+          placeholder="Без родителя"
+          options={(items ?? []).map((c) => ({ value: String(c.categoryId), label: c.name }))}
+        />
         <button
           type="submit"
           disabled={submitting || !name.trim()}
@@ -797,18 +794,14 @@ function TaxRatesSubsection() {
           step="0.01"
           className="w-20 rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
         />
-        <select
+        <Select
           value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
-        >
-          <option value="">Все категории</option>
-          {categories.map((c) => (
-            <option key={c.categoryId} value={c.categoryId}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          onChange={setCategoryId}
+          scheme="mod"
+          className="min-w-[160px]"
+          placeholder="Все категории"
+          options={categories.map((c) => ({ value: String(c.categoryId), label: c.name }))}
+        />
         <button
           type="submit"
           disabled={submitting || !name.trim() || percentage === ''}

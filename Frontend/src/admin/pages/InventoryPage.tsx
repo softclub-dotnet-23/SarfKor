@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '../components/Card'
 import { AdminModal } from '../components/AdminModal'
+import { Select } from '../components/Select'
 import { SearchIcon, PlusIcon, AlertIcon, TruckIcon, BarcodeIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import {
@@ -502,33 +503,19 @@ export function InventoryPage() {
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Категория</span>
-              <select
+              <Select
                 value={submitCategoryId}
-                onChange={(e) => setSubmitCategoryId(e.target.value)}
-                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
-              >
-                <option value="">Выберите…</option>
-                {categories.map((c) => (
-                  <option key={c.categoryId} value={c.categoryId}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSubmitCategoryId}
+                options={categories.map((c) => ({ value: String(c.categoryId), label: c.name }))}
+              />
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Бренд</span>
-              <select
+              <Select
                 value={submitBrandId}
-                onChange={(e) => setSubmitBrandId(e.target.value)}
-                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
-              >
-                <option value="">Выберите…</option>
-                {brands.map((b) => (
-                  <option key={b.brandId} value={b.brandId}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSubmitBrandId}
+                options={brands.map((b) => ({ value: String(b.brandId), label: b.name }))}
+              />
             </label>
           </div>
           <label className="flex flex-col gap-1.5">

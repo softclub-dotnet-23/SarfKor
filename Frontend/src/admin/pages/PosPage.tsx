@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type SVGProps } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Card } from '../components/Card'
+import { Select } from '../components/Select'
 import {
   BarcodeIcon,
   PlusIcon,
@@ -334,18 +335,17 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
             <div className="rounded-xl bg-[color:var(--admin-card)] p-3">
               <form onSubmit={handleReturn} className="flex flex-col gap-2">
                 <div className="flex gap-2">
-                  <select
+                  <Select
                     value={returnLineId}
-                    onChange={(e) => setReturnLineId(e.target.value)}
-                    className="min-w-0 flex-1 rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--admin-text)] outline-none"
-                  >
-                    <option value="">Позиция</option>
-                    {sale.lines.map((l) => (
-                      <option key={l.saleLineItemId} value={l.saleLineItemId}>
-                        Товар {l.productId} (продано {l.quantity})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setReturnLineId}
+                    className="min-w-0 flex-1"
+                    size="sm"
+                    placeholder="Позиция"
+                    options={sale.lines.map((l) => ({
+                      value: String(l.saleLineItemId),
+                      label: `Товар ${l.productId} (продано ${l.quantity})`,
+                    }))}
+                  />
                   <input
                     value={returnQty}
                     onChange={(e) => setReturnQty(e.target.value)}

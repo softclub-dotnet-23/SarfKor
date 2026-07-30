@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode, type SVGProps } from 'react'
 import { Card } from '../components/Card'
+import { Select } from '../components/Select'
 import { TruckIcon, PlusIcon, TrashIcon, RefreshIcon, PhoneIcon, MailIcon, AlertIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { ApiError } from '../../lib/api/client'
@@ -418,14 +419,12 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
           </p>
         ) : (
           <form onSubmit={handleCreate} className="flex flex-col gap-3">
-            <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className={inputClass}>
-              <option value="">Выберите поставщика</option>
-              {suppliers.map((s) => (
-                <option key={s.supplierId} value={s.supplierId}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={supplierId}
+              onChange={setSupplierId}
+              placeholder="Выберите поставщика"
+              options={suppliers.map((s) => ({ value: String(s.supplierId), label: s.name }))}
+            />
 
             <div className="flex flex-col gap-2">
               {lines.map((line, i) => (

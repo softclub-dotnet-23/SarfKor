@@ -30,3 +30,19 @@ export function refresh(refreshToken: string) {
     body: { refreshToken },
   })
 }
+
+export function forgotPassword(email: string) {
+  return apiFetch<void>('/api/auth/forgot-password', {
+    method: 'POST',
+    auth: false,
+    body: { email },
+  })
+}
+
+export function resetPassword(email: string, token: string, newPassword: string) {
+  return apiFetch<void>('/api/auth/reset-password', {
+    method: 'POST',
+    auth: false,
+    body: { email, token, newPassword },
+  })
+}

@@ -10,4 +10,8 @@ public interface IAuthService
     Task AssignRoleAsync(string userId, string role, CancellationToken cancellationToken);
     Task RemoveFromRoleAsync(string userId, string role, CancellationToken cancellationToken);
     Task<string?> FindUserIdByEmailAsync(string email, CancellationToken cancellationToken);
+
+    /// <summary>Null if no account exists for the email — callers must not let that distinguish the response they give back (email enumeration).</summary>
+    Task<string?> GeneratePasswordResetTokenAsync(string email, CancellationToken cancellationToken);
+    Task<bool> ResetPasswordAsync(string email, string token, string newPassword, CancellationToken cancellationToken);
 }

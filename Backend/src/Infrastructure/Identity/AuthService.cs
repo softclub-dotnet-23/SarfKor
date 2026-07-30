@@ -100,6 +100,38 @@ public sealed class AuthService(
         return user?.Id;
     }
 
+    public async Task<string?> GeneratePasswordResetTokenAsync(string email, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        return user is null ? null : await userManager.GeneratePasswordResetTokenAsync(user);
+    }
+
+    public async Task<bool> ResetPasswordAsync(string email, string token, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null)
+            return false;
+
+        var result = await userManager.ResetPasswordAsync(user, token, newPassword);
+        if (!result.Succeeded)
+            return false;
+
+        // A stolen refresh token must die the moment the real owner takes back the account.
+        await refreshTokenRepository.RevokeAllForUserAsync(user.Id, cancellationToken);
+
+        securityEventRepository.Add(new SecurityEvent
+        {
+            UserId = user.Id,
+            Type = SecurityEventType.PasswordChanged,
+            IpAddress = null,
+            UserAgent = null,
+            OccurredAt = DateTimeOffset.UtcNow
+        });
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     private async Task<AuthResult> IssueTokenPairAsync(ApplicationUser user)
     {
         var roles = await userManager.GetRolesAsync(user);

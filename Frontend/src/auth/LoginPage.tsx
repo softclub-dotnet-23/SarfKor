@@ -163,7 +163,17 @@ export function LoginPage() {
               </label>
 
               <label className="flex flex-col gap-1.5">
-                <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Пароль</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Пароль</span>
+                  {mode === 'login' && (
+                    <Link
+                      to="/forgot-password"
+                      className="text-[12px] font-medium text-[color:var(--admin-accent)] hover:opacity-80"
+                    >
+                      Забыли пароль?
+                    </Link>
+                  )}
+                </div>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}

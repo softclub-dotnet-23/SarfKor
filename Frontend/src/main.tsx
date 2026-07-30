@@ -10,6 +10,8 @@ import { RequireStore } from './auth/RequireStore'
 import { RequireAdmin } from './auth/RequireAdmin'
 import { RequireOwner } from './auth/RequireOwner'
 import { LoginPage } from './auth/LoginPage'
+import { ForgotPasswordPage } from './auth/ForgotPasswordPage'
+import { ResetPasswordPage } from './auth/ResetPasswordPage'
 import { AdminLayout } from './admin/AdminLayout'
 import { StoreOnboardingPage } from './admin/pages/StoreOnboardingPage'
 import { ModerationPage } from './admin/pages/ModerationPage'
@@ -31,6 +33,8 @@ createRoot(document.getElementById('root')!).render(
           <Routes>
             <Route path="/" element={<StaticLanding />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/admin" element={<RequireAuth />}>
               <Route path="onboarding" element={<StoreOnboardingPage />} />
               <Route element={<RequireAdmin />}>

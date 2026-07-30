@@ -5,8 +5,10 @@ using Application;
 using Application.Sales.Commands.ProcessSale;
 using Infrastructure;
 using Infrastructure.Identity;
+using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using WebApi.Swagger;
@@ -135,6 +137,15 @@ app.UseSerilogRequestLogging();
 
 using (var scope = app.Services.CreateScope())
 {
+    // Applies any pending EF Core migrations before anything below touches the database — a fresh
+    // environment (e.g. a new Railway deploy against an empty Postgres) has no tables at all yet,
+    // so RoleManager.RoleExistsAsync would otherwise fail with "relation does not exist" before the
+    // app ever serves a request. Idempotent: a no-op if every migration is already applied.
+    var migrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    migrationLogger.LogInformation("Applying database migrations...");
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    migrationLogger.LogInformation("Database migrations applied successfully.");
+
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     foreach (var role in new[] { "User", "StorePartner", "Admin" })
     {

@@ -154,10 +154,10 @@ html.theme-wipe::view-transition-group(root) {
   color-scheme: dark;
 }
 
-/* Moderation panel (Admin role) — its own token set, deliberately distinct
-   from .admin-shell's blue store-partner palette since this is a visually
-   separate product surface (violet accent, near-black panels). Same .dark
-   class drives both so the site-wide theme toggle stays in sync everywhere. */
+/* Moderation panel (Admin role) — its own token set (near-black panels in
+   dark mode) but shares .admin-shell's blue accent so the Admin surface reads
+   as the same product as the StorePartner cabinet. Same .dark class drives
+   both so the site-wide theme toggle stays in sync everywhere. */
 .mod-shell {
   --mod-bg: #f5f5f6;
   --mod-panel: #ffffff;
@@ -168,11 +168,11 @@ html.theme-wipe::view-transition-group(root) {
   --mod-text: #0c0c0e;
   --mod-muted: #6a6a72;
   --mod-faint: #9a9aa2;
-  --mod-accent: #7c3aed;
-  --mod-accent2: #7c3aed;
-  --mod-accent-dim: rgba(139, 92, 246, 0.12);
-  --mod-ok: #7c3aed;
-  --mod-ok-dim: rgba(139, 92, 246, 0.12);
+  --mod-accent: #0284c7;
+  --mod-accent2: #0284c7;
+  --mod-accent-dim: rgba(2, 132, 199, 0.12);
+  --mod-ok: #0284c7;
+  --mod-ok-dim: rgba(2, 132, 199, 0.12);
   --mod-warn: #6a6a72;
   --mod-warn-dim: rgba(106, 106, 114, 0.12);
   --mod-danger: #dc2626;
@@ -191,11 +191,11 @@ html.theme-wipe::view-transition-group(root) {
   --mod-text: #f4f4f6;
   --mod-muted: #8c8c96;
   --mod-faint: #5a5a63;
-  --mod-accent: #8b5cf6;
-  --mod-accent2: #a78bfa;
-  --mod-accent-dim: rgba(139, 92, 246, 0.16);
-  --mod-ok: #8b5cf6;
-  --mod-ok-dim: rgba(139, 92, 246, 0.16);
+  --mod-accent: #38bdf8;
+  --mod-accent2: #7dd3fc;
+  --mod-accent-dim: rgba(56, 189, 248, 0.16);
+  --mod-ok: #38bdf8;
+  --mod-ok-dim: rgba(56, 189, 248, 0.16);
   --mod-warn: #8c8c96;
   --mod-warn-dim: rgba(140, 140, 150, 0.16);
   --mod-danger: #f87171;

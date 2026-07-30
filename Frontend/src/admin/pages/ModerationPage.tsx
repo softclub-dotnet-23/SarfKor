@@ -409,7 +409,7 @@ function ModerationSection({
                     return next
                   })
                 }
-                className="h-[18px] w-[18px] shrink-0 accent-[#8b5cf6]"
+                className="h-[18px] w-[18px] shrink-0 accent-[color:var(--mod-accent)]"
               />
             }
             icon={<PackageIcon width={18} height={18} />}

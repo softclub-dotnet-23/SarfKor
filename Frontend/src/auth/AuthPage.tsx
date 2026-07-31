@@ -55,14 +55,19 @@ function AuthPage({ mode }: { mode: Mode }) {
       setError(result.error)
       return
     }
-    // Unchanged: a returning visit to a protected page goes back there; a fresh
-    // sign-in routes by role, and a plain consumer account just goes home.
+    // A returning visit to a protected page goes back there; a fresh sign-in
+    // routes by role. A plain User with no StorePartner/Admin role: a brand-new
+    // registration has nothing to do yet but create their store, so send them
+    // straight into onboarding — an existing account logging in still just goes
+    // home (must not change for old accounts that deliberately have no store).
     const from = (location.state as { from?: Location })?.from?.pathname
     const fallback = result.roles.includes('Admin')
       ? '/admin/moderation'
       : result.roles.includes('StorePartner')
         ? '/admin'
-        : '/'
+        : isRegister
+          ? '/admin/onboarding'
+          : '/'
     navigate(from ?? fallback, { replace: true })
   }
 
@@ -172,7 +177,16 @@ function AuthPage({ mode }: { mode: Mode }) {
                 placeholder="••••••••"
                 className={field}
               />
-              {isRegister && <span className="text-[12px] text-white/30">Минимум 8 символов</span>}
+              {isRegister ? (
+                <span className="text-[12px] text-white/30">Минимум 8 символов</span>
+              ) : (
+                <Link
+                  to="/forgot-password"
+                  className="self-start text-[12px] font-medium text-white/40 transition-colors duration-300 hover:text-white"
+                >
+                  Забыли пароль?
+                </Link>
+              )}
             </label>
 
             {isRegister && (

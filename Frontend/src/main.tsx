@@ -12,6 +12,7 @@ import { RequireOwner } from './auth/RequireOwner'
 import { LoginPage, RegisterPage } from './auth/AuthPage'
 import { ForgotPasswordPage } from './auth/ForgotPasswordPage'
 import { ResetPasswordPage } from './auth/ResetPasswordPage'
+import { AcceptInvitePage } from './auth/AcceptInvitePage'
 import { AdminLayout } from './admin/AdminLayout'
 import { StoreOnboardingPage } from './admin/pages/StoreOnboardingPage'
 import { ModerationPage } from './admin/pages/ModerationPage'
@@ -36,6 +37,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/accept-invite" element={<AcceptInvitePage />} />
             <Route path="/admin" element={<RequireAuth />}>
               <Route path="onboarding" element={<StoreOnboardingPage />} />
               <Route element={<RequireAdmin />}>

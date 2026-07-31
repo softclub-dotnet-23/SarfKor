@@ -23,6 +23,9 @@ interface AuthContextValue {
   loading: boolean
   login: (email: string, password: string) => Promise<AuthResult>
   register: (email: string, password: string) => Promise<AuthResult>
+  /** Applies a token pair issued outside login/register (e.g. accepting a store invite) — same
+   *  setTokens -> decode -> fetchAndApplyMyStores sequence login/register already do. */
+  applyAuthResult: (tokens: { accessToken: string; refreshToken: string }) => Promise<{ roles: string[] }>
   logout: () => void
   setStoreId: (id: number) => void
   /** Drops a locally-cached storeId that no longer resolves (store deleted, or stale from a different account that once shared this browser) — sends the caller back to the picker instead of a dead retry loop. */
@@ -85,6 +88,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function applyAuthResult(tokens: { accessToken: string; refreshToken: string }): Promise<{ roles: string[] }> {
+    setTokens(tokens)
+    const nextUser = userFromAccessToken(tokens.accessToken)
+    setUser(nextUser)
+    await fetchAndApplyMyStores(nextUser?.roles ?? [])
+    return { roles: nextUser?.roles ?? [] }
+  }
+
   useEffect(() => {
     let cancelled = false
     async function resolveSession() {
@@ -144,11 +155,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login: async (email, password) => {
         try {
           const result = await authApi.login(email, password)
-          setTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
-          const nextUser = userFromAccessToken(result.accessToken)
-          setUser(nextUser)
-          await fetchAndApplyMyStores(nextUser?.roles ?? [])
-          return { ok: true, roles: nextUser?.roles ?? [] }
+          const { roles } = await applyAuthResult(result)
+          return { ok: true, roles }
         } catch (err) {
           return { ok: false, error: friendlyAuthError(err, 'Не удалось войти') }
         }
@@ -164,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, error: friendlyAuthError(err, 'Не удалось зарегистрироваться') }
         }
       },
+      applyAuthResult,
       logout: () => {
         clearTokens()
         localStorage.removeItem(STORE_ID_KEY)

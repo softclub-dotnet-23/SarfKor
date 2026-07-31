@@ -1,16 +1,21 @@
 using Application.Abstractions;
 using Application.Common;
 using Domain.Stores;
+using Microsoft.Extensions.Logging;
 
 namespace Application.Stores.Commands.AddStoreEmployee;
 
 public sealed class AddStoreEmployeeCommandHandler(
     IStoreRepository storeRepository,
     IStoreEmployeeRepository storeEmployeeRepository,
+    IStoreEmployeeInvitationRepository invitationRepository,
     IAuthService authService,
-    IUnitOfWork unitOfWork) : ICommandHandler<AddStoreEmployeeCommand, AddStoreEmployeeResult>
+    IEmailSender emailSender,
+    IUnitOfWork unitOfWork,
+    ILogger<AddStoreEmployeeCommandHandler> logger) : ICommandHandler<AddStoreEmployeeCommand, AddStoreEmployeeResult>
 {
     private const string StorePartnerRole = "StorePartner";
+    private static readonly TimeSpan InvitationLifespan = TimeSpan.FromHours(24);
 
     public async Task<AddStoreEmployeeResult> Handle(AddStoreEmployeeCommand command, CancellationToken cancellationToken)
     {
@@ -25,7 +30,7 @@ public sealed class AddStoreEmployeeCommandHandler(
         // it to the real UserId here, since that's what StoreEmployee/JWT claims actually key on.
         var employeeUserId = await authService.FindUserIdByEmailAsync(command.EmployeeEmail, cancellationToken);
         if (employeeUserId is null)
-            return new AddStoreEmployeeResult(AddStoreEmployeeOutcome.EmployeeNotFound, null);
+            return await InviteAsync(store.Name, command, cancellationToken);
 
         var existing = await storeEmployeeRepository.GetByStoreIdAsync(command.StoreId, cancellationToken);
         if (existing.Any(e => e.UserId == employeeUserId))
@@ -49,5 +54,41 @@ public sealed class AddStoreEmployeeCommandHandler(
         await authService.AssignRoleAsync(employeeUserId, StorePartnerRole, cancellationToken);
 
         return new AddStoreEmployeeResult(AddStoreEmployeeOutcome.Added, employee.Id);
+    }
+
+    // No account exists for this email yet — invite them instead of just failing. Re-using the same
+    // pending invitation (rather than creating a duplicate row) makes re-clicking "Добавить" for the
+    // same email a harmless resend.
+    private async Task<AddStoreEmployeeResult> InviteAsync(string storeName, AddStoreEmployeeCommand command, CancellationToken cancellationToken)
+    {
+        var invitation = await invitationRepository.GetPendingByStoreAndEmailAsync(command.StoreId, command.EmployeeEmail, cancellationToken);
+        if (invitation is null)
+        {
+            invitation = new StoreEmployeeInvitation
+            {
+                StoreId = command.StoreId,
+                Email = command.EmployeeEmail,
+                Role = command.Role,
+                Token = Guid.NewGuid().ToString("N"),
+                InvitedByUserId = command.PerformedByUserId,
+                ExpiresAt = DateTimeOffset.UtcNow.Add(InvitationLifespan),
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            invitationRepository.Add(invitation);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        try
+        {
+            await emailSender.SendStoreEmployeeInviteEmailAsync(command.EmployeeEmail, storeName, invitation.Token, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // Swallowed on purpose, same reasoning as ForgotPasswordCommandHandler: a broken SMTP
+            // setup must not turn "invite a cashier" into a 500 for the store owner.
+            logger.LogError(ex, "Failed to send store employee invite email");
+        }
+
+        return new AddStoreEmployeeResult(AddStoreEmployeeOutcome.Invited, null);
     }
 }

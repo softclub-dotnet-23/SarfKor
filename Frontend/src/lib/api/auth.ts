@@ -46,3 +46,15 @@ export function resetPassword(email: string, token: string, newPassword: string)
     body: { email, token, newPassword },
   })
 }
+
+export type AcceptStoreEmployeeInvitationOutcome = 'Accepted' | 'AccountAlreadyExisted' | 'InvalidOrExpiredToken' | 'RegistrationFailed'
+
+// `auth` is only present for 'Accepted' (a brand-new account) -- lets the caller log the new
+// cashier straight in instead of sending them to /login separately.
+export function acceptStoreEmployeeInvitation(token: string, password: string) {
+  return apiFetch<{ outcome: AcceptStoreEmployeeInvitationOutcome; auth?: AuthResult }>('/api/auth/accept-invite', {
+    method: 'POST',
+    auth: false,
+    body: { token, password },
+  })
+}

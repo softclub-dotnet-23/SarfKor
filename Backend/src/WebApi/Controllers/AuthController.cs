@@ -4,6 +4,7 @@ using Application.Identity.Commands.Login;
 using Application.Identity.Commands.RefreshToken;
 using Application.Identity.Commands.Register;
 using Application.Identity.Commands.ResetPassword;
+using Application.Stores.Commands.AcceptStoreEmployeeInvitation;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -105,6 +106,29 @@ public sealed class AuthController : ControllerBase
         {
             ResetPasswordOutcome.Reset => Ok(),
             _ => BadRequest("Invalid or expired reset link.")
+        };
+    }
+
+    [HttpPost("accept-invite")]
+    [EnableRateLimiting("invite-accept")]
+    public async Task<IActionResult> AcceptInvite(
+        AcceptStoreEmployeeInvitationCommand command,
+        [FromServices] ICommandHandler<AcceptStoreEmployeeInvitationCommand, AcceptStoreEmployeeInvitationResult> handler,
+        [FromServices] IValidator<AcceptStoreEmployeeInvitationCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            AcceptStoreEmployeeInvitationOutcome.Accepted => Ok(result),
+            AcceptStoreEmployeeInvitationOutcome.AccountAlreadyExisted => Ok(result),
+            AcceptStoreEmployeeInvitationOutcome.InvalidOrExpiredToken => BadRequest("Invalid or expired invitation link."),
+            AcceptStoreEmployeeInvitationOutcome.RegistrationFailed => BadRequest("Could not create the account — check password requirements."),
+            _ => Problem()
         };
     }
 }

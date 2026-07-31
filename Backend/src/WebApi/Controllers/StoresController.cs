@@ -68,7 +68,7 @@ public sealed class StoresController : ControllerBase
             AddStoreEmployeeOutcome.StoreNotFound => NotFound("Store not found."),
             AddStoreEmployeeOutcome.Forbidden => Forbid(),
             AddStoreEmployeeOutcome.AlreadyEmployed => Conflict("This user is already an employee of this store."),
-            AddStoreEmployeeOutcome.EmployeeNotFound => NotFound("No registered user found with this email."),
+            AddStoreEmployeeOutcome.Invited => Ok(result),
             _ => Problem()
         };
     }

@@ -20,10 +20,39 @@ public sealed class ModerateNewProductCommandHandler(
         if (submission.Status != ProductSubmissionStatus.Pending)
             return new ModerateNewProductResult(ModerateNewProductOutcome.AlreadyModerated, null);
 
+        // A StorePartner self-approving may only ever act on their own submission — Admin (the only
+        // other caller) passes RequireOwnSubmission=false and can moderate anyone's.
+        if (command.RequireOwnSubmission && submission.SubmittedByUserId != command.PerformedByUserId)
+            return new ModerateNewProductResult(ModerateNewProductOutcome.Forbidden, null);
+
         Product? product = null;
 
         if (command.Approve)
         {
+            // Re-checked here, not just at submit time: a Product with this barcode could have been
+            // created by a different, since-approved submission (or another path entirely) in the
+            // time between this submission being filed and moderated.
+            var existingProduct = await productRepository.GetByBarcodeAsync(submission.Barcode.Value, cancellationToken);
+            if (existingProduct is not null)
+            {
+                submission.Status = ProductSubmissionStatus.Rejected;
+                submission.ModeratedByAdminUserId = command.PerformedByUserId;
+                submission.ModeratedAt = DateTimeOffset.UtcNow;
+
+                auditLogRepository.Add(new AuditLog
+                {
+                    PerformedByUserId = command.PerformedByUserId,
+                    Action = "ProductSubmission.RejectedDuplicate",
+                    EntityType = nameof(ProductSubmission),
+                    EntityId = submission.Id,
+                    Details = $"Barcode {submission.Barcode.Value} already exists as Product {existingProduct.Id}",
+                    OccurredAt = DateTimeOffset.UtcNow
+                });
+
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                return new ModerateNewProductResult(ModerateNewProductOutcome.DuplicateBarcode, existingProduct.Id);
+            }
+
             product = new Product
             {
                 Barcode = submission.Barcode,
@@ -41,12 +70,12 @@ public sealed class ModerateNewProductCommandHandler(
             submission.Status = ProductSubmissionStatus.Rejected;
         }
 
-        submission.ModeratedByAdminUserId = command.AdminUserId;
+        submission.ModeratedByAdminUserId = command.PerformedByUserId;
         submission.ModeratedAt = DateTimeOffset.UtcNow;
 
         auditLogRepository.Add(new AuditLog
         {
-            PerformedByUserId = command.AdminUserId,
+            PerformedByUserId = command.PerformedByUserId,
             Action = command.Approve ? "ProductSubmission.Approved" : "ProductSubmission.Rejected",
             EntityType = nameof(ProductSubmission),
             EntityId = submission.Id,

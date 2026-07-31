@@ -37,6 +37,7 @@ function EmployeesSection() {
   const [role, setRole] = useState<StoreEmployeeRole>('Cashier')
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState('')
+  const [formSuccess, setFormSuccess] = useState('')
   const [removingId, setRemovingId] = useState<number | null>(null)
 
   const load = useCallback(async () => {
@@ -63,16 +64,19 @@ function EmployeesSection() {
     if (!storeId || !employeeEmail.trim() || busy) return
     setBusy(true)
     setFormError('')
+    setFormSuccess('')
     try {
       const res = await storesApi.addStoreEmployee(storeId, employeeEmail.trim(), role)
       if (res.outcome === 'Added') {
         setEmployeeEmail('')
         setRole('Cashier')
         await load()
+      } else if (res.outcome === 'Invited') {
+        setFormSuccess(`Приглашение отправлено на ${employeeEmail.trim()} — как только он(а) его примет, станет сотрудником этого магазина`)
+        setEmployeeEmail('')
+        setRole('Cashier')
       } else if (res.outcome === 'AlreadyEmployed') {
         setFormError('Этот пользователь уже числится сотрудником магазина')
-      } else if (res.outcome === 'EmployeeNotFound') {
-        setFormError('Нет пользователя с таким email — попросите сотрудника сначала зарегистрироваться в приложении')
       } else if (res.outcome === 'Forbidden') {
         setFormError('Нет доступа к этому магазину')
       } else {
@@ -143,9 +147,10 @@ function EmployeesSection() {
         </button>
       </form>
       {formError && <div className="mb-3 text-[12px] font-medium text-[#f87171]">{formError}</div>}
+      {formSuccess && <div className="mb-3 text-[12px] font-medium text-[#4ade80]">{formSuccess}</div>}
       <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-        Сотрудник должен уже быть зарегистрирован в Sarfkor под этим email — добавление автоматически выдаёт ему
-        доступ к панели StorePartner для этого магазина.
+        Если сотрудник уже зарегистрирован в Sarfkor под этим email, доступ к панели выдаётся сразу. Если нет — ему
+        придёт письмо со ссылкой, чтобы задать пароль и присоединиться.
       </p>
 
       {error && <div className="mb-3 text-[12px] font-medium text-[#f87171]">{error}</div>}

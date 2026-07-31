@@ -18,14 +18,17 @@ using Microsoft.AspNetCore.Mvc;
 namespace WebApi.Controllers;
 
 // Catalog reference data (Brand/Category/TaxRate) — shared, platform-wide lookup tables that
-// Product/StockMovement already reference by FK. Curated centrally (Admin) to keep the taxonomy
-// consistent; all lists are public — the frontend needs them for dropdowns/browsing.
+// Product/StockMovement already reference by FK. All lists are public — the frontend needs them
+// for dropdowns/browsing. Any StorePartner can add a new Brand/Category outright (no approval
+// queue — these aren't curated the way new Products are via ModerateNewProductCommand), but
+// editing/deleting an existing one stays Admin-only since that can affect every other store
+// already referencing it, not just the caller's own.
 [ApiController]
 [Route("api/catalog")]
 public sealed class CatalogController : ControllerBase
 {
     [HttpPost("brands")]
-    [Authorize("Admin")]
+    [Authorize(Roles = "Admin,StorePartner")]
     public async Task<IActionResult> CreateBrand(
         CreateBrandCommand command,
         [FromServices] ICommandHandler<CreateBrandCommand, CreateBrandResult> handler,
@@ -95,7 +98,7 @@ public sealed class CatalogController : ControllerBase
     }
 
     [HttpPost("categories")]
-    [Authorize("Admin")]
+    [Authorize(Roles = "Admin,StorePartner")]
     public async Task<IActionResult> CreateCategory(
         CreateCategoryCommand command,
         [FromServices] ICommandHandler<CreateCategoryCommand, CreateCategoryResult> handler,

@@ -5,7 +5,9 @@ public enum ModerateNewProductOutcome
     Approved,
     Rejected,
     NotFound,
-    AlreadyModerated
+    AlreadyModerated,
+    Forbidden,
+    DuplicateBarcode
 }
 
 public sealed record ModerateNewProductResult(ModerateNewProductOutcome Outcome, int? ProductId);

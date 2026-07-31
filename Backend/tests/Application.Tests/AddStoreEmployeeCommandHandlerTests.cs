@@ -2,6 +2,7 @@ using Application.Abstractions;
 using Application.Stores.Commands.AddStoreEmployee;
 using Domain.Stores;
 using Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace Application.Tests;
@@ -15,11 +16,14 @@ public class AddStoreEmployeeCommandHandlerTests
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
     private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
+    private readonly Mock<IStoreEmployeeInvitationRepository> _invitationRepository = new();
     private readonly Mock<IAuthService> _authService = new();
+    private readonly Mock<IEmailSender> _emailSender = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ILogger<AddStoreEmployeeCommandHandler>> _logger = new();
 
     private AddStoreEmployeeCommandHandler CreateHandler() =>
-        new(_storeRepository.Object, _storeEmployeeRepository.Object, _authService.Object, _unitOfWork.Object);
+        new(_storeRepository.Object, _storeEmployeeRepository.Object, _invitationRepository.Object, _authService.Object, _emailSender.Object, _unitOfWork.Object, _logger.Object);
 
     private static AddStoreEmployeeCommand ValidCommand() => new(StoreId, CashierEmail, StoreEmployeeRole.Cashier, OwnerId);
 
@@ -51,16 +55,48 @@ public class AddStoreEmployeeCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_EmailNotRegistered_ReturnsEmployeeNotFound()
+    public async Task Handle_EmailNotRegistered_CreatesInvitationAndReturnsInvited()
     {
         SetupOwnedStore();
         _authService.Setup(a => a.FindUserIdByEmailAsync(CashierEmail, It.IsAny<CancellationToken>())).ReturnsAsync((string?)null);
+        _invitationRepository
+            .Setup(r => r.GetPendingByStoreAndEmailAsync(StoreId, CashierEmail, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((StoreEmployeeInvitation?)null);
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand(), CancellationToken.None);
 
-        Assert.Equal(AddStoreEmployeeOutcome.EmployeeNotFound, result.Outcome);
+        Assert.Equal(AddStoreEmployeeOutcome.Invited, result.Outcome);
         _storeEmployeeRepository.Verify(r => r.Add(It.IsAny<StoreEmployee>()), Times.Never);
+        _invitationRepository.Verify(r => r.Add(It.Is<StoreEmployeeInvitation>(i => i.StoreId == StoreId && i.Email == CashierEmail)), Times.Once);
+        _emailSender.Verify(e => e.SendStoreEmployeeInviteEmailAsync(CashierEmail, "Test", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_EmailAlreadyHasPendingInvitation_ResendsWithoutCreatingDuplicate()
+    {
+        SetupOwnedStore();
+        _authService.Setup(a => a.FindUserIdByEmailAsync(CashierEmail, It.IsAny<CancellationToken>())).ReturnsAsync((string?)null);
+        var existingInvitation = new StoreEmployeeInvitation
+        {
+            StoreId = StoreId,
+            Email = CashierEmail,
+            Role = StoreEmployeeRole.Cashier,
+            Token = "existing-token",
+            InvitedByUserId = OwnerId,
+            ExpiresAt = DateTimeOffset.UtcNow.AddHours(23),
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _invitationRepository
+            .Setup(r => r.GetPendingByStoreAndEmailAsync(StoreId, CashierEmail, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingInvitation);
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(ValidCommand(), CancellationToken.None);
+
+        Assert.Equal(AddStoreEmployeeOutcome.Invited, result.Outcome);
+        _invitationRepository.Verify(r => r.Add(It.IsAny<StoreEmployeeInvitation>()), Times.Never);
+        _emailSender.Verify(e => e.SendStoreEmployeeInviteEmailAsync(CashierEmail, "Test", "existing-token", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

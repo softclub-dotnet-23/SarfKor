@@ -6,7 +6,7 @@ public enum AddStoreEmployeeOutcome
     StoreNotFound,
     Forbidden,
     AlreadyEmployed,
-    EmployeeNotFound
+    Invited
 }
 
 public sealed record AddStoreEmployeeResult(AddStoreEmployeeOutcome Outcome, int? StoreEmployeeId);

@@ -102,7 +102,8 @@ public sealed class AdminController : ControllerBase
         if (userId is null)
             return Unauthorized();
 
-        var command = new ModerateNewProductCommand(submissionId, request.Approve, userId, request.Reason);
+        // Admin moderates anyone's submission — no ownership restriction.
+        var command = new ModerateNewProductCommand(submissionId, request.Approve, userId, request.Reason, RequireOwnSubmission: false);
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -115,6 +116,7 @@ public sealed class AdminController : ControllerBase
             ModerateNewProductOutcome.Rejected => Ok(result),
             ModerateNewProductOutcome.NotFound => NotFound(),
             ModerateNewProductOutcome.AlreadyModerated => Conflict("This submission has already been moderated."),
+            ModerateNewProductOutcome.DuplicateBarcode => Conflict("A product with this barcode already exists — submission auto-rejected."),
             _ => Problem()
         };
     }

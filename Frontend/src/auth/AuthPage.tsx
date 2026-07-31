@@ -239,8 +239,9 @@ function AuthPage({ mode }: { mode: Mode }) {
     // A returning visit to a protected page goes back there; a fresh sign-in
     // routes by role. A plain User with no StorePartner/Admin role: a brand-new
     // registration has nothing to do yet but create their store, so send them
-    // straight into onboarding — an existing account logging in still just goes
-    // home (must not change for old accounts that deliberately have no store).
+    // straight into onboarding — an existing account logging in goes to the
+    // consumer app (must not change for old accounts that deliberately have no
+    // store; before /app existed that destination was the landing page).
     const from = (location.state as { from?: Location })?.from?.pathname
     const fallback = result.roles.includes('Admin')
       ? '/admin/moderation'
@@ -248,7 +249,7 @@ function AuthPage({ mode }: { mode: Mode }) {
         ? '/admin'
         : isRegister
           ? '/admin/onboarding'
-          : '/'
+          : '/app'
     navigate(from ?? fallback, { replace: true })
   }
   /* ---- /auth ---- */

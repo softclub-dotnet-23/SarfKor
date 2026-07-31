@@ -17,6 +17,9 @@ export * as reorderRulesApi from './reorderRules'
 export * as promotionsApi from './promotions'
 export * as bundlesApi from './bundles'
 export * as expiringOffersApi from './expiringOffers'
+export * as favoritesApi from './favorites'
+export * as priceAlertsApi from './priceAlerts'
+export * as shoppingListsApi from './shoppingLists'
 export type {
   CashierShift,
   ProcessSaleRequest,
@@ -30,7 +33,10 @@ export type {
   ReturnLineDetail,
 } from './sales'
 export type { StockLevel } from './inventory'
-export type { ScanBarcodeResult, ScanResultStore } from './products'
+export type { ScanBarcodeResult, ScanResultStore, StoreBasket, MostScannedProduct } from './products'
+export type { Favorite, FavoriteType } from './favorites'
+export type { PriceAlert } from './priceAlerts'
+export type { ShoppingList, ShoppingListItem } from './shoppingLists'
 export type {
   StoreDashboard,
   DailySalesReport,

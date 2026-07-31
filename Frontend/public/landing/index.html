@@ -748,6 +748,11 @@ class Component extends DCLogic {
     this.on(window,'wheel',e=>{
       if(e.ctrlKey)return;                       // pinch-zoom belongs to the browser
       if(scrollableUnder(e.target,e.deltaY))return;
+      // The post-intro hero reveal owns the scroll position while it runs. A small
+      // accidental nudge is swallowed so a resting trackpad hand cannot abort the
+      // shot; a deliberate one ends the reveal and then falls straight through, so
+      // the very gesture that takes control is also the one that starts scrolling.
+      if(this._heroRevealing&&this._heroRevealNudge(e.deltaY)){e.preventDefault();return;}
       e.preventDefault();
       // Firefox reports lines/pages rather than pixels.
       const unit=e.deltaMode===1?16:e.deltaMode===2?this.metrics.vh:1;
@@ -1213,6 +1218,10 @@ class Component extends DCLogic {
     // Exposed so the cold open can drive ACT 00 from a clock rather than scroll.
     // Same scene, same draw(), same curves — only the source of progress changes.
     this._titles=scenes.find(x=>x.el.matches('[data-scene-titles]'))||null;
+    // Same idea as _titles, but the other way round: the post-intro reveal does not
+    // drive ACT 01 directly, it moves the scroll position through it and lets this
+    // loop draw. It only needs the scene's geometry to know where to stop.
+    this._hero=scenes.find(x=>x.el.matches('[data-scene-hero]'))||null;
     if(this.reduceMotion){scenes.forEach(s=>s.draw(s.ctx,0.5));return;}
     let raf=null,live=new Set(),last=performance.now();
     const tick=()=>{const now=performance.now(),dt=Math.min(0.05,(now-last)/1000);last=now;
@@ -1390,13 +1399,19 @@ class Component extends DCLogic {
       if(done)return;done=true;
       sc.p=1;sc.draw(sc.ctx,1);
       this._introActive=false;   // hand ACT 00 back to the scroll loop
+      document.body.style.overflow=prevOverflow;
       // Land on the scroll offset that renders the same frame, so the handover
       // from clock to wheel is invisible.
+      //
+      // ACT 00's closing frame is pure black (the band has fully closed), and so is
+      // the opening frame of ACT 01, so we can land straight on the hero's own start
+      // offset instead of the titles' end. It is the same image either way, and it
+      // spares the visitor the ~86vh of empty black that sits between the two.
       const end=sc.el.offsetTop+Math.max(0,sc.el.offsetHeight-window.innerHeight);
-      document.body.style.overflow=prevOverflow;
-      window.scrollTo(0,end);
+      window.scrollTo(0,this._hero?this._hero.el.offsetTop:end);
       if(this._cancelSmooth)this._cancelSmooth();
       revealChrome();
+      this.runHeroReveal();
     };
     this._skipIntro=finish;
 
@@ -1428,6 +1443,83 @@ class Component extends DCLogic {
     this.on(window,'wheel',skip,{passive:true});
     this.on(window,'keydown',skip);
     this.on(window,'pointerdown',skip);
+  }
+
+  /* ---------- HERO AUTO-REVEAL ----------
+     ACT 01 already contains the hero's entrance: the copy cascade, the product
+     resolving out of the depth, the camera settling into the shot. Playing it on
+     arrival therefore does not mean writing a second animation — it means moving
+     the scroll position through the one that already exists and letting
+     setupJourney draw every frame exactly as it would under the wheel.
+
+     That is the whole reason this handoff has no seam. The scroll engine is the
+     only driver the entire time, so when the tween stops the page is simply
+     sitting at an offset the visitor could have reached themselves, with the
+     scene's own damped `p` still converging into it. Nothing is reset, re-timed or
+     re-parented at the join, because there is no join.
+
+     REST is the frame where the shot is composed but the camera has not begun to
+     leave. Past 0.72 the product starts turning away (see setupPhone), while below
+     ~0.77 the primary CTA is still blurred and — since ACT 01 gates pointer-events
+     on its own opacity — not yet clickable. 0.80 is the frame that satisfies both. */
+  runHeroReveal(){
+    const hero=this._hero;
+    if(!hero||this.reduceMotion)return;
+    const span=hero.el.offsetHeight-window.innerHeight;
+    if(span<=0)return;
+    const REST=0.80, DUR=2800;
+    const from=window.scrollY, to=hero.el.offsetTop+REST*span, dist=to-from;
+    if(dist<=1)return;
+
+    // Decelerating, no overshoot. Deliberately not an ease-in-out: that puts the
+    // first beat of the cascade ~1.1s in, and the cold open has just held on black
+    // for a second — a second pause on top of it reads as the page having stalled.
+    // This lands the eyebrow at ~250ms and still leaves a long, quiet settle.
+    const ease=t=>1-Math.pow(1-t,3);
+    let raf=null,t0=0,nudged=0;
+
+    const release=()=>{
+      if(raf!==null){cancelAnimationFrame(raf);raf=null;}
+      if(!this._heroRevealing)return;
+      this._heroRevealing=false;
+      if(this._cancelSmooth)this._cancelSmooth();   // resync the wheel engine to here
+      window.removeEventListener('touchstart',bail);
+      window.removeEventListener('pointerdown',bail);
+      window.removeEventListener('keydown',bail);
+    };
+    // Touch, click and keyboard are unambiguous intent — hand over on the first
+    // one. The page is left exactly where it is, so control transfers with no jump
+    // and no lost position.
+    const bail=()=>release();
+
+    this._heroRevealing=true;
+    // The wheel is the ambiguous one (a resting hand on a trackpad emits deltas),
+    // so it is thresholded instead of instant.
+    this._heroRevealNudge=dy=>{
+      nudged+=Math.abs(dy);
+      if(nudged<40)return true;                     // swallowed: hold the shot
+      release();
+      return false;                                 // released: let this wheel scroll
+    };
+
+    const step=ts=>{
+      raf=null;
+      if(!this._heroRevealing)return;
+      if(!t0)t0=ts;
+      const t=Math.min(1,(ts-t0)/DUR);
+      window.scrollTo(0,Math.round(from+dist*ease(t)));
+      if(t>=1){release();return;}
+      raf=requestAnimationFrame(step);
+    };
+    raf=requestAnimationFrame(step);
+    this.on(window,'touchstart',bail,{passive:true});
+    this.on(window,'pointerdown',bail);
+    this.on(window,'keydown',bail);
+    // rAF is suspended in a background tab, so a visitor who opens the page in a new
+    // tab and returns later would otherwise find the hero frozen half-composed.
+    // Deliberately not in this._td.timers, for the same reason as the cold open's
+    // guard: the next mount's sweep would cancel the very safety net. Idempotent.
+    setTimeout(()=>{if(this._heroRevealing){window.scrollTo(0,Math.round(to));release();}},DUR+1500);
   }
   markInteract(){if(this.interacted)return;this.interacted=true;if(this.hintRef.current)this.hintRef.current.style.opacity='0';}
   setPage(p){this.setState({page:p});if(this.pagesRef.current)this.pagesRef.current.style.transform=`translateX(${p?-50:0}%)`;}

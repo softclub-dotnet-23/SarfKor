@@ -7,6 +7,6 @@ public sealed class ModerateNewProductCommandValidator : AbstractValidator<Moder
     public ModerateNewProductCommandValidator()
     {
         RuleFor(x => x.ProductSubmissionId).GreaterThan(0);
-        RuleFor(x => x.AdminUserId).NotEmpty();
+        RuleFor(x => x.PerformedByUserId).NotEmpty();
     }
 }

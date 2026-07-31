@@ -39,12 +39,22 @@ export interface SubmitNewProductRequest {
   countryOfOrigin: string
 }
 
-// Submits an unrecognized barcode for Admin moderation (see /admin/moderation) -- does not create
-// the Product directly. Any authenticated user can submit; approval is what actually creates it.
+// Files an unrecognized barcode as a pending submission -- does not create the Product directly.
+// Any authenticated user can submit. A StorePartner can immediately self-approve their own
+// submission via selfApproveNewProduct below (no Admin needed); anyone else's stays in the queue
+// for Admin moderation (see /admin/moderation).
 export function submitNewProduct(req: SubmitNewProductRequest) {
   return apiFetch<{ outcome: string; productSubmissionId?: number }>('/api/products/submissions', {
     method: 'POST',
     body: req,
+  })
+}
+
+// Restricted to the submission's own submitter -- the backend rejects (403) an attempt to
+// self-approve someone else's pending submission.
+export function selfApproveNewProduct(productSubmissionId: number) {
+  return apiFetch<{ outcome: string; productId?: number }>(`/api/products/submissions/${productSubmissionId}/self-approve`, {
+    method: 'POST',
   })
 }
 

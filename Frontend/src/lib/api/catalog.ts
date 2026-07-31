@@ -1,8 +1,9 @@
 import { apiFetch } from './client'
 
-// Shared, platform-wide catalog reference data. Category/Brand/TaxRate are curated centrally
-// (Admin) — Product already references them by CategoryId/BrandId/TaxRateId. All lists are public
-// (used for dropdowns), writes require the Admin role.
+// Shared, platform-wide catalog reference data — Product already references these by
+// CategoryId/BrandId/TaxRateId. All lists are public (used for dropdowns). Any StorePartner can
+// create a new Brand/Category outright (no approval needed); editing/deleting an existing one, and
+// all of TaxRate, stays Admin-only since that can affect every other store already referencing it.
 
 export interface Brand {
   brandId: number

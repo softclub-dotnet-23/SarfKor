@@ -67,6 +67,16 @@ export function InventoryPage() {
   const [submitError, setSubmitError] = useState('')
   const [submitDone, setSubmitDone] = useState(false)
 
+  const [newCategoryOpen, setNewCategoryOpen] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryBusy, setNewCategoryBusy] = useState(false)
+  const [newCategoryError, setNewCategoryError] = useState('')
+
+  const [newBrandOpen, setNewBrandOpen] = useState(false)
+  const [newBrandName, setNewBrandName] = useState('')
+  const [newBrandBusy, setNewBrandBusy] = useState(false)
+  const [newBrandError, setNewBrandError] = useState('')
+
   const [receiptFor, setReceiptFor] = useState<ReceiptTarget | null>(null)
   const [receiptQty, setReceiptQty] = useState(10)
   const [receiptBusy, setReceiptBusy] = useState(false)
@@ -183,13 +193,22 @@ export function InventoryPage() {
     setSubmitBusy(true)
     setSubmitError('')
     try {
-      await productsApi.submitNewProduct({
+      const submitResult = await productsApi.submitNewProduct({
         barcode: notFoundBarcode,
         name: submitName.trim(),
         categoryId: Number(submitCategoryId),
         brandId: Number(submitBrandId),
         countryOfOrigin: submitCountry.trim(),
       })
+      if (submitResult.productSubmissionId) {
+        try {
+          await productsApi.selfApproveNewProduct(submitResult.productSubmissionId)
+        } catch {
+          // The submission itself already succeeded either way — if self-approve fails for any
+          // reason (e.g. a duplicate barcode caught at moderation time), it just waits in the
+          // queue for Admin to look at instead of failing this whole action.
+        }
+      }
       setSubmitDone(true)
       setTimeout(() => {
         setSubmitOpen(false)
@@ -200,6 +219,46 @@ export function InventoryPage() {
       setSubmitError(err instanceof ApiError ? err.message : 'Не удалось отправить заявку')
     } finally {
       setSubmitBusy(false)
+    }
+  }
+
+  async function handleCreateCategory() {
+    if (!newCategoryName.trim() || newCategoryBusy) return
+    setNewCategoryBusy(true)
+    setNewCategoryError('')
+    try {
+      const res = await catalogApi.createCategory(newCategoryName.trim())
+      if (res.outcome === 'Created' && res.categoryId) {
+        const created = { categoryId: res.categoryId, name: newCategoryName.trim() }
+        setCategories((c) => [...c, created])
+        setSubmitCategoryId(String(res.categoryId))
+        setNewCategoryOpen(false)
+        setNewCategoryName('')
+      } else {
+        setNewCategoryError('Не удалось создать категорию')
+      }
+    } catch (err) {
+      setNewCategoryError(err instanceof ApiError ? err.message : 'Не удалось создать категорию')
+    } finally {
+      setNewCategoryBusy(false)
+    }
+  }
+
+  async function handleCreateBrand() {
+    if (!newBrandName.trim() || newBrandBusy) return
+    setNewBrandBusy(true)
+    setNewBrandError('')
+    try {
+      const res = await catalogApi.createBrand(newBrandName.trim())
+      const created = { brandId: res.brandId, name: newBrandName.trim() }
+      setBrands((b) => [...b, created])
+      setSubmitBrandId(String(res.brandId))
+      setNewBrandOpen(false)
+      setNewBrandName('')
+    } catch (err) {
+      setNewBrandError(err instanceof ApiError ? err.message : 'Не удалось создать бренд')
+    } finally {
+      setNewBrandBusy(false)
     }
   }
 
@@ -485,11 +544,10 @@ export function InventoryPage() {
         </form>
       </AdminModal>
 
-      <AdminModal open={submitOpen} onClose={() => setSubmitOpen(false)} title="Заявка на новый товар">
+      <AdminModal open={submitOpen} onClose={() => setSubmitOpen(false)} title="Новый товар">
         <div className="flex flex-col gap-4">
           <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">
-            Штрихкод {notFoundBarcode} будет отправлен на модерацию администратору — товар появится в каталоге после
-            одобрения.
+            Штрихкод {notFoundBarcode} появится в каталоге сразу — модерация Admin не требуется.
           </p>
           <label className="flex flex-col gap-1.5">
             <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Название товара</span>
@@ -501,22 +559,80 @@ export function InventoryPage() {
             />
           </label>
           <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Категория</span>
-              <Select
-                value={submitCategoryId}
-                onChange={setSubmitCategoryId}
-                options={categories.map((c) => ({ value: String(c.categoryId), label: c.name }))}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Бренд</span>
-              <Select
-                value={submitBrandId}
-                onChange={setSubmitBrandId}
-                options={brands.map((b) => ({ value: String(b.brandId), label: b.name }))}
-              />
-            </label>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Категория</span>
+                <button
+                  type="button"
+                  onClick={() => setNewCategoryOpen((v) => !v)}
+                  className="text-[11px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
+                >
+                  {newCategoryOpen ? 'Отмена' : '+ Создать'}
+                </button>
+              </div>
+              {newCategoryOpen ? (
+                <div className="flex gap-1.5">
+                  <input
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Название категории"
+                    className="w-full min-w-0 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateCategory}
+                    disabled={newCategoryBusy || !newCategoryName.trim()}
+                    className="shrink-0 rounded-xl bg-[color:var(--admin-accent)] px-3 py-2.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
+                  >
+                    {newCategoryBusy ? '…' : 'OK'}
+                  </button>
+                </div>
+              ) : (
+                <Select
+                  value={submitCategoryId}
+                  onChange={setSubmitCategoryId}
+                  options={categories.map((c) => ({ value: String(c.categoryId), label: c.name }))}
+                />
+              )}
+              {newCategoryError && <span className="text-[11px] text-[#f87171]">{newCategoryError}</span>}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Бренд</span>
+                <button
+                  type="button"
+                  onClick={() => setNewBrandOpen((v) => !v)}
+                  className="text-[11px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
+                >
+                  {newBrandOpen ? 'Отмена' : '+ Создать'}
+                </button>
+              </div>
+              {newBrandOpen ? (
+                <div className="flex gap-1.5">
+                  <input
+                    value={newBrandName}
+                    onChange={(e) => setNewBrandName(e.target.value)}
+                    placeholder="Название бренда"
+                    className="w-full min-w-0 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateBrand}
+                    disabled={newBrandBusy || !newBrandName.trim()}
+                    className="shrink-0 rounded-xl bg-[color:var(--admin-accent)] px-3 py-2.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
+                  >
+                    {newBrandBusy ? '…' : 'OK'}
+                  </button>
+                </div>
+              ) : (
+                <Select
+                  value={submitBrandId}
+                  onChange={setSubmitBrandId}
+                  options={brands.map((b) => ({ value: String(b.brandId), label: b.name }))}
+                />
+              )}
+              {newBrandError && <span className="text-[11px] text-[#f87171]">{newBrandError}</span>}
+            </div>
           </div>
           <label className="flex flex-col gap-1.5">
             <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Страна производства</span>
@@ -533,7 +649,7 @@ export function InventoryPage() {
             disabled={submitBusy || !submitName.trim() || !submitCategoryId || !submitBrandId || !submitCountry.trim()}
             className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
           >
-            {submitDone ? 'Отправлено ✓' : submitBusy ? 'Отправляем…' : 'Отправить на модерацию'}
+            {submitDone ? 'Добавлено ✓' : submitBusy ? 'Добавляем…' : 'Добавить товар'}
           </button>
         </div>
       </AdminModal>

@@ -76,14 +76,14 @@ public class AcceptStoreEmployeeInvitationCommandHandlerTests
     {
         _invitationRepository.Setup(r => r.GetByTokenAsync(Token, It.IsAny<CancellationToken>())).ReturnsAsync(ValidInvitation());
         _authService.Setup(a => a.FindUserIdByEmailAsync(Email, It.IsAny<CancellationToken>())).ReturnsAsync((string?)null);
-        var registerResult = new AuthResult("new-user-1", "stale-access-token", "stale-refresh-token", DateTimeOffset.UtcNow.AddMinutes(15));
-        _authService.Setup(a => a.RegisterAsync(Email, Password, It.IsAny<CancellationToken>())).ReturnsAsync(registerResult);
+        var registerAuth = new AuthResult("new-user-1", "stale-access-token", "stale-refresh-token", DateTimeOffset.UtcNow.AddMinutes(15));
+        _authService.Setup(a => a.RegisterAsync(Email, Password, true, It.IsAny<CancellationToken>())).ReturnsAsync(new RegisterAccountResult(registerAuth, false));
         _storeEmployeeRepository.Setup(r => r.GetByStoreIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
         // The tokens actually returned to the caller come from a fresh LoginAsync call, made after
         // AssignRoleAsync grants StorePartner - RegisterAsync's own tokens would predate that role
         // and strand the new cashier on onboarding instead of their store.
         var freshLoginResult = new AuthResult("new-user-1", "fresh-access-token", "fresh-refresh-token", DateTimeOffset.UtcNow.AddMinutes(15));
-        _authService.Setup(a => a.LoginAsync(Email, Password, null, null, It.IsAny<CancellationToken>())).ReturnsAsync(freshLoginResult);
+        _authService.Setup(a => a.LoginAsync(Email, Password, null, null, It.IsAny<CancellationToken>())).ReturnsAsync(new LoginAccountResult(freshLoginResult, false));
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand(), CancellationToken.None);
@@ -106,7 +106,7 @@ public class AcceptStoreEmployeeInvitationCommandHandlerTests
 
         Assert.Equal(AcceptStoreEmployeeInvitationOutcome.AccountAlreadyExisted, result.Outcome);
         Assert.Null(result.Auth);
-        _authService.Verify(a => a.RegisterAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _authService.Verify(a => a.RegisterAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
         _storeEmployeeRepository.Verify(r => r.Add(It.Is<StoreEmployee>(e => e.UserId == "existing-user-1")), Times.Once);
     }
 
@@ -115,7 +115,7 @@ public class AcceptStoreEmployeeInvitationCommandHandlerTests
     {
         _invitationRepository.Setup(r => r.GetByTokenAsync(Token, It.IsAny<CancellationToken>())).ReturnsAsync(ValidInvitation());
         _authService.Setup(a => a.FindUserIdByEmailAsync(Email, It.IsAny<CancellationToken>())).ReturnsAsync((string?)null);
-        _authService.Setup(a => a.RegisterAsync(Email, Password, It.IsAny<CancellationToken>())).ReturnsAsync((AuthResult?)null);
+        _authService.Setup(a => a.RegisterAsync(Email, Password, true, It.IsAny<CancellationToken>())).ReturnsAsync(new RegisterAccountResult(null, false));
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand(), CancellationToken.None);

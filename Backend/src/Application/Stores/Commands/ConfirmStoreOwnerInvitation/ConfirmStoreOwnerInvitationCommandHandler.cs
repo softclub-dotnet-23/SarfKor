@@ -37,14 +37,15 @@ public sealed class ConfirmStoreOwnerInvitationCommandHandler(
             return new ConfirmStoreOwnerInvitationResult(ConfirmStoreOwnerInvitationOutcome.EmailAlreadyRegistered, null, null);
 
         // Must happen before the Store is created — Store.OwnerUserId is a non-nullable required
-        // field and needs the new account's id.
-        var registerResult = await authService.RegisterAsync(command.Email, command.Password, cancellationToken);
-        if (registerResult is null)
+        // field and needs the new account's id. emailPreVerified: true — the OTP check above
+        // already proved ownership of this email, so this skips the separate registration-OTP step.
+        var registerResult = await authService.RegisterAsync(command.Email, command.Password, emailPreVerified: true, cancellationToken);
+        if (registerResult.Auth is null)
             return new ConfirmStoreOwnerInvitationResult(ConfirmStoreOwnerInvitationOutcome.RegistrationFailed, null, null);
 
         var store = new Store
         {
-            OwnerUserId = registerResult.UserId,
+            OwnerUserId = registerResult.Auth.UserId,
             Name = invitation.StoreName,
             Address = invitation.Address,
             Location = invitation.Location,
@@ -53,7 +54,7 @@ public sealed class ConfirmStoreOwnerInvitationCommandHandler(
         };
         storeRepository.Add(store);
 
-        await authService.AssignRoleAsync(registerResult.UserId, StorePartnerRole, cancellationToken);
+        await authService.AssignRoleAsync(registerResult.Auth.UserId, StorePartnerRole, cancellationToken);
 
         invitation.AcceptedAt = DateTimeOffset.UtcNow;
 
@@ -72,7 +73,7 @@ public sealed class ConfirmStoreOwnerInvitationCommandHandler(
         // Not RegisterAsync's own tokens: those were minted before AssignRoleAsync ran above, so
         // they'd carry a stale "User"-only role claim — re-authenticating now mints a token that
         // reflects the role actually granted (same reasoning as AcceptStoreEmployeeInvitationCommandHandler).
-        var auth = await authService.LoginAsync(command.Email, command.Password, null, null, cancellationToken);
+        var auth = (await authService.LoginAsync(command.Email, command.Password, null, null, cancellationToken)).Auth;
 
         return new ConfirmStoreOwnerInvitationResult(ConfirmStoreOwnerInvitationOutcome.Confirmed, auth, store.Id);
     }

@@ -1,4 +1,5 @@
 using Application.Common;
+using Application.Identity.Commands.ConfirmEmail;
 using Application.Identity.Commands.ForgotPassword;
 using Application.Identity.Commands.Login;
 using Application.Identity.Commands.RefreshToken;
@@ -20,7 +21,7 @@ public sealed class AuthController : ControllerBase
     [EnableRateLimiting("registration")]
     public async Task<IActionResult> Register(
         RegisterCommand command,
-        [FromServices] ICommandHandler<RegisterCommand, Application.Abstractions.AuthResult?> handler,
+        [FromServices] ICommandHandler<RegisterCommand, Application.Abstractions.RegisterAccountResult> handler,
         [FromServices] IValidator<RegisterCommand> validator,
         CancellationToken cancellationToken)
     {
@@ -29,14 +30,43 @@ public sealed class AuthController : ControllerBase
             return this.ToValidationProblem(validationResult);
 
         var result = await handler.Handle(command, cancellationToken);
-        return result is null ? BadRequest("Registration failed.") : Ok(result);
+        if (result.RequiresEmailConfirmation)
+            // Never include the code itself — it only ever leaves the server via the email.
+            return Ok(new { requiresEmailConfirmation = true, email = command.Email });
+        if (result.Auth is not null)
+            return Ok(result.Auth);
+
+        return result.EmailAlreadyRegistered
+            ? Conflict("An account with this email already exists.")
+            : BadRequest("Registration failed.");
+    }
+
+    [HttpPost("confirm-email")]
+    [EnableRateLimiting("password-reset")]
+    public async Task<IActionResult> ConfirmEmail(
+        ConfirmEmailCommand command,
+        [FromServices] ICommandHandler<ConfirmEmailCommand, Application.Abstractions.ConfirmEmailResult> handler,
+        [FromServices] IValidator<ConfirmEmailCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        if (result.Auth is not null)
+            return Ok(result.Auth);
+
+        return result.TooManyAttempts
+            ? BadRequest("Too many attempts — register again to get a new code.")
+            : BadRequest("Invalid or expired code.");
     }
 
     [HttpPost("login")]
     [EnableRateLimiting("login")]
     public async Task<IActionResult> Login(
         LoginRequest request,
-        [FromServices] ICommandHandler<LoginCommand, Application.Abstractions.AuthResult?> handler,
+        [FromServices] ICommandHandler<LoginCommand, Application.Abstractions.LoginAccountResult> handler,
         [FromServices] IValidator<LoginCommand> validator,
         CancellationToken cancellationToken)
     {
@@ -53,7 +83,15 @@ public sealed class AuthController : ControllerBase
             return this.ToValidationProblem(validationResult);
 
         var result = await handler.Handle(command, cancellationToken);
-        return result is null ? Unauthorized() : Ok(result);
+        if (result.Auth is not null)
+            return Ok(result.Auth);
+
+        // 403, not 401: the password was actually correct — this tells the frontend to route the
+        // caller to "enter your code" instead of "wrong password," without confirming account
+        // existence to an attacker who doesn't already know the correct password.
+        return result.EmailNotConfirmed
+            ? StatusCode(StatusCodes.Status403Forbidden, new { requiresEmailConfirmation = true, email = request.Email })
+            : Unauthorized();
     }
 
     [HttpPost("refresh")]

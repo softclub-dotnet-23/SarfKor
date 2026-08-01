@@ -12,6 +12,15 @@ export interface AuthUser {
 // the pre-login value, since setUser() hasn't flushed a re-render yet in this same closure.
 type AuthResult = { ok: true; roles: string[] } | { ok: false; error: string }
 
+// Login can fail because the account is real but its registration email was never confirmed —
+// that's not "wrong password," it's "go enter/resend your code," so the caller (LoginPage) needs
+// to tell the two apart to route correctly instead of just showing an error.
+type LoginResult = { ok: true; roles: string[] } | { ok: false; error: string; requiresEmailConfirmation?: boolean; email?: string }
+
+// Register never logs the caller in directly anymore — every self-registration needs the emailed
+// code confirmed first (confirmEmail below completes the login step once that happens).
+type RegisterResult = { ok: true; requiresEmailConfirmation: true; email: string } | { ok: false; error: string }
+
 interface AuthContextValue {
   user: AuthUser | null
   storeId: number | null
@@ -21,8 +30,10 @@ interface AuthContextValue {
   currentStoreRole: MyStore['role'] | null
   /** True only while resolving the session on first load (deciding whether a stored token is still valid). */
   loading: boolean
-  login: (email: string, password: string) => Promise<AuthResult>
-  register: (email: string, password: string) => Promise<AuthResult>
+  login: (email: string, password: string) => Promise<LoginResult>
+  register: (email: string, password: string) => Promise<RegisterResult>
+  /** Confirms the 6-digit code emailed on register and logs the caller in on success. */
+  confirmEmail: (email: string, code: string) => Promise<AuthResult>
   /** Applies a token pair issued outside login/register (e.g. accepting a store invite) — same
    *  setTokens -> decode -> fetchAndApplyMyStores sequence login/register already do. */
   applyAuthResult: (tokens: { accessToken: string; refreshToken: string }) => Promise<{ roles: string[] }>
@@ -46,14 +57,34 @@ function userFromAccessToken(accessToken: string): AuthUser | null {
   return { userId: decoded.sub, email: decoded.email ?? '', roles: rolesFromToken(accessToken) }
 }
 
-function friendlyAuthError(err: unknown, fallback: string): string {
+function friendlyAuthError(err: unknown, fallback: string, mode: 'login' | 'register' | 'confirm' = 'login'): string {
   if (err instanceof ApiError) {
     if (err.status === 401) return 'Неверный email или пароль'
-    if (err.status === 400) return 'Не удалось зарегистрироваться — проверьте email и пароль (минимум 8 символов)'
     if (err.status === 429) return 'Слишком много попыток. Подождите немного и попробуйте снова'
     if (err.status === 0 || err.message.includes('fetch')) return 'Не удаётся связаться с сервером'
+    // 409/400 in this shape only ever come from /api/auth/register -- login's only realistic
+    // failure is 401, so a 400 there falls through to `fallback` rather than a register-specific lie.
+    if (mode === 'register') {
+      if (err.status === 409) return 'Этот email уже зарегистрирован. Войдите или восстановите пароль'
+      if (err.status === 400)
+        return 'Пароль должен содержать минимум 8 символов: заглавную и строчную буквы, цифру и спецсимвол'
+    }
+    if (mode === 'confirm' && err.status === 400) {
+      return err.message?.includes('Too many attempts')
+        ? 'Слишком много попыток. Зарегистрируйтесь заново, чтобы получить новый код'
+        : 'Неверный или истёкший код'
+    }
   }
   return fallback
+}
+
+interface EmailConfirmationRequiredBody {
+  requiresEmailConfirmation: true
+  email: string
+}
+
+function isEmailConfirmationRequired(body: unknown): body is EmailConfirmationRequiredBody {
+  return typeof body === 'object' && body !== null && (body as { requiresEmailConfirmation?: unknown }).requiresEmailConfirmation === true
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -158,18 +189,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { roles } = await applyAuthResult(result)
           return { ok: true, roles }
         } catch (err) {
+          if (err instanceof ApiError && err.status === 403 && isEmailConfirmationRequired(err.body)) {
+            return { ok: false, error: 'Подтвердите email — введите код из письма', requiresEmailConfirmation: true, email: err.body.email }
+          }
           return { ok: false, error: friendlyAuthError(err, 'Не удалось войти') }
         }
       },
       register: async (email, password) => {
         try {
           const result = await authApi.register(email, password)
-          setTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
-          const nextUser = userFromAccessToken(result.accessToken)
-          setUser(nextUser)
-          return { ok: true, roles: nextUser?.roles ?? [] }
+          return { ok: true, requiresEmailConfirmation: true, email: result.email }
         } catch (err) {
-          return { ok: false, error: friendlyAuthError(err, 'Не удалось зарегистрироваться') }
+          return { ok: false, error: friendlyAuthError(err, 'Не удалось зарегистрироваться', 'register') }
+        }
+      },
+      confirmEmail: async (email, code) => {
+        try {
+          const result = await authApi.confirmEmail(email, code)
+          const { roles } = await applyAuthResult(result)
+          return { ok: true, roles }
+        } catch (err) {
+          return { ok: false, error: friendlyAuthError(err, 'Не удалось подтвердить email', 'confirm') }
         }
       },
       applyAuthResult,

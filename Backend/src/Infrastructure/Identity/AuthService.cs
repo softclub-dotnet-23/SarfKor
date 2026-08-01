@@ -1,4 +1,5 @@
 using Application.Abstractions;
+using Application.Common;
 using Domain.Identity;
 using Domain.Security;
 using Microsoft.AspNetCore.Identity;
@@ -14,22 +15,71 @@ public sealed class AuthService(
     IUnitOfWork unitOfWork) : IAuthService
 {
     private const string DefaultRole = "User";
+    private static readonly TimeSpan EmailConfirmationCodeLifespan = TimeSpan.FromMinutes(15);
+    private const int MaxEmailConfirmationAttempts = 5;
 
-    public async Task<AuthResult?> RegisterAsync(string email, string password, CancellationToken cancellationToken)
+    public async Task<RegisterAccountResult> RegisterAsync(string email, string password, bool emailPreVerified, CancellationToken cancellationToken)
     {
-        var user = new ApplicationUser { UserName = email, Email = email };
+        // A still-unconfirmed account from an earlier register attempt (wrong code, email never
+        // arrived, etc.) isn't a real duplicate — without this, someone who mistypes their code
+        // would be permanently locked out with no way to get a fresh one.
+        var existingUnconfirmed = await userManager.FindByEmailAsync(email);
+        if (existingUnconfirmed is not null && !existingUnconfirmed.EmailConfirmed && !emailPreVerified)
+            return await ResendConfirmationCodeAsync(existingUnconfirmed, cancellationToken);
+
+        var user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = emailPreVerified };
         var createResult = await userManager.CreateAsync(user, password);
         if (!createResult.Succeeded)
-            return null;
+        {
+            // UserName == email here, so a duplicate email surfaces as a duplicate-username error —
+            // RequireUniqueEmail isn't configured, but username uniqueness is always enforced.
+            var emailAlreadyRegistered = createResult.Errors.Any(e => e.Code is "DuplicateUserName" or "DuplicateEmail");
+            return new RegisterAccountResult(null, emailAlreadyRegistered);
+        }
 
         await userManager.AddToRoleAsync(user, DefaultRole);
 
+        // Self-registration: no tokens yet — the account can't log in until the code is confirmed
+        // (LoginAsync/ConfirmEmailAsync both check EmailConfirmed).
+        if (!emailPreVerified)
+            return await ResendConfirmationCodeAsync(user, cancellationToken);
+
         var result = await IssueTokenPairAsync(user);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return result;
+        return new RegisterAccountResult(result, false);
     }
 
-    public async Task<AuthResult?> LoginAsync(string email, string password, string? ipAddress, string? userAgent, CancellationToken cancellationToken)
+    public async Task<ConfirmEmailResult> ConfirmEmailAsync(string email, string code, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        // Covers "no such account," "already confirmed" (code fields cleared on success), and
+        // "code expired" with one indistinguishable answer — no separate branch needed.
+        if (user is null || user.EmailConfirmationCodeHash is null || user.EmailConfirmationCodeExpiresAt < DateTimeOffset.UtcNow)
+            return new ConfirmEmailResult(null, InvalidOrExpiredCode: true, TooManyAttempts: false);
+
+        if (user.EmailConfirmationAttempts >= MaxEmailConfirmationAttempts)
+            return new ConfirmEmailResult(null, InvalidOrExpiredCode: false, TooManyAttempts: true);
+
+        if (!OtpCode.Matches(email, code, user.EmailConfirmationCodeHash))
+        {
+            user.EmailConfirmationAttempts++;
+            await userManager.UpdateAsync(user);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return new ConfirmEmailResult(null, InvalidOrExpiredCode: true, TooManyAttempts: false);
+        }
+
+        user.EmailConfirmed = true;
+        user.EmailConfirmationCodeHash = null;
+        user.EmailConfirmationCodeExpiresAt = null;
+        user.EmailConfirmationAttempts = 0;
+        await userManager.UpdateAsync(user);
+
+        var result = await IssueTokenPairAsync(user);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return new ConfirmEmailResult(result, InvalidOrExpiredCode: false, TooManyAttempts: false);
+    }
+
+    public async Task<LoginAccountResult> LoginAsync(string email, string password, string? ipAddress, string? userAgent, CancellationToken cancellationToken)
     {
         var user = await userManager.FindByEmailAsync(email);
 
@@ -48,7 +98,7 @@ public sealed class AuthService(
                 OccurredAt = DateTimeOffset.UtcNow
             });
             await unitOfWork.SaveChangesAsync(cancellationToken);
-            return null;
+            return new LoginAccountResult(null, false);
         }
 
         var succeeded = user is not null && await userManager.CheckPasswordAsync(user, password);
@@ -77,12 +127,21 @@ public sealed class AuthService(
         if (!succeeded)
         {
             await unitOfWork.SaveChangesAsync(cancellationToken);
-            return null;
+            return new LoginAccountResult(null, false);
         }
 
-        var result = await IssueTokenPairAsync(user!);
+        // Correct password, but the registration OTP was never confirmed — the password check
+        // above already ran (not skipped ahead of it), so this can't be used to probe whether an
+        // email exists via timing/behavior differences.
+        if (!user!.EmailConfirmed)
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return new LoginAccountResult(null, true);
+        }
+
+        var result = await IssueTokenPairAsync(user);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return result;
+        return new LoginAccountResult(result, false);
     }
 
     public async Task<AuthResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
@@ -168,6 +227,17 @@ public sealed class AuthService(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    private async Task<RegisterAccountResult> ResendConfirmationCodeAsync(ApplicationUser user, CancellationToken cancellationToken)
+    {
+        var code = OtpCode.Generate();
+        user.EmailConfirmationCodeHash = OtpCode.Hash(user.Email!, code);
+        user.EmailConfirmationCodeExpiresAt = DateTimeOffset.UtcNow.Add(EmailConfirmationCodeLifespan);
+        user.EmailConfirmationAttempts = 0;
+        await userManager.UpdateAsync(user);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return new RegisterAccountResult(null, false, RequiresEmailConfirmation: true, EmailConfirmationCode: code);
     }
 
     private async Task<AuthResult> IssueTokenPairAsync(ApplicationUser user)

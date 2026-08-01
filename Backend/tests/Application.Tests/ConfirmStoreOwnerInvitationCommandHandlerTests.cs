@@ -73,7 +73,7 @@ public class ConfirmStoreOwnerInvitationCommandHandlerTests
         Assert.Equal(ConfirmStoreOwnerInvitationOutcome.InvalidOrExpiredCode, result.Outcome);
         Assert.Equal(1, invitation.AttemptCount);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _authService.Verify(a => a.RegisterAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _authService.Verify(a => a.RegisterAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class ConfirmStoreOwnerInvitationCommandHandlerTests
     {
         _invitationRepository.Setup(r => r.GetPendingByEmailAsync(Email, It.IsAny<CancellationToken>())).ReturnsAsync(CreateInvitation());
         _authService.Setup(a => a.FindUserIdByEmailAsync(Email, It.IsAny<CancellationToken>())).ReturnsAsync((string?)null);
-        _authService.Setup(a => a.RegisterAsync(Email, Password, It.IsAny<CancellationToken>())).ReturnsAsync((AuthResult?)null);
+        _authService.Setup(a => a.RegisterAsync(Email, Password, true, It.IsAny<CancellationToken>())).ReturnsAsync(new RegisterAccountResult(null, false));
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand(), CancellationToken.None);
@@ -110,8 +110,8 @@ public class ConfirmStoreOwnerInvitationCommandHandlerTests
         _invitationRepository.Setup(r => r.GetPendingByEmailAsync(Email, It.IsAny<CancellationToken>())).ReturnsAsync(invitation);
         _authService.Setup(a => a.FindUserIdByEmailAsync(Email, It.IsAny<CancellationToken>())).ReturnsAsync((string?)null);
         _authService
-            .Setup(a => a.RegisterAsync(Email, Password, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AuthResult("new-user-1", "register-token", "register-refresh", DateTimeOffset.UtcNow.AddHours(1)));
+            .Setup(a => a.RegisterAsync(Email, Password, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RegisterAccountResult(new AuthResult("new-user-1", "register-token", "register-refresh", DateTimeOffset.UtcNow.AddHours(1)), false));
 
         var callOrder = new List<string>();
         _authService
@@ -121,7 +121,7 @@ public class ConfirmStoreOwnerInvitationCommandHandlerTests
         _authService
             .Setup(a => a.LoginAsync(Email, Password, null, null, It.IsAny<CancellationToken>()))
             .Callback(() => callOrder.Add("Login"))
-            .ReturnsAsync(new AuthResult("new-user-1", "fresh-token", "fresh-refresh", DateTimeOffset.UtcNow.AddHours(1)));
+            .ReturnsAsync(new LoginAccountResult(new AuthResult("new-user-1", "fresh-token", "fresh-refresh", DateTimeOffset.UtcNow.AddHours(1)), false));
 
         Store? addedStore = null;
         _storeRepository.Setup(r => r.Add(It.IsAny<Store>())).Callback<Store>(s =>

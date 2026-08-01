@@ -10,4 +10,7 @@ public interface IEmailSender
 
     /// <summary>Takes the raw 6-digit code, never the hash — the code exists only in this email.</summary>
     Task SendStoreOwnerInvitationEmailAsync(string toEmail, string storeName, string code, CancellationToken cancellationToken);
+
+    /// <summary>Takes the raw 6-digit code, never the hash — sent right after self-registration.</summary>
+    Task SendEmailConfirmationCodeAsync(string toEmail, string code, CancellationToken cancellationToken);
 }

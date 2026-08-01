@@ -3,8 +3,8 @@ using Application.Common;
 
 namespace Application.Identity.Commands.Login;
 
-public sealed class LoginCommandHandler(IAuthService authService) : ICommandHandler<LoginCommand, AuthResult?>
+public sealed class LoginCommandHandler(IAuthService authService) : ICommandHandler<LoginCommand, LoginAccountResult>
 {
-    public Task<AuthResult?> Handle(LoginCommand command, CancellationToken cancellationToken) =>
+    public Task<LoginAccountResult> Handle(LoginCommand command, CancellationToken cancellationToken) =>
         authService.LoginAsync(command.Email, command.Password, command.IpAddress, command.UserAgent, cancellationToken);
 }

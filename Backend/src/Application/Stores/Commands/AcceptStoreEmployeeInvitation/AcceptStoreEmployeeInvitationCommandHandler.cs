@@ -26,11 +26,13 @@ public sealed class AcceptStoreEmployeeInvitationCommandHandler(
             // A brand-new account, created with the password the invitee just chose — reuses the
             // exact same path as self-registration, so it gets the same default "User" role too
             // (AssignRoleAsync below adds StorePartner on top of it, same as a normal cashier add).
-            var registerResult = await authService.RegisterAsync(invitation.Email, command.Password, cancellationToken);
-            if (registerResult is null)
+            // emailPreVerified: true — clicking this invite link, sent only to invitation.Email,
+            // already proves ownership; the account skips the separate registration-OTP step.
+            var registerResult = await authService.RegisterAsync(invitation.Email, command.Password, emailPreVerified: true, cancellationToken);
+            if (registerResult.Auth is null)
                 return new AcceptStoreEmployeeInvitationResult(AcceptStoreEmployeeInvitationOutcome.RegistrationFailed, null);
 
-            userId = registerResult.UserId;
+            userId = registerResult.Auth.UserId;
         }
 
         var existing = await storeEmployeeRepository.GetByStoreIdAsync(invitation.StoreId, cancellationToken);
@@ -56,7 +58,7 @@ public sealed class AcceptStoreEmployeeInvitationCommandHandler(
             // so they'd carry a stale "User"-only role and RequireStore would bounce the new cashier
             // to onboarding instead of their store. Re-authenticating now mints a token that reflects
             // the role actually granted.
-            auth = await authService.LoginAsync(invitation.Email, command.Password, null, null, cancellationToken);
+            auth = (await authService.LoginAsync(invitation.Email, command.Password, null, null, cancellationToken)).Auth;
         }
 
         // An account for this email already existed (self-registered independently in the

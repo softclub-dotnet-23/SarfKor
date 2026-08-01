@@ -7,11 +7,21 @@ export interface AuthResult {
   expiresAt: string
 }
 
+// Never returns tokens directly anymore — every self-registration requires the emailed 6-digit
+// code to be confirmed first (see confirmEmail below).
 export function register(email: string, password: string) {
-  return apiFetch<AuthResult>('/api/auth/register', {
+  return apiFetch<{ requiresEmailConfirmation: true; email: string }>('/api/auth/register', {
     method: 'POST',
     auth: false,
     body: { email, password },
+  })
+}
+
+export function confirmEmail(email: string, code: string) {
+  return apiFetch<AuthResult>('/api/auth/confirm-email', {
+    method: 'POST',
+    auth: false,
+    body: { email, code },
   })
 }
 

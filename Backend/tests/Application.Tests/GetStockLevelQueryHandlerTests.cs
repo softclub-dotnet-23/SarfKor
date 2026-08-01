@@ -13,21 +13,16 @@ public class GetStockLevelQueryHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
-    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IStockLevelRepository> _stockLevelRepository = new();
 
-    public GetStockLevelQueryHandlerTests() =>
-        _storeEmployeeRepository
-            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
     private GetStockLevelQueryHandler CreateHandler() =>
-        new(_storeRepository.Object, _storeEmployeeRepository.Object, _stockLevelRepository.Object);
+        new(_storeRepository.Object, _storeAccessAuthorizer.Object, _stockLevelRepository.Object);
 
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync((Store?)null);
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new GetStockLevelQuery(StoreId, OwnerId), CancellationToken.None);
@@ -38,9 +33,7 @@ public class GetStockLevelQueryHandlerTests
     [Fact]
     public async Task Handle_NotOwner_ReturnsForbidden()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new GetStockLevelQuery(StoreId, "someone-else"), CancellationToken.None);
@@ -51,9 +44,8 @@ public class GetStockLevelQueryHandlerTests
     [Fact]
     public async Task Handle_Owner_ReturnsStockLevels()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _stockLevelRepository
             .Setup(r => r.GetByStoreAsync(StoreId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([new StockLevel { ProductId = 1, StoreId = StoreId, Quantity = 7 }]);

@@ -5,16 +5,16 @@ namespace Application.Sales.Queries.GetProfitReport;
 
 public sealed class GetProfitReportQueryHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     ISaleTransactionRepository saleTransactionRepository,
     ICostPriceRepository costPriceRepository) : IQueryHandler<GetProfitReportQuery, GetProfitReportResult>
 {
     public async Task<GetProfitReportResult> Handle(GetProfitReportQuery query, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(query.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(query.StoreId, cancellationToken))
             return new GetProfitReportResult(GetProfitReportOutcome.StoreNotFound, null, null, null, null, null, null);
 
-        if (store.OwnerUserId != query.RequestedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
             return new GetProfitReportResult(GetProfitReportOutcome.Forbidden, null, null, null, null, null, null);
 
         var from = new DateTimeOffset(query.FromDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);

@@ -5,17 +5,15 @@ namespace Application.Payments.Queries.GetStoreCreditBalance;
 
 public sealed class GetStoreCreditBalanceQueryHandler(
     IStoreRepository storeRepository,
-    IStoreEmployeeRepository storeEmployeeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IStoreCreditRepository storeCreditRepository) : IQueryHandler<GetStoreCreditBalanceQuery, GetStoreCreditBalanceResult>
 {
     public async Task<GetStoreCreditBalanceResult> Handle(GetStoreCreditBalanceQuery query, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(query.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(query.StoreId, cancellationToken))
             return new GetStoreCreditBalanceResult(GetStoreCreditBalanceOutcome.StoreNotFound, null, null);
 
-        if (store.OwnerUserId != query.RequestedByUserId
-            && !await storeEmployeeRepository.IsEmployeeAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
+        if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
             return new GetStoreCreditBalanceResult(GetStoreCreditBalanceOutcome.Forbidden, null, null);
 
         var credit = await storeCreditRepository.GetByStoreAndCustomerAsync(query.StoreId, query.CustomerId, cancellationToken);

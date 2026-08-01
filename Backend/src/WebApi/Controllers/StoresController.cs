@@ -44,6 +44,7 @@ public sealed class StoresController : ControllerBase
 
     [HttpPost("stores/{storeId:int}/employees")]
     [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> AddEmployee(
         int storeId,
         AddStoreEmployeeRequest request,
@@ -75,6 +76,7 @@ public sealed class StoresController : ControllerBase
 
     [HttpDelete("store-employees/{storeEmployeeId:int}")]
     [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> RemoveEmployee(
         int storeEmployeeId,
         [FromServices] ICommandHandler<RemoveStoreEmployeeCommand, RemoveStoreEmployeeResult> handler,

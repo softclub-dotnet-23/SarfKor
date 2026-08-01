@@ -13,16 +13,18 @@ public class GetCashierAnomalyReportQueryHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<ISaleTransactionRepository> _saleTransactionRepository = new();
 
-    private GetCashierAnomalyReportQueryHandler CreateHandler() => new(_storeRepository.Object, _saleTransactionRepository.Object);
+    private GetCashierAnomalyReportQueryHandler CreateHandler() => new(_storeRepository.Object, _storeAccessAuthorizer.Object, _saleTransactionRepository.Object);
 
     private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-    private void SetupOwnedStore() =>
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+    private void SetupOwnedStore()
+    {
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+    }
 
     private static SaleTransaction MakeSale(string cashierUserId, SaleStatus status) => new()
     {
@@ -38,7 +40,7 @@ public class GetCashierAnomalyReportQueryHandlerTests
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync((Store?)null);
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new GetCashierAnomalyReportQuery(StoreId, Today, Today, OwnerId), CancellationToken.None);

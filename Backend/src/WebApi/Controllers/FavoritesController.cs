@@ -6,12 +6,14 @@ using Application.Engagement.Queries.GetFavorites;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
 [ApiController]
 [Route("api/favorites")]
 [Authorize]
+[EnableRateLimiting("contributions")]
 public sealed class FavoritesController : ControllerBase
 {
     [HttpPost]
@@ -31,7 +33,13 @@ public sealed class FavoritesController : ControllerBase
         if (!validationResult.IsValid)
             return this.ToValidationProblem(validationResult);
 
-        return Ok(await handler.Handle(command, cancellationToken));
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            AddFavoriteOutcome.Added => Ok(result),
+            AddFavoriteOutcome.EntityNotFound => NotFound(),
+            _ => Problem()
+        };
     }
 
     // DELETE requests can't carry an inferred JSON body — type/entityId come from the query string instead.

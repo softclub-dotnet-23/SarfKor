@@ -8,8 +8,7 @@ public sealed class EnrollCustomerInLoyaltyCommandHandler(
     ICustomerRepository customerRepository,
     ILoyaltyProgramRepository loyaltyProgramRepository,
     ILoyaltyAccountRepository loyaltyAccountRepository,
-    IStoreRepository storeRepository,
-    IStoreEmployeeRepository storeEmployeeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IUnitOfWork unitOfWork) : ICommandHandler<EnrollCustomerInLoyaltyCommand, EnrollCustomerInLoyaltyResult>
 {
     public async Task<EnrollCustomerInLoyaltyResult> Handle(EnrollCustomerInLoyaltyCommand command, CancellationToken cancellationToken)
@@ -21,12 +20,7 @@ public sealed class EnrollCustomerInLoyaltyCommandHandler(
         if (program is null)
             return new EnrollCustomerInLoyaltyResult(EnrollCustomerInLoyaltyOutcome.ProgramNotFound, null);
 
-        var store = await storeRepository.GetByIdAsync(program.StoreId, cancellationToken);
-        if (store is null)
-            return new EnrollCustomerInLoyaltyResult(EnrollCustomerInLoyaltyOutcome.Forbidden, null);
-
-        if (store.OwnerUserId != command.PerformedByUserId
-            && !await storeEmployeeRepository.IsEmployeeAsync(store.Id, command.PerformedByUserId, cancellationToken))
+        if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(program.StoreId, command.PerformedByUserId, cancellationToken))
             return new EnrollCustomerInLoyaltyResult(EnrollCustomerInLoyaltyOutcome.Forbidden, null);
 
         var existing = await loyaltyAccountRepository.GetByCustomerAndProgramAsync(command.CustomerId, command.LoyaltyProgramId, cancellationToken);

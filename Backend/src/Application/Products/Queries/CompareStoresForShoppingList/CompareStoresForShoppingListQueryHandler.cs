@@ -11,14 +11,13 @@ public sealed class CompareStoresForShoppingListQueryHandler(
     {
         var totalByStore = new Dictionary<int, (decimal Total, int MatchedCount, string Currency)>();
 
-        foreach (var productId in query.ProductIds)
+        // Single batched query instead of one round-trip per product — matters once a shopping
+        // list has more than a handful of items.
+        var entries = await priceEntryRepository.GetLatestPerStoreForProductsAsync(query.ProductIds, cancellationToken);
+        foreach (var entry in entries)
         {
-            var entries = await priceEntryRepository.GetLatestPerStoreAsync(productId, cancellationToken);
-            foreach (var entry in entries)
-            {
-                totalByStore.TryGetValue(entry.StoreId, out var current);
-                totalByStore[entry.StoreId] = (current.Total + entry.Price.Amount, current.MatchedCount + 1, entry.Price.Currency);
-            }
+            totalByStore.TryGetValue(entry.StoreId, out var current);
+            totalByStore[entry.StoreId] = (current.Total + entry.Price.Amount, current.MatchedCount + 1, entry.Price.Currency);
         }
 
         var completeMatches = totalByStore.Where(kv => kv.Value.MatchedCount == query.ProductIds.Count).ToList();

@@ -7,12 +7,14 @@ using Application.ShoppingLists.Queries.GetShoppingLists;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
 [ApiController]
 [Route("api/shopping-lists")]
 [Authorize]
+[EnableRateLimiting("contributions")]
 public sealed class ShoppingListsController : ControllerBase
 {
     [HttpPost]

@@ -1,6 +1,7 @@
 using Application.Abstractions;
 using Application.Catalog.Commands.CreateProductBundle;
 using Domain.Catalog;
+using Domain.Products;
 using Domain.Stores;
 using Domain.ValueObjects;
 using Moq;
@@ -13,18 +14,30 @@ public class CreateProductBundleCommandHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
+    private readonly Mock<IProductRepository> _productRepository = new();
     private readonly Mock<IProductBundleRepository> _productBundleRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    private CreateProductBundleCommandHandler CreateHandler() => new(_storeRepository.Object, _productBundleRepository.Object, _unitOfWork.Object);
+    private CreateProductBundleCommandHandler CreateHandler() => new(_storeRepository.Object, _storeAccessAuthorizer.Object, _productRepository.Object, _productBundleRepository.Object, _unitOfWork.Object);
 
     private static CreateProductBundleCommand ValidCommand() => new(
         StoreId, "Combo Deal", 25, "TJS", [new CreateProductBundleItemInput(1, 2), new CreateProductBundleItemInput(2, 1)], OwnerId);
 
+    private void SetupOwnedStoreWithProducts()
+    {
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new Product { Id = 1, Barcode = new Barcode("1"), Name = "P1", CategoryId = 1, BrandId = 1, CountryOfOrigin = "TJ" },
+                new Product { Id = 2, Barcode = new Barcode("2"), Name = "P2", CategoryId = 1, BrandId = 1, CountryOfOrigin = "TJ" }]);
+    }
+
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync((Store?)null);
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand(), CancellationToken.None);
@@ -35,9 +48,7 @@ public class CreateProductBundleCommandHandlerTests
     [Fact]
     public async Task Handle_NotOwner_ReturnsForbidden()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand() with { PerformedByUserId = "someone-else" }, CancellationToken.None);
@@ -48,9 +59,7 @@ public class CreateProductBundleCommandHandlerTests
     [Fact]
     public async Task Handle_ValidCommand_CreatesBundleWithItems()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        SetupOwnedStoreWithProducts();
         ProductBundle? added = null;
         _productBundleRepository.Setup(r => r.Add(It.IsAny<ProductBundle>())).Callback<ProductBundle>(b =>
         {

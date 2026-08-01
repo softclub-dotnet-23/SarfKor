@@ -13,17 +13,24 @@ public class CreateLoyaltyProgramCommandHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<ILoyaltyProgramRepository> _loyaltyProgramRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    private CreateLoyaltyProgramCommandHandler CreateHandler() => new(_storeRepository.Object, _loyaltyProgramRepository.Object, _unitOfWork.Object);
+    private CreateLoyaltyProgramCommandHandler CreateHandler() => new(_storeRepository.Object, _storeAccessAuthorizer.Object, _loyaltyProgramRepository.Object, _unitOfWork.Object);
 
     private static CreateLoyaltyProgramCommand ValidCommand() => new(StoreId, PointsPerCurrencyUnit: 1, RedemptionRate: 0.1m, PerformedByUserId: OwnerId);
+
+    private void SetupOwnedStore()
+    {
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+    }
 
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync((Store?)null);
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand(), CancellationToken.None);
@@ -34,9 +41,7 @@ public class CreateLoyaltyProgramCommandHandlerTests
     [Fact]
     public async Task Handle_NotOwner_ReturnsForbidden()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand() with { PerformedByUserId = "someone-else" }, CancellationToken.None);
@@ -47,9 +52,7 @@ public class CreateLoyaltyProgramCommandHandlerTests
     [Fact]
     public async Task Handle_ProgramAlreadyExists_ReturnsAlreadyExists()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        SetupOwnedStore();
         _loyaltyProgramRepository
             .Setup(r => r.GetByStoreIdAsync(StoreId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new LoyaltyProgram { StoreId = StoreId, PointsPerCurrencyUnit = 1, RedemptionRate = 0.1m, IsActive = true });
@@ -63,9 +66,7 @@ public class CreateLoyaltyProgramCommandHandlerTests
     [Fact]
     public async Task Handle_ValidCommand_CreatesProgram()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        SetupOwnedStore();
         _loyaltyProgramRepository.Setup(r => r.GetByStoreIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync((LoyaltyProgram?)null);
         _loyaltyProgramRepository.Setup(r => r.Add(It.IsAny<LoyaltyProgram>())).Callback<LoyaltyProgram>(p => p.Id = 2);
 

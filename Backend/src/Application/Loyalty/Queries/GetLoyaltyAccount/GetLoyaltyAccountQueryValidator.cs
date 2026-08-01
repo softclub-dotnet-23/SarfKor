@@ -8,5 +8,6 @@ public sealed class GetLoyaltyAccountQueryValidator : AbstractValidator<GetLoyal
     {
         RuleFor(x => x.CustomerId).GreaterThan(0);
         RuleFor(x => x.LoyaltyProgramId).GreaterThan(0);
+        RuleFor(x => x.RequestedByUserId).NotEmpty();
     }
 }

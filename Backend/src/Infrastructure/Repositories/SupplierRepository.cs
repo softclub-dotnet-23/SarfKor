@@ -7,8 +7,8 @@ namespace Infrastructure.Repositories;
 
 public sealed class SupplierRepository(AppDbContext dbContext) : ISupplierRepository
 {
-    public async Task<IReadOnlyList<Supplier>> GetAllAsync(CancellationToken cancellationToken) =>
-        await dbContext.Suppliers.ToListAsync(cancellationToken);
+    public async Task<IReadOnlyList<Supplier>> GetByStoreIdAsync(int storeId, CancellationToken cancellationToken) =>
+        await dbContext.Suppliers.Where(s => s.StoreId == storeId).ToListAsync(cancellationToken);
 
     public Task<Supplier?> GetByIdAsync(int supplierId, CancellationToken cancellationToken) =>
         dbContext.Suppliers.FirstOrDefaultAsync(s => s.Id == supplierId, cancellationToken);

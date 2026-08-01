@@ -1,3 +1,4 @@
+using Application.Common;
 using FluentValidation;
 
 namespace Application.Sales.Commands.OpenCashierShift;
@@ -8,7 +9,7 @@ public sealed class OpenCashierShiftCommandValidator : AbstractValidator<OpenCas
     {
         RuleFor(x => x.StoreId).GreaterThan(0);
         RuleFor(x => x.OpeningCash).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.Currency).NotEmpty().Length(3);
+        RuleFor(x => x.Currency).NotEmpty().Must(SupportedCurrencies.IsSupported).WithMessage("Unsupported currency.");
         RuleFor(x => x.PerformedByUserId).NotEmpty();
     }
 }

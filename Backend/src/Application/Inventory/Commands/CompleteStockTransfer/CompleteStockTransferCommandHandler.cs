@@ -6,7 +6,7 @@ namespace Application.Inventory.Commands.CompleteStockTransfer;
 
 public sealed class CompleteStockTransferCommandHandler(
     IStockTransferRepository stockTransferRepository,
-    IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IStockLevelRepository stockLevelRepository,
     IStockMovementRepository stockMovementRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<CompleteStockTransferCommand, CompleteStockTransferResult>
@@ -17,8 +17,7 @@ public sealed class CompleteStockTransferCommandHandler(
         if (transfer is null)
             return new CompleteStockTransferResult(CompleteStockTransferOutcome.NotFound);
 
-        var toStore = await storeRepository.GetByIdAsync(transfer.ToStoreId, cancellationToken);
-        if (toStore is null || toStore.OwnerUserId != command.PerformedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(transfer.ToStoreId, command.PerformedByUserId, cancellationToken))
             return new CompleteStockTransferResult(CompleteStockTransferOutcome.Forbidden);
 
         if (transfer.Status != StockTransferStatus.InTransit)

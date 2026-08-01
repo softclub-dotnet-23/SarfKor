@@ -9,7 +9,7 @@ namespace Application.Pricing.Commands.SubmitPriceUpdate;
 public sealed class SubmitPriceUpdateCommandHandler(
     IProductRepository productRepository,
     IStoreRepository storeRepository,
-    IStoreEmployeeRepository storeEmployeeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IPriceEntryRepository priceEntryRepository,
     IContributorTrustScoreRepository trustScoreRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<SubmitPriceUpdateCommand, SubmitPriceUpdateResult>
@@ -21,12 +21,10 @@ public sealed class SubmitPriceUpdateCommandHandler(
         if (!await productRepository.ExistsAsync(command.ProductId, cancellationToken))
             return new SubmitPriceUpdateResult(SubmitPriceUpdateOutcome.ProductNotFound, null, null);
 
-        var store = await storeRepository.GetByIdAsync(command.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(command.StoreId, cancellationToken))
             return new SubmitPriceUpdateResult(SubmitPriceUpdateOutcome.StoreNotFound, null, null);
 
-        if (store.OwnerUserId != command.UserId
-            && !await storeEmployeeRepository.IsEmployeeAsync(command.StoreId, command.UserId, cancellationToken))
+        if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(command.StoreId, command.UserId, cancellationToken))
             return new SubmitPriceUpdateResult(SubmitPriceUpdateOutcome.Forbidden, null, null);
 
         var priceEntry = new PriceEntry

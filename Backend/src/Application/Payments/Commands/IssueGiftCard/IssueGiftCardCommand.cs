@@ -1,3 +1,3 @@
 namespace Application.Payments.Commands.IssueGiftCard;
 
-public sealed record IssueGiftCardCommand(decimal Amount, string Currency, DateTimeOffset? ExpiresAt);
+public sealed record IssueGiftCardCommand(int StoreId, string PerformedByUserId, decimal Amount, string Currency, DateTimeOffset? ExpiresAt);

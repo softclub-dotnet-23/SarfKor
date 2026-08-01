@@ -6,16 +6,16 @@ namespace Application.Loyalty.Commands.CreateLoyaltyProgram;
 
 public sealed class CreateLoyaltyProgramCommandHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     ILoyaltyProgramRepository loyaltyProgramRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<CreateLoyaltyProgramCommand, CreateLoyaltyProgramResult>
 {
     public async Task<CreateLoyaltyProgramResult> Handle(CreateLoyaltyProgramCommand command, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(command.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(command.StoreId, cancellationToken))
             return new CreateLoyaltyProgramResult(CreateLoyaltyProgramOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != command.PerformedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new CreateLoyaltyProgramResult(CreateLoyaltyProgramOutcome.Forbidden, null);
 
         if (await loyaltyProgramRepository.GetByStoreIdAsync(command.StoreId, cancellationToken) is not null)

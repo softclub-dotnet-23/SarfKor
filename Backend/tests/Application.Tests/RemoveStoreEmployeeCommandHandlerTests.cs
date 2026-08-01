@@ -14,11 +14,12 @@ public class RemoveStoreEmployeeCommandHandlerTests
 
     private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IAuthService> _authService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
     private RemoveStoreEmployeeCommandHandler CreateHandler() =>
-        new(_storeEmployeeRepository.Object, _storeRepository.Object, _authService.Object, _unitOfWork.Object);
+        new(_storeEmployeeRepository.Object, _storeRepository.Object, _storeAccessAuthorizer.Object, _authService.Object, _unitOfWork.Object);
 
     [Fact]
     public async Task Handle_EmployeeNotFound_ReturnsNotFound()
@@ -37,9 +38,7 @@ public class RemoveStoreEmployeeCommandHandlerTests
         _storeEmployeeRepository
             .Setup(r => r.GetByIdAsync(EmployeeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StoreEmployee { StoreId = StoreId, UserId = "cashier-1", Role = StoreEmployeeRole.Cashier, AddedAt = DateTimeOffset.UtcNow });
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new RemoveStoreEmployeeCommand(EmployeeId, "someone-else"), CancellationToken.None);
@@ -52,9 +51,7 @@ public class RemoveStoreEmployeeCommandHandlerTests
     {
         var employee = new StoreEmployee { StoreId = StoreId, UserId = "cashier-1", Role = StoreEmployeeRole.Cashier, AddedAt = DateTimeOffset.UtcNow };
         _storeEmployeeRepository.Setup(r => r.GetByIdAsync(EmployeeId, It.IsAny<CancellationToken>())).ReturnsAsync(employee);
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new RemoveStoreEmployeeCommand(EmployeeId, OwnerId), CancellationToken.None);
@@ -68,9 +65,7 @@ public class RemoveStoreEmployeeCommandHandlerTests
     {
         var employee = new StoreEmployee { StoreId = StoreId, UserId = "cashier-1", Role = StoreEmployeeRole.Cashier, AddedAt = DateTimeOffset.UtcNow };
         _storeEmployeeRepository.Setup(r => r.GetByIdAsync(EmployeeId, It.IsAny<CancellationToken>())).ReturnsAsync(employee);
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeRepository.Setup(r => r.OwnsAnyStoreAsync("cashier-1", It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _storeEmployeeRepository.Setup(r => r.IsEmployedAnywhereAsync("cashier-1", It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
@@ -85,9 +80,7 @@ public class RemoveStoreEmployeeCommandHandlerTests
     {
         var employee = new StoreEmployee { StoreId = StoreId, UserId = "cashier-1", Role = StoreEmployeeRole.Cashier, AddedAt = DateTimeOffset.UtcNow };
         _storeEmployeeRepository.Setup(r => r.GetByIdAsync(EmployeeId, It.IsAny<CancellationToken>())).ReturnsAsync(employee);
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeRepository.Setup(r => r.OwnsAnyStoreAsync("cashier-1", It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _storeEmployeeRepository.Setup(r => r.IsEmployedAnywhereAsync("cashier-1", It.IsAny<CancellationToken>())).ReturnsAsync(true);
 

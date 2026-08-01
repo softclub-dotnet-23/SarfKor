@@ -7,7 +7,7 @@ namespace Application.Feedback.Commands.ReplyToReview;
 public sealed class ReplyToReviewCommandHandler(
     IReviewRepository reviewRepository,
     IReviewReplyRepository reviewReplyRepository,
-    IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IUnitOfWork unitOfWork) : ICommandHandler<ReplyToReviewCommand, ReplyToReviewResult>
 {
     public async Task<ReplyToReviewResult> Handle(ReplyToReviewCommand command, CancellationToken cancellationToken)
@@ -17,11 +17,7 @@ public sealed class ReplyToReviewCommandHandler(
             return new ReplyToReviewResult(ReplyToReviewOutcome.ReviewNotFound, null);
 
         // A review not tied to a specific store has no owner who could legitimately reply to it.
-        if (review.StoreId is null)
-            return new ReplyToReviewResult(ReplyToReviewOutcome.Forbidden, null);
-
-        var store = await storeRepository.GetByIdAsync(review.StoreId.Value, cancellationToken);
-        if (store is null || store.OwnerUserId != command.StorePartnerUserId)
+        if (review.StoreId is null || !await storeAccessAuthorizer.IsOwnerAsync(review.StoreId.Value, command.StorePartnerUserId, cancellationToken))
             return new ReplyToReviewResult(ReplyToReviewOutcome.Forbidden, null);
 
         var reply = new ReviewReply

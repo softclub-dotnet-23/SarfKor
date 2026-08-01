@@ -14,6 +14,7 @@ using Application.Common;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
@@ -29,6 +30,7 @@ public sealed class CatalogController : ControllerBase
 {
     [HttpPost("brands")]
     [Authorize(Roles = "Admin,StorePartner")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> CreateBrand(
         CreateBrandCommand command,
         [FromServices] ICommandHandler<CreateBrandCommand, CreateBrandResult> handler,
@@ -40,7 +42,12 @@ public sealed class CatalogController : ControllerBase
             return this.ToValidationProblem(validationResult);
 
         var result = await handler.Handle(command, cancellationToken);
-        return Ok(result);
+        return result.Outcome switch
+        {
+            CreateBrandOutcome.Created => Ok(result),
+            CreateBrandOutcome.AlreadyExists => Conflict("A brand with this name already exists."),
+            _ => Problem()
+        };
     }
 
     [HttpGet("brands")]
@@ -51,6 +58,7 @@ public sealed class CatalogController : ControllerBase
 
     [HttpPut("brands/{brandId:int}")]
     [Authorize("Admin")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> UpdateBrand(
         int brandId,
         UpdateBrandRequest request,
@@ -75,6 +83,7 @@ public sealed class CatalogController : ControllerBase
 
     [HttpDelete("brands/{brandId:int}")]
     [Authorize("Admin")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> DeleteBrand(
         int brandId,
         [FromServices] ICommandHandler<DeleteBrandCommand, DeleteBrandResult> handler,
@@ -99,6 +108,7 @@ public sealed class CatalogController : ControllerBase
 
     [HttpPost("categories")]
     [Authorize(Roles = "Admin,StorePartner")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> CreateCategory(
         CreateCategoryCommand command,
         [FromServices] ICommandHandler<CreateCategoryCommand, CreateCategoryResult> handler,
@@ -126,6 +136,7 @@ public sealed class CatalogController : ControllerBase
 
     [HttpPut("categories/{categoryId:int}")]
     [Authorize("Admin")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> UpdateCategory(
         int categoryId,
         UpdateCategoryRequest request,
@@ -152,6 +163,7 @@ public sealed class CatalogController : ControllerBase
 
     [HttpDelete("categories/{categoryId:int}")]
     [Authorize("Admin")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> DeleteCategory(
         int categoryId,
         [FromServices] ICommandHandler<DeleteCategoryCommand, DeleteCategoryResult> handler,
@@ -176,6 +188,7 @@ public sealed class CatalogController : ControllerBase
 
     [HttpPost("tax-rates")]
     [Authorize("Admin")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> CreateTaxRate(
         CreateTaxRateCommand command,
         [FromServices] ICommandHandler<CreateTaxRateCommand, CreateTaxRateResult> handler,
@@ -187,7 +200,12 @@ public sealed class CatalogController : ControllerBase
             return this.ToValidationProblem(validationResult);
 
         var result = await handler.Handle(command, cancellationToken);
-        return Ok(result);
+        return result.Outcome switch
+        {
+            CreateTaxRateOutcome.Created => Ok(result),
+            CreateTaxRateOutcome.CategoryNotFound => NotFound("Category not found."),
+            _ => Problem()
+        };
     }
 
     [HttpGet("tax-rates")]
@@ -198,6 +216,7 @@ public sealed class CatalogController : ControllerBase
 
     [HttpPut("tax-rates/{taxRateId:int}")]
     [Authorize("Admin")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> UpdateTaxRate(
         int taxRateId,
         UpdateTaxRateRequest request,
@@ -223,6 +242,7 @@ public sealed class CatalogController : ControllerBase
 
     [HttpDelete("tax-rates/{taxRateId:int}")]
     [Authorize("Admin")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> DeleteTaxRate(
         int taxRateId,
         [FromServices] ICommandHandler<DeleteTaxRateCommand, DeleteTaxRateResult> handler,

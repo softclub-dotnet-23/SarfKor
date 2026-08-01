@@ -14,12 +14,14 @@ public class PublishExpiringOfferCommandHandlerTests
     private const int ProductId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IProductRepository> _productRepository = new();
     private readonly Mock<IExpiringOfferRepository> _expiringOfferRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
     private PublishExpiringOfferCommandHandler CreateHandler() => new(
         _storeRepository.Object,
+        _storeAccessAuthorizer.Object,
         _productRepository.Object,
         _expiringOfferRepository.Object,
         _unitOfWork.Object);
@@ -31,7 +33,7 @@ public class PublishExpiringOfferCommandHandlerTests
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync((Store?)null);
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand(), CancellationToken.None);
@@ -42,9 +44,7 @@ public class PublishExpiringOfferCommandHandlerTests
     [Fact]
     public async Task Handle_NotOwner_ReturnsForbidden()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand() with { PerformedByUserId = "someone-else" }, CancellationToken.None);
@@ -55,9 +55,8 @@ public class PublishExpiringOfferCommandHandlerTests
     [Fact]
     public async Task Handle_ProductDoesNotExist_ReturnsProductNotFound()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _productRepository.Setup(r => r.ExistsAsync(ProductId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
@@ -69,9 +68,8 @@ public class PublishExpiringOfferCommandHandlerTests
     [Fact]
     public async Task Handle_ValidCommand_PublishesOfferAndReturnsItsId()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _productRepository.Setup(r => r.ExistsAsync(ProductId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _expiringOfferRepository.Setup(r => r.Add(It.IsAny<ExpiringOffer>())).Callback<ExpiringOffer>(o => o.Id = 7);
 

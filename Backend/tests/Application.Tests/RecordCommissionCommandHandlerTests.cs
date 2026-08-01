@@ -15,13 +15,13 @@ public class RecordCommissionCommandHandlerTests
     private const int SaleId = 1;
 
     private readonly Mock<ISaleTransactionRepository> _saleTransactionRepository = new();
-    private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<ICommissionRepository> _commissionRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
     private RecordCommissionCommandHandler CreateHandler() => new(
         _saleTransactionRepository.Object,
-        _storeRepository.Object,
+        _storeAccessAuthorizer.Object,
         _commissionRepository.Object,
         _unitOfWork.Object);
 
@@ -50,9 +50,7 @@ public class RecordCommissionCommandHandlerTests
     public async Task Handle_NotStoreOwner_ReturnsForbidden()
     {
         _saleTransactionRepository.Setup(r => r.GetByIdAsync(SaleId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateSale());
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new RecordCommissionCommand(SaleId, 5, "TJS", "someone-else"), CancellationToken.None);
@@ -64,9 +62,7 @@ public class RecordCommissionCommandHandlerTests
     public async Task Handle_ValidCommand_UsesCashierFromSaleNotFromCaller()
     {
         _saleTransactionRepository.Setup(r => r.GetByIdAsync(SaleId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateSale());
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _commissionRepository.Setup(r => r.Add(It.IsAny<Commission>())).Callback<Commission>(c => c.Id = 1);
 
         var handler = CreateHandler();

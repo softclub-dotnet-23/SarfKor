@@ -6,12 +6,14 @@ using Application.Notifications.Queries.GetPriceAlerts;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
 [ApiController]
 [Route("api/price-alerts")]
 [Authorize]
+[EnableRateLimiting("contributions")]
 public sealed class PriceAlertsController : ControllerBase
 {
     [HttpPost]

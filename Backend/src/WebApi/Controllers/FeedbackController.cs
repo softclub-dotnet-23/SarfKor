@@ -38,6 +38,7 @@ public sealed class FeedbackController : ControllerBase
 
     [HttpPost("{reportId:int}/dispute")]
     [Authorize("StorePartner")]
+    [EnableRateLimiting("contributions")]
     public async Task<IActionResult> RaiseDispute(
         int reportId,
         RaiseDisputeRequest request,

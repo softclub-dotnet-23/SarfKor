@@ -14,11 +14,11 @@ public class RaiseReportDisputeCommandHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IReportRepository> _reportRepository = new();
-    private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IReportDisputeRepository> _reportDisputeRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    private RaiseReportDisputeCommandHandler CreateHandler() => new(_reportRepository.Object, _storeRepository.Object, _reportDisputeRepository.Object, _unitOfWork.Object);
+    private RaiseReportDisputeCommandHandler CreateHandler() => new(_reportRepository.Object, _storeAccessAuthorizer.Object, _reportDisputeRepository.Object, _unitOfWork.Object);
 
     private static Report CreateReport(int? storeId) => new()
     {
@@ -57,9 +57,7 @@ public class RaiseReportDisputeCommandHandlerTests
     public async Task Handle_NotStoreOwner_ReturnsForbidden()
     {
         _reportRepository.Setup(r => r.GetByIdAsync(ReportId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateReport(StoreId));
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new RaiseReportDisputeCommand(ReportId, "someone-else", "Not accurate"), CancellationToken.None);
@@ -71,9 +69,7 @@ public class RaiseReportDisputeCommandHandlerTests
     public async Task Handle_StoreOwnerDisputesReportAboutTheirStore_CreatesPendingDispute()
     {
         _reportRepository.Setup(r => r.GetByIdAsync(ReportId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateReport(StoreId));
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _reportDisputeRepository.Setup(r => r.Add(It.IsAny<ReportDispute>())).Callback<ReportDispute>(d => d.Id = 1);
 
         var handler = CreateHandler();

@@ -104,6 +104,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Name")
+                        .IsUnique();
+
                     b.ToTable("Brands");
                 });
 
@@ -845,6 +848,9 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("StoreId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.ToTable("Suppliers");
@@ -955,6 +961,9 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
 
                     b.HasIndex("UserId");
 
@@ -1152,6 +1161,12 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("IssuedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("IssuedByUserId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("IssuingStoreId")
+                        .HasColumnType("integer");
+
                     b.ComplexProperty<Dictionary<string, object>>("Balance", "Domain.Payments.GiftCard.Balance#Money", b1 =>
                         {
                             b1.IsRequired();
@@ -1170,7 +1185,44 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
+                    b.HasIndex("IssuingStoreId");
+
                     b.ToTable("GiftCards");
+                });
+
+            modelBuilder.Entity("Domain.Payments.GiftCardRedemption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("GiftCardId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("RedeemedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("SaleTransactionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StoreId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GiftCardId");
+
+                    b.HasIndex("SaleTransactionId");
+
+                    b.HasIndex("StoreId");
+
+                    b.ToTable("GiftCardRedemptions");
                 });
 
             modelBuilder.Entity("Domain.Payments.Payment", b =>
@@ -1261,7 +1313,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.HasIndex("StoreId");
+                    b.HasIndex("StoreId", "CustomerId")
+                        .IsUnique();
 
                     b.ToTable("StoreCredits");
                 });
@@ -1374,15 +1427,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Property<string>("UnitOfMeasure")
                         .HasColumnType("text");
-
-                    b.ComplexProperty<Dictionary<string, object>>("Barcode", "Domain.Products.Product.Barcode#Barcode", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<string>("Value")
-                                .IsRequired()
-                                .HasColumnType("text");
-                        });
 
                     b.HasKey("Id");
 
@@ -1823,12 +1867,23 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<int?>("CustomerId")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("GiftCardAmountApplied")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int?>("GiftCardId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("IdempotencyKey")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
+
+                    b.Property<decimal?>("StoreCreditAmountApplied")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<int>("StoreId")
                         .HasColumnType("integer");
@@ -1847,6 +1902,8 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasIndex("CashierUserId");
 
                     b.HasIndex("CustomerId");
+
+                    b.HasIndex("GiftCardId");
 
                     b.HasIndex("VoidedByUserId");
 
@@ -2000,9 +2057,10 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("StoreId");
-
                     b.HasIndex("UserId");
+
+                    b.HasIndex("StoreId", "UserId")
+                        .IsUnique();
 
                     b.ToTable("StoreEmployees");
                 });
@@ -2489,7 +2547,7 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasOne("Domain.Inventory.PurchaseOrder", null)
                         .WithMany("Lines")
                         .HasForeignKey("PurchaseOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -2691,6 +2749,35 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Domain.Payments.GiftCard", b =>
+                {
+                    b.HasOne("Domain.Stores.Store", null)
+                        .WithMany()
+                        .HasForeignKey("IssuingStoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Payments.GiftCardRedemption", b =>
+                {
+                    b.HasOne("Domain.Payments.GiftCard", null)
+                        .WithMany()
+                        .HasForeignKey("GiftCardId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Sales.SaleTransaction", null)
+                        .WithMany()
+                        .HasForeignKey("SaleTransactionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Domain.Stores.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Domain.Payments.Payment", b =>
                 {
                     b.HasOne("Domain.Sales.SaleTransaction", null)
@@ -2768,6 +2855,30 @@ namespace Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("TaxRateId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.OwnsOne("Domain.ValueObjects.Barcode", "Barcode", b1 =>
+                        {
+                            b1.Property<int>("ProductId")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("Barcode_Value");
+
+                            b1.HasKey("ProductId");
+
+                            b1.HasIndex("Value")
+                                .IsUnique();
+
+                            b1.ToTable("Products");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ProductId");
+                        });
+
+                    b.Navigation("Barcode")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Domain.Products.ProductSubmission", b =>
@@ -2883,7 +2994,7 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasOne("Domain.Sales.SaleReturn", null)
                         .WithMany("Lines")
                         .HasForeignKey("SaleReturnId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -2898,7 +3009,7 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasOne("Domain.Sales.SaleTransaction", null)
                         .WithMany("Lines")
                         .HasForeignKey("SaleTransactionId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -2928,6 +3039,11 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasOne("Domain.Customers.Customer", null)
                         .WithMany()
                         .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Domain.Payments.GiftCard", null)
+                        .WithMany()
+                        .HasForeignKey("GiftCardId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Domain.Stores.Store", null)

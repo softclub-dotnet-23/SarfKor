@@ -56,6 +56,7 @@ public sealed class SalesController : ControllerBase
     }
 
     [HttpPost("{id:int}/void")]
+    [EnableRateLimiting("money-write")]
     public async Task<IActionResult> VoidSale(
         int id,
         VoidSaleRequest request,
@@ -85,6 +86,7 @@ public sealed class SalesController : ControllerBase
     }
 
     [HttpPost("{saleTransactionId:int}/commission")]
+    [EnableRateLimiting("money-write")]
     public async Task<IActionResult> RecordCommission(
         int saleTransactionId,
         RecordCommissionRequest request,
@@ -139,6 +141,7 @@ public sealed class SalesController : ControllerBase
     }
 
     [HttpPost("{saleTransactionId:int}/return")]
+    [EnableRateLimiting("money-write")]
     public async Task<IActionResult> ProcessReturn(
         int saleTransactionId,
         ProcessReturnRequest request,

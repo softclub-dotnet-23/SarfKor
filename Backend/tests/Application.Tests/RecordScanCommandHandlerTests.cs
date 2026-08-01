@@ -8,10 +8,11 @@ namespace Application.Tests;
 public class RecordScanCommandHandlerTests
 {
     private readonly Mock<IProductRepository> _productRepository = new();
+    private readonly Mock<IStoreRepository> _storeRepository = new();
     private readonly Mock<IScanRepository> _scanRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    private RecordScanCommandHandler CreateHandler() => new(_productRepository.Object, _scanRepository.Object, _unitOfWork.Object);
+    private RecordScanCommandHandler CreateHandler() => new(_productRepository.Object, _storeRepository.Object, _scanRepository.Object, _unitOfWork.Object);
 
     [Fact]
     public async Task Handle_ProductDoesNotExist_ReturnsProductNotFound()

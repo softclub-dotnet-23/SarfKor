@@ -17,5 +17,10 @@ public class StoreEmployeeConfiguration : IEntityTypeConfiguration<StoreEmployee
             .WithMany()
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Backstops AddStoreEmployeeCommandHandler's/AcceptStoreEmployeeInvitationCommandHandler's
+        // check-then-add — without this, two concurrent adds for the same user could both pass
+        // the "not already employed" check and insert duplicate rows.
+        builder.HasIndex(x => new { x.StoreId, x.UserId }).IsUnique();
     }
 }

@@ -7,20 +7,18 @@ namespace Application.Sales.Commands.OpenCashierShift;
 
 public sealed class OpenCashierShiftCommandHandler(
     IStoreRepository storeRepository,
-    IStoreEmployeeRepository storeEmployeeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     ICashierShiftRepository cashierShiftRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<OpenCashierShiftCommand, OpenCashierShiftResult>
 {
     public async Task<OpenCashierShiftResult> Handle(OpenCashierShiftCommand command, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(command.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(command.StoreId, cancellationToken))
             return new OpenCashierShiftResult(OpenCashierShiftOutcome.StoreNotFound, null);
 
         // The owner or any employee added via AddStoreEmployeeCommand (CLAUDE.md §9 cashier
         // sub-role) can open a shift for this store.
-        if (store.OwnerUserId != command.PerformedByUserId
-            && !await storeEmployeeRepository.IsEmployeeAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
+        if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new OpenCashierShiftResult(OpenCashierShiftOutcome.Forbidden, null);
 
         var shift = new CashierShift

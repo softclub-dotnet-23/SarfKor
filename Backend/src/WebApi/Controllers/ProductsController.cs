@@ -59,11 +59,13 @@ public sealed class ProductsController : ControllerBase
         {
             RecordScanOutcome.Recorded => Ok(result),
             RecordScanOutcome.ProductNotFound => NotFound(),
+            RecordScanOutcome.StoreNotFound => NotFound(),
             _ => Problem()
         };
     }
 
     [HttpGet("most-scanned")]
+    [EnableRateLimiting("scan")]
     public async Task<IActionResult> GetMostScanned(
         int? limit,
         [FromServices] IQueryHandler<GetMostScannedProductsQuery, GetMostScannedProductsResult> handler,
@@ -79,6 +81,7 @@ public sealed class ProductsController : ControllerBase
     }
 
     [HttpGet("top-selling")]
+    [EnableRateLimiting("scan")]
     public async Task<IActionResult> GetTopSelling(
         int? storeId,
         int? limit,

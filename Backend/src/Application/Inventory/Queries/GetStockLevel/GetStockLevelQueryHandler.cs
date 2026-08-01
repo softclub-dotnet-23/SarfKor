@@ -5,17 +5,15 @@ namespace Application.Inventory.Queries.GetStockLevel;
 
 public sealed class GetStockLevelQueryHandler(
     IStoreRepository storeRepository,
-    IStoreEmployeeRepository storeEmployeeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IStockLevelRepository stockLevelRepository) : IQueryHandler<GetStockLevelQuery, GetStockLevelResult>
 {
     public async Task<GetStockLevelResult> Handle(GetStockLevelQuery query, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(query.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(query.StoreId, cancellationToken))
             return new GetStockLevelResult(GetStockLevelOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != query.RequestedByUserId
-            && !await storeEmployeeRepository.IsEmployeeAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
+        if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
             return new GetStockLevelResult(GetStockLevelOutcome.Forbidden, null);
 
         var levels = await stockLevelRepository.GetByStoreAsync(query.StoreId, cancellationToken);

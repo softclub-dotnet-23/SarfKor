@@ -5,6 +5,7 @@ using Application.Common;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
@@ -14,6 +15,7 @@ public sealed class ProductBundlesController : ControllerBase
 {
     [HttpPost("product-bundles")]
     [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> Create(
         CreateProductBundleRequest request,
         [FromServices] ICommandHandler<CreateProductBundleCommand, CreateProductBundleResult> handler,
@@ -36,6 +38,7 @@ public sealed class ProductBundlesController : ControllerBase
             CreateProductBundleOutcome.Created => Ok(result),
             CreateProductBundleOutcome.StoreNotFound => NotFound("Store not found."),
             CreateProductBundleOutcome.Forbidden => Forbid(),
+            CreateProductBundleOutcome.ProductNotFound => NotFound("One or more products not found."),
             _ => Problem()
         };
     }

@@ -5,17 +5,15 @@ namespace Application.Sales.Queries.GetCashierShifts;
 
 public sealed class GetCashierShiftsQueryHandler(
     IStoreRepository storeRepository,
-    IStoreEmployeeRepository storeEmployeeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     ICashierShiftRepository cashierShiftRepository) : IQueryHandler<GetCashierShiftsQuery, GetCashierShiftsResult>
 {
     public async Task<GetCashierShiftsResult> Handle(GetCashierShiftsQuery query, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(query.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(query.StoreId, cancellationToken))
             return new GetCashierShiftsResult(GetCashierShiftsOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != query.RequestedByUserId
-            && !await storeEmployeeRepository.IsEmployeeAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
+        if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
             return new GetCashierShiftsResult(GetCashierShiftsOutcome.Forbidden, null);
 
         var shifts = await cashierShiftRepository.GetByStoreIdAsync(query.StoreId, cancellationToken);

@@ -71,6 +71,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<Promotion> Promotions => Set<Promotion>();
 
     public DbSet<GiftCard> GiftCards => Set<GiftCard>();
+    public DbSet<GiftCardRedemption> GiftCardRedemptions => Set<GiftCardRedemption>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<StoreCredit> StoreCredits => Set<StoreCredit>();
 

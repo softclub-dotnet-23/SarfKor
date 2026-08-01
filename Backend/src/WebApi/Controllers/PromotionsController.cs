@@ -38,6 +38,8 @@ public sealed class PromotionsController : ControllerBase
             CreatePromotionOutcome.Created => Ok(result),
             CreatePromotionOutcome.StoreNotFound => NotFound("Store not found."),
             CreatePromotionOutcome.Forbidden => Forbid(),
+            CreatePromotionOutcome.ProductNotFound => NotFound("Product not found."),
+            CreatePromotionOutcome.CategoryNotFound => NotFound("Category not found."),
             _ => Problem()
         };
     }

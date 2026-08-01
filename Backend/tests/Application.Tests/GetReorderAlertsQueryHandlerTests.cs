@@ -13,21 +13,23 @@ public class GetReorderAlertsQueryHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IReorderRuleRepository> _reorderRuleRepository = new();
     private readonly Mock<IStockLevelRepository> _stockLevelRepository = new();
 
     private GetReorderAlertsQueryHandler CreateHandler() =>
-        new(_storeRepository.Object, _reorderRuleRepository.Object, _stockLevelRepository.Object);
+        new(_storeRepository.Object, _storeAccessAuthorizer.Object, _reorderRuleRepository.Object, _stockLevelRepository.Object);
 
-    private void SetupOwnedStore() =>
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+    private void SetupOwnedStore()
+    {
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+    }
 
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync((Store?)null);
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new GetReorderAlertsQuery(StoreId, OwnerId), CancellationToken.None);

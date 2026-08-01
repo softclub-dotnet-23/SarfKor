@@ -14,5 +14,12 @@ public class SaleTransaction : Entity
     public string? VoidedByUserId { get; set; }
     public string? VoidReason { get; set; }
     public DateTimeOffset? VoidedAt { get; set; }
+
+    // Persisted so VoidSaleCommandHandler can refund what was actually applied — without these,
+    // voiding a sale that used a gift card or store credit silently lost that value forever.
+    public int? GiftCardId { get; set; }
+    public decimal? GiftCardAmountApplied { get; set; }
+    public decimal? StoreCreditAmountApplied { get; set; }
+
     public List<SaleLineItem> Lines { get; set; } = [];
 }

@@ -14,7 +14,7 @@ public class CompleteStockTransferCommandHandlerTests
     private const int TransferId = 1;
 
     private readonly Mock<IStockTransferRepository> _stockTransferRepository = new();
-    private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IStockLevelRepository> _stockLevelRepository = new();
     private readonly Mock<IStockMovementRepository> _stockMovementRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -28,7 +28,7 @@ public class CompleteStockTransferCommandHandlerTests
 
     private CompleteStockTransferCommandHandler CreateHandler() => new(
         _stockTransferRepository.Object,
-        _storeRepository.Object,
+        _storeAccessAuthorizer.Object,
         _stockLevelRepository.Object,
         _stockMovementRepository.Object,
         _unitOfWork.Object);
@@ -48,9 +48,7 @@ public class CompleteStockTransferCommandHandlerTests
     public async Task Handle_NotInTransit_ReturnsNotInTransit()
     {
         _stockTransferRepository.Setup(r => r.GetByIdAsync(TransferId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateTransfer(StockTransferStatus.Completed));
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(ToStoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(ToStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new CompleteStockTransferCommand(TransferId, OwnerId), CancellationToken.None);
@@ -62,9 +60,7 @@ public class CompleteStockTransferCommandHandlerTests
     public async Task Handle_NotDestinationOwner_ReturnsForbidden()
     {
         _stockTransferRepository.Setup(r => r.GetByIdAsync(TransferId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateTransfer(StockTransferStatus.InTransit));
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(ToStoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(ToStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new CompleteStockTransferCommand(TransferId, "someone-else"), CancellationToken.None);
@@ -77,9 +73,7 @@ public class CompleteStockTransferCommandHandlerTests
     {
         var transfer = CreateTransfer(StockTransferStatus.InTransit);
         _stockTransferRepository.Setup(r => r.GetByIdAsync(TransferId, It.IsAny<CancellationToken>())).ReturnsAsync(transfer);
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(ToStoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(ToStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new CompleteStockTransferCommand(TransferId, OwnerId), CancellationToken.None);

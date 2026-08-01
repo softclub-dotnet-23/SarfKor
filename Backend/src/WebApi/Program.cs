@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using WebApi;
 using WebApi.Swagger;
 
 // Structured logging (CLAUDE.md §10: "нужен дашборд состояния системы") — the file sink is
@@ -64,6 +65,14 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
+
+// No handler was registered before this, so an uncaught exception (e.g. a raw DbUpdateException
+// from a missing FK check) fell through to the framework's default behavior — an inconsistent,
+// unstructured response shape compared to the app's own ProblemDetails-style validation errors,
+// and a risk of leaking internals depending on hosting config. This logs full details server-side
+// via the existing Serilog pipeline but returns only a generic, safe body to the client.
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -134,6 +143,19 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("sales", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1) }));
+
+    // Обычные аутентифицированные операции StorePartner (каталог, склад, поставщики,
+    // отзывы...) — щедрый лимит просто как страховка от automation/ошибок клиента, не от
+    // конкретной угрозы.
+    options.AddPolicy("partner-write", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
+
+    // Операции, двигающие реальные деньги вне обычного чека (выпуск/погашение подарочных
+    // карт и store credit, отмена продажи) — плотнее, чем обычные операции.
+    options.AddPolicy("money-write", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
 });
 
 var app = builder.Build();
@@ -205,6 +227,7 @@ else
     app.UseHsts();
 }
 
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseCors("Frontend");
 app.UseAuthentication();
@@ -243,10 +266,10 @@ public sealed record CreateLoyaltyProgramRequest(int StoreId, decimal PointsPerC
 public sealed record EnrollCustomerInLoyaltyRequest(int CustomerId, int LoyaltyProgramId);
 public sealed record EarnLoyaltyPointsRequest(int Points, int? SaleTransactionId);
 public sealed record RedeemLoyaltyPointsRequest(int Points);
-public sealed record IssueGiftCardRequest(decimal Amount, string Currency, DateTimeOffset? ExpiresAt);
-public sealed record RedeemGiftCardRequest(decimal Amount);
+public sealed record IssueGiftCardRequest(int StoreId, decimal Amount, string Currency, DateTimeOffset? ExpiresAt);
+public sealed record RedeemGiftCardRequest(int StoreId, decimal Amount, string Currency);
 public sealed record IssueStoreCreditRequest(int StoreId, int CustomerId, decimal Amount, string Currency);
-public sealed record RedeemStoreCreditRequest(int StoreId, int CustomerId, decimal Amount);
+public sealed record RedeemStoreCreditRequest(int StoreId, int CustomerId, decimal Amount, string Currency);
 public sealed record CreateShoppingListRequest(string Name);
 public sealed record AddShoppingListItemRequest(int ProductId, int Quantity);
 public sealed record FavoriteRequest(Domain.Engagement.FavoriteType Type, int EntityId);
@@ -276,4 +299,5 @@ public sealed record ModerateReportRequest(bool Resolve, string? Reason);
 public sealed record UpdateBrandRequest(string Name);
 public sealed record UpdateCategoryRequest(string Name, int? ParentCategoryId);
 public sealed record UpdateTaxRateRequest(string Name, decimal Percentage, int? CategoryId);
+public sealed record CreateSupplierRequest(int StoreId, string Name, string? ContactPhone, string? ContactEmail);
 public sealed record UpdateSupplierRequest(string Name, string? ContactPhone, string? ContactEmail);

@@ -21,12 +21,13 @@ public class ProcessSaleCommandHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
-    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IProductRepository> _productRepository = new();
     private readonly Mock<IPriceEntryRepository> _priceEntryRepository = new();
     private readonly Mock<IPromotionRepository> _promotionRepository = new();
     private readonly Mock<IProductBundleRepository> _productBundleRepository = new();
     private readonly Mock<IGiftCardRepository> _giftCardRepository = new();
+    private readonly Mock<IGiftCardRedemptionRepository> _giftCardRedemptionRepository = new();
     private readonly Mock<ICustomerRepository> _customerRepository = new();
     private readonly Mock<IStoreCreditRepository> _storeCreditRepository = new();
     private readonly Mock<ISaleTransactionRepository> _saleTransactionRepository = new();
@@ -44,24 +45,33 @@ public class ProcessSaleCommandHandlerTests
             .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
 
+        _storeAccessAuthorizer
+            .Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
         // No active promotions by default — individual tests opt in where relevant.
         _promotionRepository
             .Setup(r => r.GetActiveByStoreIdAsync(StoreId, It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        _storeEmployeeRepository
-            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        // Batched product/price lookups default to empty — tests that need a line resolved opt in via SetupProductWithPrice.
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _priceEntryRepository
+            .Setup(r => r.GetLatestForStoreForProductsAsync(StoreId, It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
     }
 
     private ProcessSaleCommandHandler CreateHandler() => new(
         _storeRepository.Object,
-        _storeEmployeeRepository.Object,
+        _storeAccessAuthorizer.Object,
         _productRepository.Object,
         _priceEntryRepository.Object,
         _promotionRepository.Object,
         _productBundleRepository.Object,
         _giftCardRepository.Object,
+        _giftCardRedemptionRepository.Object,
         _customerRepository.Object,
         _storeCreditRepository.Object,
         _saleTransactionRepository.Object,
@@ -69,13 +79,27 @@ public class ProcessSaleCommandHandlerTests
         _stockMovementRepository.Object,
         _unitOfWork.Object);
 
-    private static Product CreateProduct(int categoryId = 0) => new()
+    private static Product CreateProduct(int id, int categoryId = 0) => new()
     {
+        Id = id,
         Barcode = new Barcode("1234567890128"),
         Name = "Test product",
         CountryOfOrigin = "TJ",
         CategoryId = categoryId
     };
+
+    /// <summary>Sets up the batched product+price lookup for a single product — the shape almost every
+    /// non-bundle-line test needs (ProcessSaleCommandHandler resolves all command.Lines in one batch,
+    /// not one query per line).</summary>
+    private void SetupProductWithPrice(int productId, decimal price, string currency = "TJS", int categoryId = 0)
+    {
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.Is<IReadOnlyCollection<int>>(ids => ids.Contains(productId)), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([CreateProduct(productId, categoryId)]);
+        _priceEntryRepository
+            .Setup(r => r.GetLatestForStoreForProductsAsync(StoreId, It.Is<IReadOnlyCollection<int>>(ids => ids.Contains(productId)), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new PriceEntry { ProductId = productId, StoreId = StoreId, Price = new Money(price, currency) }]);
+    }
 
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()
@@ -106,13 +130,10 @@ public class ProcessSaleCommandHandlerTests
     public async Task Handle_RegisteredCashierNotOwner_IsAllowedToProcessSale()
     {
         const string cashierId = "cashier-1";
-        _storeEmployeeRepository
-            .Setup(r => r.IsEmployeeAsync(StoreId, cashierId, It.IsAny<CancellationToken>()))
+        _storeAccessAuthorizer
+            .Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, cashierId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
-        _priceEntryRepository
-            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PriceEntry { ProductId = 1, StoreId = StoreId, Price = new Money(10, "TJS") });
+        SetupProductWithPrice(1, 10);
         _stockLevelRepository.Setup(r => r.TryDecrementAsync(1, StoreId, 1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
@@ -161,7 +182,7 @@ public class ProcessSaleCommandHandlerTests
     [Fact]
     public async Task Handle_ProductDoesNotExist_ReturnsProductNotFound()
     {
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync((Product?)null);
+        // Default constructor setup already returns an empty product list for any batch.
         var handler = CreateHandler();
 
         var result = await handler.Handle(
@@ -175,10 +196,10 @@ public class ProcessSaleCommandHandlerTests
     [Fact]
     public async Task Handle_NoPriceEntry_ReturnsPriceNotFound()
     {
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
-        _priceEntryRepository
-            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((PriceEntry?)null);
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.Is<IReadOnlyCollection<int>>(ids => ids.Contains(1)), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([CreateProduct(1)]);
+        // Price lookup stays empty (default constructor setup) — product exists, price doesn't.
 
         var handler = CreateHandler();
 
@@ -192,10 +213,7 @@ public class ProcessSaleCommandHandlerTests
     [Fact]
     public async Task Handle_InsufficientStock_ReturnsInsufficientStockAndDoesNotCreateSale()
     {
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
-        _priceEntryRepository
-            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PriceEntry { ProductId = 1, StoreId = StoreId, Price = new Money(10, "TJS") });
+        SetupProductWithPrice(1, 10);
         _stockLevelRepository
             .Setup(r => r.TryDecrementAsync(1, StoreId, 5, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -214,10 +232,7 @@ public class ProcessSaleCommandHandlerTests
     [Fact]
     public async Task Handle_ValidSale_ReturnsCompletedWithCorrectTotal()
     {
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
-        _priceEntryRepository
-            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PriceEntry { ProductId = 1, StoreId = StoreId, Price = new Money(15, "TJS") });
+        SetupProductWithPrice(1, 15);
         _stockLevelRepository
             .Setup(r => r.TryDecrementAsync(1, StoreId, 3, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
@@ -239,10 +254,7 @@ public class ProcessSaleCommandHandlerTests
     [Fact]
     public async Task Handle_ActivePercentagePromotionOnProduct_DiscountsUnitPrice()
     {
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
-        _priceEntryRepository
-            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PriceEntry { ProductId = 1, StoreId = StoreId, Price = new Money(20, "TJS") });
+        SetupProductWithPrice(1, 20);
         _promotionRepository
             .Setup(r => r.GetActiveByStoreIdAsync(StoreId, It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([new Promotion
@@ -272,10 +284,7 @@ public class ProcessSaleCommandHandlerTests
     [Fact]
     public async Task Handle_UnknownGiftCardCode_ReturnsGiftCardNotFoundAndDoesNotTouchStock()
     {
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
-        _priceEntryRepository
-            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PriceEntry { ProductId = 1, StoreId = StoreId, Price = new Money(10, "TJS") });
+        SetupProductWithPrice(1, 10);
         _giftCardRepository.Setup(r => r.GetByCodeAsync("BADCODE", It.IsAny<CancellationToken>())).ReturnsAsync((GiftCard?)null);
 
         var handler = CreateHandler();
@@ -291,10 +300,7 @@ public class ProcessSaleCommandHandlerTests
     [Fact]
     public async Task Handle_ExpiredGiftCard_ReturnsGiftCardNotUsable()
     {
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
-        _priceEntryRepository
-            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PriceEntry { ProductId = 1, StoreId = StoreId, Price = new Money(10, "TJS") });
+        SetupProductWithPrice(1, 10);
         _giftCardRepository
             .Setup(r => r.GetByCodeAsync("EXPIRED", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GiftCard
@@ -318,12 +324,10 @@ public class ProcessSaleCommandHandlerTests
     [Fact]
     public async Task Handle_GiftCardBalanceCoversWholeSale_LeavesNothingDue()
     {
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
-        _priceEntryRepository
-            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PriceEntry { ProductId = 1, StoreId = StoreId, Price = new Money(10, "TJS") });
-        var giftCard = new GiftCard { Code = "FULL50", Balance = new Money(50, "TJS"), IsActive = true, IssuedAt = DateTimeOffset.UtcNow };
+        SetupProductWithPrice(1, 10);
+        var giftCard = new GiftCard { Id = 1, Code = "FULL50", Balance = new Money(50, "TJS"), IsActive = true, IssuedAt = DateTimeOffset.UtcNow };
         _giftCardRepository.Setup(r => r.GetByCodeAsync("FULL50", It.IsAny<CancellationToken>())).ReturnsAsync(giftCard);
+        _giftCardRepository.Setup(r => r.TryDebitAsync(1, 20, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _stockLevelRepository.Setup(r => r.TryDecrementAsync(1, StoreId, 2, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
@@ -336,18 +340,38 @@ public class ProcessSaleCommandHandlerTests
         Assert.Equal(20m, result.TotalAmount);
         Assert.Equal(20m, result.GiftCardAmountApplied);
         Assert.Equal(0m, result.AmountDue);
-        Assert.Equal(30m, giftCard.Balance.Amount);
+        _giftCardRepository.Verify(r => r.TryDebitAsync(1, 20, It.IsAny<CancellationToken>()), Times.Once);
+        _giftCardRedemptionRepository.Verify(r => r.Add(It.Is<GiftCardRedemption>(g => g.GiftCardId == 1 && g.Amount == 20)), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_GiftCardDebitLosesRace_ReturnsGiftCardInsufficientBalance()
+    {
+        SetupProductWithPrice(1, 10);
+        var giftCard = new GiftCard { Id = 1, Code = "FULL50", Balance = new Money(50, "TJS"), IsActive = true, IssuedAt = DateTimeOffset.UtcNow };
+        _giftCardRepository.Setup(r => r.GetByCodeAsync("FULL50", It.IsAny<CancellationToken>())).ReturnsAsync(giftCard);
+        _giftCardRepository.Setup(r => r.TryDebitAsync(1, 20, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _stockLevelRepository.Setup(r => r.TryDecrementAsync(1, StoreId, 2, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var handler = CreateHandler();
+
+        var result = await handler.Handle(
+            new ProcessSaleCommand(StoreId, OwnerId, "key-gc3b", "TJS", [new ProcessSaleLine(1, 2)], GiftCardCode: "FULL50"),
+            CancellationToken.None);
+
+        // The real DB transaction rolls back the SaleTransaction insert along with the failed
+        // gift-card debit; the mocked IUnitOfWork here just replays the callback inline with no
+        // rollback semantics, so Add's call is still recorded — only the reported outcome matters.
+        Assert.Equal(ProcessSaleOutcome.GiftCardInsufficientBalance, result.Outcome);
     }
 
     [Fact]
     public async Task Handle_GiftCardBalanceLowerThanTotal_AppliesOnlyWhatsAvailable()
     {
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
-        _priceEntryRepository
-            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PriceEntry { ProductId = 1, StoreId = StoreId, Price = new Money(10, "TJS") });
-        var giftCard = new GiftCard { Code = "SMALL5", Balance = new Money(5, "TJS"), IsActive = true, IssuedAt = DateTimeOffset.UtcNow };
+        SetupProductWithPrice(1, 10);
+        var giftCard = new GiftCard { Id = 1, Code = "SMALL5", Balance = new Money(5, "TJS"), IsActive = true, IssuedAt = DateTimeOffset.UtcNow };
         _giftCardRepository.Setup(r => r.GetByCodeAsync("SMALL5", It.IsAny<CancellationToken>())).ReturnsAsync(giftCard);
+        _giftCardRepository.Setup(r => r.TryDebitAsync(1, 5, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _stockLevelRepository.Setup(r => r.TryDecrementAsync(1, StoreId, 2, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
@@ -360,16 +384,13 @@ public class ProcessSaleCommandHandlerTests
         Assert.Equal(20m, result.TotalAmount);
         Assert.Equal(5m, result.GiftCardAmountApplied);
         Assert.Equal(15m, result.AmountDue);
-        Assert.Equal(0m, giftCard.Balance.Amount);
+        _giftCardRepository.Verify(r => r.TryDebitAsync(1, 5, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task Handle_UnknownCustomerId_ReturnsCustomerNotFound()
     {
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
-        _priceEntryRepository
-            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PriceEntry { ProductId = 1, StoreId = StoreId, Price = new Money(10, "TJS") });
+        SetupProductWithPrice(1, 10);
         _customerRepository.Setup(r => r.GetByIdAsync(99, It.IsAny<CancellationToken>())).ReturnsAsync((Customer?)null);
 
         var handler = CreateHandler();
@@ -385,13 +406,11 @@ public class ProcessSaleCommandHandlerTests
     [Fact]
     public async Task Handle_StoreCreditCoversPartOfSale_AppliesAvailableBalanceAndTagsCustomerOnSale()
     {
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
-        _priceEntryRepository
-            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PriceEntry { ProductId = 1, StoreId = StoreId, Price = new Money(10, "TJS") });
+        SetupProductWithPrice(1, 10);
         _customerRepository.Setup(r => r.GetByIdAsync(7, It.IsAny<CancellationToken>())).ReturnsAsync(new Customer { PhoneNumber = "+992900000000", CreatedAt = DateTimeOffset.UtcNow });
-        var storeCredit = new StoreCredit { StoreId = StoreId, CustomerId = 7, Balance = new Money(8, "TJS"), UpdatedAt = DateTimeOffset.UtcNow };
+        var storeCredit = new StoreCredit { Id = 1, StoreId = StoreId, CustomerId = 7, Balance = new Money(8, "TJS"), UpdatedAt = DateTimeOffset.UtcNow };
         _storeCreditRepository.Setup(r => r.GetByStoreAndCustomerAsync(StoreId, 7, It.IsAny<CancellationToken>())).ReturnsAsync(storeCredit);
+        _storeCreditRepository.Setup(r => r.TryDebitAsync(1, 8, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _stockLevelRepository.Setup(r => r.TryDecrementAsync(1, StoreId, 2, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         SaleTransaction? added = null;
         _saleTransactionRepository.Setup(r => r.Add(It.IsAny<SaleTransaction>())).Callback<SaleTransaction>(s =>
@@ -410,22 +429,42 @@ public class ProcessSaleCommandHandlerTests
         Assert.Equal(20m, result.TotalAmount);
         Assert.Equal(8m, result.StoreCreditAmountApplied);
         Assert.Equal(12m, result.AmountDue);
-        Assert.Equal(0m, storeCredit.Balance.Amount);
+        _storeCreditRepository.Verify(r => r.TryDebitAsync(1, 8, It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(7, added!.CustomerId);
+    }
+
+    [Fact]
+    public async Task Handle_StoreCreditDebitLosesRace_ReturnsStoreCreditInsufficientBalance()
+    {
+        SetupProductWithPrice(1, 10);
+        _customerRepository.Setup(r => r.GetByIdAsync(7, It.IsAny<CancellationToken>())).ReturnsAsync(new Customer { PhoneNumber = "+992900000000", CreatedAt = DateTimeOffset.UtcNow });
+        var storeCredit = new StoreCredit { Id = 1, StoreId = StoreId, CustomerId = 7, Balance = new Money(8, "TJS"), UpdatedAt = DateTimeOffset.UtcNow };
+        _storeCreditRepository.Setup(r => r.GetByStoreAndCustomerAsync(StoreId, 7, It.IsAny<CancellationToken>())).ReturnsAsync(storeCredit);
+        _storeCreditRepository.Setup(r => r.TryDebitAsync(1, 8, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _stockLevelRepository.Setup(r => r.TryDecrementAsync(1, StoreId, 2, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var handler = CreateHandler();
+
+        var result = await handler.Handle(
+            new ProcessSaleCommand(StoreId, OwnerId, "key-cust2b", "TJS", [new ProcessSaleLine(1, 2)], CustomerId: 7, ApplyStoreCredit: true),
+            CancellationToken.None);
+
+        // See the comment on Handle_GiftCardDebitLosesRace_ReturnsGiftCardInsufficientBalance —
+        // the mocked transaction doesn't roll back, so only the outcome is meaningful here.
+        Assert.Equal(ProcessSaleOutcome.StoreCreditInsufficientBalance, result.Outcome);
     }
 
     [Fact]
     public async Task Handle_GiftCardAndStoreCreditBothApplied_StackTowardsTheSameTotal()
     {
-        _productRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(CreateProduct());
-        _priceEntryRepository
-            .Setup(r => r.GetLatestForStoreAsync(1, StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PriceEntry { ProductId = 1, StoreId = StoreId, Price = new Money(10, "TJS") });
+        SetupProductWithPrice(1, 10);
         _customerRepository.Setup(r => r.GetByIdAsync(7, It.IsAny<CancellationToken>())).ReturnsAsync(new Customer { PhoneNumber = "+992900000000", CreatedAt = DateTimeOffset.UtcNow });
-        var giftCard = new GiftCard { Code = "STACK10", Balance = new Money(10, "TJS"), IsActive = true, IssuedAt = DateTimeOffset.UtcNow };
+        var giftCard = new GiftCard { Id = 1, Code = "STACK10", Balance = new Money(10, "TJS"), IsActive = true, IssuedAt = DateTimeOffset.UtcNow };
         _giftCardRepository.Setup(r => r.GetByCodeAsync("STACK10", It.IsAny<CancellationToken>())).ReturnsAsync(giftCard);
-        var storeCredit = new StoreCredit { StoreId = StoreId, CustomerId = 7, Balance = new Money(100, "TJS"), UpdatedAt = DateTimeOffset.UtcNow };
+        _giftCardRepository.Setup(r => r.TryDebitAsync(1, 10, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var storeCredit = new StoreCredit { Id = 2, StoreId = StoreId, CustomerId = 7, Balance = new Money(100, "TJS"), UpdatedAt = DateTimeOffset.UtcNow };
         _storeCreditRepository.Setup(r => r.GetByStoreAndCustomerAsync(StoreId, 7, It.IsAny<CancellationToken>())).ReturnsAsync(storeCredit);
+        _storeCreditRepository.Setup(r => r.TryDebitAsync(2, 20, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _stockLevelRepository.Setup(r => r.TryDecrementAsync(1, StoreId, 3, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
@@ -440,7 +479,7 @@ public class ProcessSaleCommandHandlerTests
         Assert.Equal(10m, result.GiftCardAmountApplied);
         Assert.Equal(20m, result.StoreCreditAmountApplied);
         Assert.Equal(0m, result.AmountDue);
-        Assert.Equal(80m, storeCredit.Balance.Amount);
+        _storeCreditRepository.Verify(r => r.TryDebitAsync(2, 20, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

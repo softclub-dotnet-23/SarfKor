@@ -7,5 +7,6 @@ public sealed class DeleteSupplierCommandValidator : AbstractValidator<DeleteSup
     public DeleteSupplierCommandValidator()
     {
         RuleFor(x => x.SupplierId).GreaterThan(0);
+        RuleFor(x => x.PerformedByUserId).NotEmpty();
     }
 }

@@ -9,7 +9,7 @@ public sealed class RedeemLoyaltyPointsCommandHandler(
     ILoyaltyProgramRepository loyaltyProgramRepository,
     ILoyaltyTransactionRepository loyaltyTransactionRepository,
     IStoreRepository storeRepository,
-    IStoreEmployeeRepository storeEmployeeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IUnitOfWork unitOfWork) : ICommandHandler<RedeemLoyaltyPointsCommand, RedeemLoyaltyPointsResult>
 {
     public async Task<RedeemLoyaltyPointsResult> Handle(RedeemLoyaltyPointsCommand command, CancellationToken cancellationToken)
@@ -23,14 +23,17 @@ public sealed class RedeemLoyaltyPointsCommandHandler(
         if (store is null)
             return new RedeemLoyaltyPointsResult(RedeemLoyaltyPointsOutcome.Forbidden, null);
 
-        if (store.OwnerUserId != command.PerformedByUserId
-            && !await storeEmployeeRepository.IsEmployeeAsync(store.Id, command.PerformedByUserId, cancellationToken))
+        if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(store.Id, command.PerformedByUserId, cancellationToken))
             return new RedeemLoyaltyPointsResult(RedeemLoyaltyPointsOutcome.Forbidden, null);
 
         if (account.PointsBalance < command.Points)
             return new RedeemLoyaltyPointsResult(RedeemLoyaltyPointsOutcome.InsufficientPoints, account.PointsBalance);
 
-        account.PointsBalance -= command.Points;
+        // Atomic, race-safe debit — same pattern as RedeemGiftCardCommandHandler.
+        var debited = await loyaltyAccountRepository.TryDebitPointsAsync(account.Id, command.Points, cancellationToken);
+        if (!debited)
+            return new RedeemLoyaltyPointsResult(RedeemLoyaltyPointsOutcome.InsufficientPoints, account.PointsBalance);
+
         loyaltyTransactionRepository.Add(new LoyaltyTransaction
         {
             LoyaltyAccountId = account.Id,
@@ -41,6 +44,6 @@ public sealed class RedeemLoyaltyPointsCommandHandler(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new RedeemLoyaltyPointsResult(RedeemLoyaltyPointsOutcome.Redeemed, account.PointsBalance);
+        return new RedeemLoyaltyPointsResult(RedeemLoyaltyPointsOutcome.Redeemed, account.PointsBalance - command.Points);
     }
 }

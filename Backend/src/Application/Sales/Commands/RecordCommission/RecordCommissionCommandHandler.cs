@@ -7,7 +7,7 @@ namespace Application.Sales.Commands.RecordCommission;
 
 public sealed class RecordCommissionCommandHandler(
     ISaleTransactionRepository saleTransactionRepository,
-    IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     ICommissionRepository commissionRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<RecordCommissionCommand, RecordCommissionResult>
 {
@@ -17,8 +17,7 @@ public sealed class RecordCommissionCommandHandler(
         if (sale is null)
             return new RecordCommissionResult(RecordCommissionOutcome.SaleNotFound, null);
 
-        var store = await storeRepository.GetByIdAsync(sale.StoreId, cancellationToken);
-        if (store is null || store.OwnerUserId != command.PerformedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(sale.StoreId, command.PerformedByUserId, cancellationToken))
             return new RecordCommissionResult(RecordCommissionOutcome.Forbidden, null);
 
         // CashierUserId comes from the sale itself, not the caller — the commission always

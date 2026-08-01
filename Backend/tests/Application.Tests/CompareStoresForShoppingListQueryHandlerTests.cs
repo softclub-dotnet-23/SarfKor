@@ -19,14 +19,10 @@ public class CompareStoresForShoppingListQueryHandlerTests
     {
         // Store 10 has both product 1 and 2; store 20 has only product 1.
         _priceEntryRepository
-            .Setup(r => r.GetLatestPerStoreAsync(1, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetLatestPerStoreForProductsAsync(It.Is<IReadOnlyCollection<int>>(ids => ids.Contains(1) && ids.Contains(2)), It.IsAny<CancellationToken>()))
             .ReturnsAsync([
                 new PriceEntry { ProductId = 1, StoreId = 10, Price = new Money(10, "TJS") },
-                new PriceEntry { ProductId = 1, StoreId = 20, Price = new Money(8, "TJS") }
-            ]);
-        _priceEntryRepository
-            .Setup(r => r.GetLatestPerStoreAsync(2, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([
+                new PriceEntry { ProductId = 1, StoreId = 20, Price = new Money(8, "TJS") },
                 new PriceEntry { ProductId = 2, StoreId = 10, Price = new Money(5, "TJS") }
             ]);
 
@@ -46,7 +42,7 @@ public class CompareStoresForShoppingListQueryHandlerTests
     public async Task Handle_MultipleCompleteStores_SortedByTotalPriceAscending()
     {
         _priceEntryRepository
-            .Setup(r => r.GetLatestPerStoreAsync(1, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetLatestPerStoreForProductsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([
                 new PriceEntry { ProductId = 1, StoreId = 10, Price = new Money(20, "TJS") },
                 new PriceEntry { ProductId = 1, StoreId = 20, Price = new Money(10, "TJS") }

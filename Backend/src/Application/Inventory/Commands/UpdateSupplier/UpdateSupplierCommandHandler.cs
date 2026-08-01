@@ -3,14 +3,19 @@ using Application.Common;
 
 namespace Application.Inventory.Commands.UpdateSupplier;
 
-public sealed class UpdateSupplierCommandHandler(ISupplierRepository supplierRepository, IUnitOfWork unitOfWork)
-    : ICommandHandler<UpdateSupplierCommand, UpdateSupplierResult>
+public sealed class UpdateSupplierCommandHandler(
+    ISupplierRepository supplierRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
+    IUnitOfWork unitOfWork) : ICommandHandler<UpdateSupplierCommand, UpdateSupplierResult>
 {
     public async Task<UpdateSupplierResult> Handle(UpdateSupplierCommand command, CancellationToken cancellationToken)
     {
         var supplier = await supplierRepository.GetByIdAsync(command.SupplierId, cancellationToken);
         if (supplier is null)
             return new UpdateSupplierResult(UpdateSupplierOutcome.NotFound);
+
+        if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(supplier.StoreId, command.PerformedByUserId, cancellationToken))
+            return new UpdateSupplierResult(UpdateSupplierOutcome.Forbidden);
 
         supplier.Name = command.Name;
         supplier.ContactPhone = command.ContactPhone;

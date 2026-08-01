@@ -5,6 +5,7 @@ using Application.Inventory.Queries.GetReorderAlerts;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
@@ -14,6 +15,7 @@ namespace WebApi.Controllers;
 public sealed class ReorderRulesController : ControllerBase
 {
     [HttpPost("reorder-rules")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> Create(
         CreateReorderRuleRequest request,
         [FromServices] ICommandHandler<CreateReorderRuleCommand, CreateReorderRuleResult> handler,
@@ -36,6 +38,8 @@ public sealed class ReorderRulesController : ControllerBase
             CreateReorderRuleOutcome.Created => Ok(result),
             CreateReorderRuleOutcome.StoreNotFound => NotFound("Store not found."),
             CreateReorderRuleOutcome.Forbidden => Forbid(),
+            CreateReorderRuleOutcome.ProductNotFound => NotFound("Product not found."),
+            CreateReorderRuleOutcome.SupplierNotFound => NotFound("Supplier not found."),
             _ => Problem()
         };
     }

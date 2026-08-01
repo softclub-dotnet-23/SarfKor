@@ -5,15 +5,15 @@ namespace Application.Inventory.Queries.GetPurchaseOrders;
 
 public sealed class GetPurchaseOrdersQueryHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IPurchaseOrderRepository purchaseOrderRepository) : IQueryHandler<GetPurchaseOrdersQuery, GetPurchaseOrdersResult>
 {
     public async Task<GetPurchaseOrdersResult> Handle(GetPurchaseOrdersQuery query, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(query.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(query.StoreId, cancellationToken))
             return new GetPurchaseOrdersResult(GetPurchaseOrdersOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != query.RequestedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
             return new GetPurchaseOrdersResult(GetPurchaseOrdersOutcome.Forbidden, null);
 
         var orders = await purchaseOrderRepository.GetByStoreIdAsync(query.StoreId, cancellationToken);

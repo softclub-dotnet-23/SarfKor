@@ -6,7 +6,7 @@ namespace Application.Inventory.Commands.SubmitPurchaseOrder;
 
 public sealed class SubmitPurchaseOrderCommandHandler(
     IPurchaseOrderRepository purchaseOrderRepository,
-    IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IUnitOfWork unitOfWork) : ICommandHandler<SubmitPurchaseOrderCommand, SubmitPurchaseOrderResult>
 {
     public async Task<SubmitPurchaseOrderResult> Handle(SubmitPurchaseOrderCommand command, CancellationToken cancellationToken)
@@ -15,8 +15,7 @@ public sealed class SubmitPurchaseOrderCommandHandler(
         if (order is null)
             return new SubmitPurchaseOrderResult(SubmitPurchaseOrderOutcome.NotFound);
 
-        var store = await storeRepository.GetByIdAsync(order.StoreId, cancellationToken);
-        if (store is null || store.OwnerUserId != command.PerformedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(order.StoreId, command.PerformedByUserId, cancellationToken))
             return new SubmitPurchaseOrderResult(SubmitPurchaseOrderOutcome.Forbidden);
 
         if (order.Status != PurchaseOrderStatus.Draft)

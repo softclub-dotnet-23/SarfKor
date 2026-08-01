@@ -15,6 +15,7 @@ public class AddStoreEmployeeCommandHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
     private readonly Mock<IStoreEmployeeInvitationRepository> _invitationRepository = new();
     private readonly Mock<IAuthService> _authService = new();
@@ -23,14 +24,17 @@ public class AddStoreEmployeeCommandHandlerTests
     private readonly Mock<ILogger<AddStoreEmployeeCommandHandler>> _logger = new();
 
     private AddStoreEmployeeCommandHandler CreateHandler() =>
-        new(_storeRepository.Object, _storeEmployeeRepository.Object, _invitationRepository.Object, _authService.Object, _emailSender.Object, _unitOfWork.Object, _logger.Object);
+        new(_storeRepository.Object, _storeAccessAuthorizer.Object, _storeEmployeeRepository.Object, _invitationRepository.Object, _authService.Object, _emailSender.Object, _unitOfWork.Object, _logger.Object);
 
     private static AddStoreEmployeeCommand ValidCommand() => new(StoreId, CashierEmail, StoreEmployeeRole.Cashier, OwnerId);
 
-    private void SetupOwnedStore() =>
+    private void SetupOwnedStore()
+    {
         _storeRepository
             .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+    }
 
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()

@@ -106,7 +106,7 @@ export function SettingsPage() {
         </div>
       </Card>
 
-      <SuppliersSection />
+      <SuppliersSection storeId={storeId} />
 
       <Card className="p-6">
         <div className="mb-5 flex items-center gap-2">

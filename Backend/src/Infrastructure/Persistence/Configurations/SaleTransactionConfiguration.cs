@@ -1,3 +1,4 @@
+using Domain.Payments;
 using Domain.Sales;
 using Domain.Stores;
 using Domain.Customers;
@@ -12,6 +13,8 @@ public class SaleTransactionConfiguration : IEntityTypeConfiguration<SaleTransac
     public void Configure(EntityTypeBuilder<SaleTransaction> builder)
     {
         builder.HasIndex(x => new { x.StoreId, x.IdempotencyKey }).IsUnique();
+        builder.Property(x => x.GiftCardAmountApplied).HasPrecision(18, 2);
+        builder.Property(x => x.StoreCreditAmountApplied).HasPrecision(18, 2);
         builder.HasOne<Store>()
             .WithMany()
             .HasForeignKey(x => x.StoreId)
@@ -27,6 +30,10 @@ public class SaleTransactionConfiguration : IEntityTypeConfiguration<SaleTransac
         builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(x => x.VoidedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne<GiftCard>()
+            .WithMany()
+            .HasForeignKey(x => x.GiftCardId)
             .OnDelete(DeleteBehavior.SetNull);
     }
 }

@@ -54,6 +54,7 @@ public sealed class ReviewsController : ControllerBase
 
     [HttpPost("reviews/{reviewId:int}/reply")]
     [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> Reply(
         int reviewId,
         ReplyToReviewRequest request,

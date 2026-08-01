@@ -14,20 +14,13 @@ public class CloseCashierShiftCommandHandlerTests
     private const int ShiftId = 1;
 
     private readonly Mock<ICashierShiftRepository> _cashierShiftRepository = new();
-    private readonly Mock<IStoreRepository> _storeRepository = new();
-    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<ISaleTransactionRepository> _saleTransactionRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    public CloseCashierShiftCommandHandlerTests() =>
-        _storeEmployeeRepository
-            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
     private CloseCashierShiftCommandHandler CreateHandler() => new(
         _cashierShiftRepository.Object,
-        _storeRepository.Object,
-        _storeEmployeeRepository.Object,
+        _storeAccessAuthorizer.Object,
         _saleTransactionRepository.Object,
         _unitOfWork.Object);
 
@@ -41,9 +34,7 @@ public class CloseCashierShiftCommandHandlerTests
     };
 
     private void SetupOwnedStore() =>
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
     [Fact]
     public async Task Handle_ShiftNotFound_ReturnsNotFound()

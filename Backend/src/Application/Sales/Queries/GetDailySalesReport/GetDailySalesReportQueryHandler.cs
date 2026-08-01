@@ -5,15 +5,15 @@ namespace Application.Sales.Queries.GetDailySalesReport;
 
 public sealed class GetDailySalesReportQueryHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     ISaleTransactionRepository saleTransactionRepository) : IQueryHandler<GetDailySalesReportQuery, GetDailySalesReportResult>
 {
     public async Task<GetDailySalesReportResult> Handle(GetDailySalesReportQuery query, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(query.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(query.StoreId, cancellationToken))
             return new GetDailySalesReportResult(GetDailySalesReportOutcome.StoreNotFound, null, null, null, null);
 
-        if (store.OwnerUserId != query.RequestedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
             return new GetDailySalesReportResult(GetDailySalesReportOutcome.Forbidden, null, null, null, null);
 
         var from = new DateTimeOffset(query.Date.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);

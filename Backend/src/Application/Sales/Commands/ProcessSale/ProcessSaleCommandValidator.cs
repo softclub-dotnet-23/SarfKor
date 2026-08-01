@@ -1,3 +1,4 @@
+using Application.Common;
 using FluentValidation;
 
 namespace Application.Sales.Commands.ProcessSale;
@@ -9,7 +10,7 @@ public sealed class ProcessSaleCommandValidator : AbstractValidator<ProcessSaleC
         RuleFor(x => x.StoreId).GreaterThan(0);
         RuleFor(x => x.CashierUserId).NotEmpty();
         RuleFor(x => x.IdempotencyKey).NotEmpty();
-        RuleFor(x => x.Currency).NotEmpty().Length(3);
+        RuleFor(x => x.Currency).NotEmpty().Must(SupportedCurrencies.IsSupported).WithMessage("Unsupported currency.");
         RuleFor(x => x).Must(x => x.Lines.Count > 0 || (x.BundleLines?.Count ?? 0) > 0)
             .WithMessage("At least one product line or bundle line is required.");
         RuleForEach(x => x.Lines).ChildRules(line =>

@@ -1,4 +1,5 @@
 using System.Reflection;
+using Application.Abstractions;
 using Application.Common;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,6 +10,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        services.AddScoped<IStoreAccessAuthorizer, StoreAccessAuthorizer>();
+
         var assembly = Assembly.GetExecutingAssembly();
         var handlerGenericDefinitions = new[] { typeof(IQueryHandler<,>), typeof(ICommandHandler<,>) };
 

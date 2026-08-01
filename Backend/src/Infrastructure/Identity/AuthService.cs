@@ -31,7 +31,34 @@ public sealed class AuthService(
     public async Task<AuthResult?> LoginAsync(string email, string password, string? ipAddress, string? userAgent, CancellationToken cancellationToken)
     {
         var user = await userManager.FindByEmailAsync(email);
+
+        // Account lockout (on top of the IP-based "login" rate-limit policy) — the rate limit
+        // alone is bypassable via distributed/proxied attempts; this caps guesses per-account
+        // regardless of source IP. A locked-out account fails the same way as a wrong password,
+        // so this check never leaks which accounts exist or are currently locked.
+        if (user is not null && await userManager.IsLockedOutAsync(user))
+        {
+            securityEventRepository.Add(new SecurityEvent
+            {
+                UserId = user.Id,
+                Type = SecurityEventType.LoginFailed,
+                IpAddress = ipAddress,
+                UserAgent = userAgent,
+                OccurredAt = DateTimeOffset.UtcNow
+            });
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return null;
+        }
+
         var succeeded = user is not null && await userManager.CheckPasswordAsync(user, password);
+
+        if (user is not null)
+        {
+            if (succeeded)
+                await userManager.ResetAccessFailedCountAsync(user);
+            else
+                await userManager.AccessFailedAsync(user);
+        }
 
         // Recorded for both outcomes — a string of LoginFailed events for the same account is
         // exactly the anomaly signal CLAUDE.md §10 asks for ("алерты на аномальные паттерны").

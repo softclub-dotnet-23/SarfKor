@@ -10,12 +10,13 @@ namespace Application.Sales.Commands.ProcessSale;
 
 public sealed class ProcessSaleCommandHandler(
     IStoreRepository storeRepository,
-    IStoreEmployeeRepository storeEmployeeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IProductRepository productRepository,
     IPriceEntryRepository priceEntryRepository,
     IPromotionRepository promotionRepository,
     IProductBundleRepository productBundleRepository,
     IGiftCardRepository giftCardRepository,
+    IGiftCardRedemptionRepository giftCardRedemptionRepository,
     ICustomerRepository customerRepository,
     IStoreCreditRepository storeCreditRepository,
     ISaleTransactionRepository saleTransactionRepository,
@@ -28,6 +29,10 @@ public sealed class ProcessSaleCommandHandler(
         public int ProductId { get; } = productId;
     }
 
+    private sealed class InsufficientGiftCardBalanceSignal : Exception;
+
+    private sealed class InsufficientStoreCreditBalanceSignal : Exception;
+
     public async Task<ProcessSaleResult> Handle(ProcessSaleCommand command, CancellationToken cancellationToken)
     {
         var store = await storeRepository.GetByIdAsync(command.StoreId, cancellationToken);
@@ -37,8 +42,7 @@ public sealed class ProcessSaleCommandHandler(
         // The owner or any registered cashier of this store can ring up a sale — cost/profit
         // visibility is what's actually restricted (see SetCostPriceCommandHandler/GetProfitReportQueryHandler),
         // not the POS itself.
-        if (store.OwnerUserId != command.CashierUserId
-            && !await storeEmployeeRepository.IsEmployeeAsync(command.StoreId, command.CashierUserId, cancellationToken))
+        if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(command.StoreId, command.CashierUserId, cancellationToken))
             return new ProcessSaleResult(ProcessSaleOutcome.Forbidden, null, null, null, null);
 
         var existing = await saleTransactionRepository.GetByIdempotencyKeyAsync(command.StoreId, command.IdempotencyKey, cancellationToken);
@@ -56,16 +60,21 @@ public sealed class ProcessSaleCommandHandler(
 
         var activePromotions = await promotionRepository.GetActiveByStoreIdAsync(command.StoreId, DateTimeOffset.UtcNow, cancellationToken);
 
+        // Batched instead of one product + one price lookup per line — a sale with N lines
+        // previously issued 2N+ queries.
+        var requestedProductIds = command.Lines.Select(l => l.ProductId).Distinct().ToList();
+        var productsById = (await productRepository.GetByIdsAsync(requestedProductIds, cancellationToken)).ToDictionary(p => p.Id);
+        var latestPricesByProduct = (await priceEntryRepository.GetLatestForStoreForProductsAsync(command.StoreId, requestedProductIds, cancellationToken))
+            .ToDictionary(p => p.ProductId);
+
         var resolvedLines = new List<(int ProductId, int Quantity, Money UnitPrice)>();
 
         foreach (var line in command.Lines)
         {
-            var product = await productRepository.GetByIdAsync(line.ProductId, cancellationToken);
-            if (product is null)
+            if (!productsById.TryGetValue(line.ProductId, out var product))
                 return new ProcessSaleResult(ProcessSaleOutcome.ProductNotFound, null, null, null, line.ProductId);
 
-            var priceEntry = await priceEntryRepository.GetLatestForStoreAsync(line.ProductId, command.StoreId, cancellationToken);
-            if (priceEntry is null)
+            if (!latestPricesByProduct.TryGetValue(line.ProductId, out var priceEntry))
                 return new ProcessSaleResult(ProcessSaleOutcome.PriceNotFound, null, null, null, line.ProductId);
 
             var promotion = SelectPromotion(activePromotions, line.ProductId, product.CategoryId);
@@ -169,7 +178,10 @@ public sealed class ProcessSaleCommandHandler(
                     IdempotencyKey = command.IdempotencyKey,
                     Currency = command.Currency,
                     Status = SaleStatus.Completed,
-                    CreatedAt = DateTimeOffset.UtcNow
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    GiftCardId = giftCard?.Id,
+                    GiftCardAmountApplied = giftCardAmountApplied,
+                    StoreCreditAmountApplied = storeCreditAmountApplied
                 };
 
                 foreach (var line in resolvedLines)
@@ -199,15 +211,31 @@ public sealed class ProcessSaleCommandHandler(
                     });
                 }
 
-                if (giftCard is not null && giftCardAmountApplied is not null)
+                // Atomic, race-safe debits — giftCardAmountApplied/storeCreditAmountApplied were
+                // computed from a balance read before this transaction started, so a concurrent
+                // redemption could have spent the card/credit in the meantime; the WHERE-guarded
+                // update (not the earlier read) is what actually prevents over-spending.
+                if (giftCard is not null && giftCardAmountApplied is > 0)
                 {
-                    giftCard.Balance = giftCard.Balance with { Amount = giftCard.Balance.Amount - giftCardAmountApplied.Value };
+                    var debited = await giftCardRepository.TryDebitAsync(giftCard.Id, giftCardAmountApplied.Value, ct);
+                    if (!debited)
+                        throw new InsufficientGiftCardBalanceSignal();
+
+                    giftCardRedemptionRepository.Add(new GiftCardRedemption
+                    {
+                        GiftCardId = giftCard.Id,
+                        StoreId = command.StoreId,
+                        Amount = giftCardAmountApplied.Value,
+                        SaleTransactionId = saleTransaction.Id,
+                        RedeemedAt = DateTimeOffset.UtcNow
+                    });
                 }
 
-                if (storeCredit is not null && storeCreditAmountApplied is not null)
+                if (storeCredit is not null && storeCreditAmountApplied is > 0)
                 {
-                    storeCredit.Balance = storeCredit.Balance with { Amount = storeCredit.Balance.Amount - storeCreditAmountApplied.Value };
-                    storeCredit.UpdatedAt = DateTimeOffset.UtcNow;
+                    var debited = await storeCreditRepository.TryDebitAsync(storeCredit.Id, storeCreditAmountApplied.Value, ct);
+                    if (!debited)
+                        throw new InsufficientStoreCreditBalanceSignal();
                 }
 
                 await unitOfWork.SaveChangesAsync(ct);
@@ -216,6 +244,14 @@ public sealed class ProcessSaleCommandHandler(
         catch (InsufficientStockSignal signal)
         {
             return new ProcessSaleResult(ProcessSaleOutcome.InsufficientStock, null, null, null, signal.ProductId);
+        }
+        catch (InsufficientGiftCardBalanceSignal)
+        {
+            return new ProcessSaleResult(ProcessSaleOutcome.GiftCardInsufficientBalance, null, null, null, null);
+        }
+        catch (InsufficientStoreCreditBalanceSignal)
+        {
+            return new ProcessSaleResult(ProcessSaleOutcome.StoreCreditInsufficientBalance, null, null, null, null);
         }
 
         var amountDue = total - (giftCardAmountApplied ?? 0m) - (storeCreditAmountApplied ?? 0m);

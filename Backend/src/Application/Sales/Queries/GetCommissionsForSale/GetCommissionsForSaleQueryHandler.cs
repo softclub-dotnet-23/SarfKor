@@ -5,7 +5,7 @@ namespace Application.Sales.Queries.GetCommissionsForSale;
 
 public sealed class GetCommissionsForSaleQueryHandler(
     ISaleTransactionRepository saleTransactionRepository,
-    IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     ICommissionRepository commissionRepository) : IQueryHandler<GetCommissionsForSaleQuery, GetCommissionsForSaleResult>
 {
     public async Task<GetCommissionsForSaleResult> Handle(GetCommissionsForSaleQuery query, CancellationToken cancellationToken)
@@ -14,8 +14,7 @@ public sealed class GetCommissionsForSaleQueryHandler(
         if (sale is null)
             return new GetCommissionsForSaleResult(GetCommissionsForSaleOutcome.SaleNotFound, null);
 
-        var store = await storeRepository.GetByIdAsync(sale.StoreId, cancellationToken);
-        if (store is null || store.OwnerUserId != query.RequestedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(sale.StoreId, query.RequestedByUserId, cancellationToken))
             return new GetCommissionsForSaleResult(GetCommissionsForSaleOutcome.Forbidden, null);
 
         var commissions = await commissionRepository.GetBySaleTransactionIdAsync(query.SaleTransactionId, cancellationToken);

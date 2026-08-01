@@ -13,5 +13,8 @@ public class DeviceTokenConfiguration : IEntityTypeConfiguration<DeviceToken>
             .WithMany()
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // The handler's upsert-by-token logic assumed this was already unique; it wasn't.
+        builder.HasIndex(x => x.Token).IsUnique();
     }
 }

@@ -3,7 +3,7 @@ import { Card } from '../components/Card'
 import { TruckIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, XIcon } from '../components/icons'
 import { suppliersApi, ApiError, type Supplier } from '../../lib/api'
 
-export function SuppliersSection() {
+export function SuppliersSection({ storeId }: { storeId: number | null }) {
   const [suppliers, setSuppliers] = useState<Supplier[] | null>(null)
   const [error, setError] = useState('')
 
@@ -19,24 +19,25 @@ export function SuppliersSection() {
   const [busyId, setBusyId] = useState<number | 'new' | null>(null)
 
   const load = useCallback(async () => {
+    if (!storeId) return
     try {
-      const res = await suppliersApi.getSuppliers()
+      const res = await suppliersApi.getSuppliers(storeId)
       setSuppliers(res.suppliers)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось загрузить поставщиков')
     }
-  }, [])
+  }, [storeId])
 
   useEffect(() => {
     load()
   }, [load])
 
   async function handleCreate() {
-    if (!newName.trim()) return
+    if (!newName.trim() || !storeId) return
     setBusyId('new')
     setError('')
     try {
-      await suppliersApi.createSupplier(newName.trim(), newPhone.trim() || undefined, newEmail.trim() || undefined)
+      await suppliersApi.createSupplier(storeId, newName.trim(), newPhone.trim() || undefined, newEmail.trim() || undefined)
       setNewName('')
       setNewPhone('')
       setNewEmail('')

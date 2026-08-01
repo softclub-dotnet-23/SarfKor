@@ -1,3 +1,4 @@
+using Application.Common;
 using FluentValidation;
 
 namespace Application.Inventory.Commands.CreatePurchaseOrder;
@@ -15,7 +16,7 @@ public sealed class CreatePurchaseOrderCommandValidator : AbstractValidator<Crea
             line.RuleFor(l => l.ProductId).GreaterThan(0);
             line.RuleFor(l => l.Quantity).GreaterThan(0);
             line.RuleFor(l => l.UnitCost).GreaterThan(0);
-            line.RuleFor(l => l.Currency).NotEmpty().Length(3);
+            line.RuleFor(l => l.Currency).NotEmpty().Must(SupportedCurrencies.IsSupported).WithMessage("Unsupported currency.");
         });
     }
 }

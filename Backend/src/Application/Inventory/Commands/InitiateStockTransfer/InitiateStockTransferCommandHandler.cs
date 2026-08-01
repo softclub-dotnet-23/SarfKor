@@ -6,6 +6,7 @@ namespace Application.Inventory.Commands.InitiateStockTransfer;
 
 public sealed class InitiateStockTransferCommandHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IStockLevelRepository stockLevelRepository,
     IStockMovementRepository stockMovementRepository,
     IStockTransferRepository stockTransferRepository,
@@ -13,17 +14,16 @@ public sealed class InitiateStockTransferCommandHandler(
 {
     public async Task<InitiateStockTransferResult> Handle(InitiateStockTransferCommand command, CancellationToken cancellationToken)
     {
-        var fromStore = await storeRepository.GetByIdAsync(command.FromStoreId, cancellationToken);
-        if (fromStore is null)
+        if (!await storeRepository.ExistsAsync(command.FromStoreId, cancellationToken))
             return new InitiateStockTransferResult(InitiateStockTransferOutcome.FromStoreNotFound, null);
 
-        var toStore = await storeRepository.GetByIdAsync(command.ToStoreId, cancellationToken);
-        if (toStore is null)
+        if (!await storeRepository.ExistsAsync(command.ToStoreId, cancellationToken))
             return new InitiateStockTransferResult(InitiateStockTransferOutcome.ToStoreNotFound, null);
 
         // Transfers move stock between two branches of the same business — both ends must belong
         // to the requester, otherwise anyone could siphon stock out of a store they don't own.
-        if (fromStore.OwnerUserId != command.PerformedByUserId || toStore.OwnerUserId != command.PerformedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(command.FromStoreId, command.PerformedByUserId, cancellationToken)
+            || !await storeAccessAuthorizer.IsOwnerAsync(command.ToStoreId, command.PerformedByUserId, cancellationToken))
             return new InitiateStockTransferResult(InitiateStockTransferOutcome.Forbidden, null);
 
         var transfer = new StockTransfer

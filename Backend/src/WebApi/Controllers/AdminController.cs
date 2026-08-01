@@ -12,12 +12,14 @@ using Application.Products.Queries.GetPendingProductSubmissions;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
 [ApiController]
 [Route("api/admin")]
 [Authorize("Admin")]
+[EnableRateLimiting("partner-write")]
 public sealed class AdminController : ControllerBase
 {
     [HttpPost("price-entry-disputes/{disputeId:int}/resolve")]

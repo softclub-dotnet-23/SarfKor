@@ -6,7 +6,7 @@ namespace Application.Inventory.Commands.ReceivePurchaseOrder;
 
 public sealed class ReceivePurchaseOrderCommandHandler(
     IPurchaseOrderRepository purchaseOrderRepository,
-    IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IStockLevelRepository stockLevelRepository,
     IStockMovementRepository stockMovementRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<ReceivePurchaseOrderCommand, ReceivePurchaseOrderResult>
@@ -17,8 +17,7 @@ public sealed class ReceivePurchaseOrderCommandHandler(
         if (order is null)
             return new ReceivePurchaseOrderResult(ReceivePurchaseOrderOutcome.NotFound);
 
-        var store = await storeRepository.GetByIdAsync(order.StoreId, cancellationToken);
-        if (store is null || store.OwnerUserId != command.PerformedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(order.StoreId, command.PerformedByUserId, cancellationToken))
             return new ReceivePurchaseOrderResult(ReceivePurchaseOrderOutcome.Forbidden);
 
         if (order.Status != PurchaseOrderStatus.Submitted)

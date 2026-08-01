@@ -7,17 +7,17 @@ namespace Application.Payments.Commands.IssueStoreCredit;
 
 public sealed class IssueStoreCreditCommandHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     ICustomerRepository customerRepository,
     IStoreCreditRepository storeCreditRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<IssueStoreCreditCommand, IssueStoreCreditResult>
 {
     public async Task<IssueStoreCreditResult> Handle(IssueStoreCreditCommand command, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(command.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(command.StoreId, cancellationToken))
             return new IssueStoreCreditResult(IssueStoreCreditOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != command.PerformedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new IssueStoreCreditResult(IssueStoreCreditOutcome.Forbidden, null);
 
         if (await customerRepository.GetByIdAsync(command.CustomerId, cancellationToken) is null)
@@ -34,15 +34,18 @@ public sealed class IssueStoreCreditCommandHandler(
                 UpdatedAt = DateTimeOffset.UtcNow
             };
             storeCreditRepository.Add(credit);
-        }
-        else
-        {
-            credit.Balance = credit.Balance with { Amount = credit.Balance.Amount + command.Amount };
-            credit.UpdatedAt = DateTimeOffset.UtcNow;
+
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return new IssueStoreCreditResult(IssueStoreCreditOutcome.Issued, credit.Balance.Amount);
         }
 
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        // A customer's store credit is a single running balance in one currency — merging a
+        // different currency's amount into it would silently corrupt the balance (BUG-03).
+        if (credit.Balance.Currency != command.Currency)
+            return new IssueStoreCreditResult(IssueStoreCreditOutcome.CurrencyMismatch, credit.Balance.Amount);
 
-        return new IssueStoreCreditResult(IssueStoreCreditOutcome.Issued, credit.Balance.Amount);
+        await storeCreditRepository.CreditAsync(credit.Id, command.Amount, cancellationToken);
+
+        return new IssueStoreCreditResult(IssueStoreCreditOutcome.Issued, credit.Balance.Amount + command.Amount);
     }
 }

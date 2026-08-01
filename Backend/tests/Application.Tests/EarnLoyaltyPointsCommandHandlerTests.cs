@@ -17,21 +17,14 @@ public class EarnLoyaltyPointsCommandHandlerTests
     private readonly Mock<ILoyaltyAccountRepository> _loyaltyAccountRepository = new();
     private readonly Mock<ILoyaltyProgramRepository> _loyaltyProgramRepository = new();
     private readonly Mock<ILoyaltyTransactionRepository> _loyaltyTransactionRepository = new();
-    private readonly Mock<IStoreRepository> _storeRepository = new();
-    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
-
-    public EarnLoyaltyPointsCommandHandlerTests() =>
-        _storeEmployeeRepository
-            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
 
     private EarnLoyaltyPointsCommandHandler CreateHandler() => new(
         _loyaltyAccountRepository.Object,
         _loyaltyProgramRepository.Object,
         _loyaltyTransactionRepository.Object,
-        _storeRepository.Object,
-        _storeEmployeeRepository.Object,
+        _storeAccessAuthorizer.Object,
         _unitOfWork.Object);
 
     [Fact]
@@ -54,9 +47,7 @@ public class EarnLoyaltyPointsCommandHandlerTests
         _loyaltyProgramRepository
             .Setup(r => r.GetByIdAsync(ProgramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new LoyaltyProgram { StoreId = StoreId, PointsPerCurrencyUnit = 1, RedemptionRate = 0.1m, IsActive = true });
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new EarnLoyaltyPointsCommand(AccountId, 10, null, "someone-else"), CancellationToken.None);
@@ -72,9 +63,7 @@ public class EarnLoyaltyPointsCommandHandlerTests
         _loyaltyProgramRepository
             .Setup(r => r.GetByIdAsync(ProgramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new LoyaltyProgram { StoreId = StoreId, PointsPerCurrencyUnit = 1, RedemptionRate = 0.1m, IsActive = true });
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new EarnLoyaltyPointsCommand(AccountId, 10, 42, OwnerId), CancellationToken.None);

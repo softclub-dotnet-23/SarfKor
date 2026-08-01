@@ -1,3 +1,10 @@
 namespace Application.Loyalty.Queries.GetLoyaltyAccount;
 
-public sealed record GetLoyaltyAccountResult(int? LoyaltyAccountId, int? PointsBalance);
+public enum GetLoyaltyAccountOutcome
+{
+    Found,
+    NotFound,
+    Forbidden
+}
+
+public sealed record GetLoyaltyAccountResult(GetLoyaltyAccountOutcome Outcome, int? LoyaltyAccountId, int? PointsBalance);

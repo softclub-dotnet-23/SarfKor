@@ -135,7 +135,9 @@ public sealed class ProductsController : ControllerBase
         if (userId is null)
             return Unauthorized();
 
-        var command = new SubmitNewProductCommand(request.Barcode, request.Name, request.CategoryId, request.BrandId, request.CountryOfOrigin, userId);
+        var command = new SubmitNewProductCommand(
+            request.Barcode, request.Name, request.CategoryId, request.BrandId, request.CountryOfOrigin, userId,
+            CreateDirectly: User.IsInRole("StorePartner"));
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -145,6 +147,7 @@ public sealed class ProductsController : ControllerBase
         return result.Outcome switch
         {
             SubmitNewProductOutcome.Submitted => Ok(result),
+            SubmitNewProductOutcome.Created => Ok(result),
             SubmitNewProductOutcome.DuplicateBarcode => Conflict("A product with this barcode already exists."),
             SubmitNewProductOutcome.DuplicatePendingSubmission => Conflict("A submission for this barcode is already pending moderation."),
             SubmitNewProductOutcome.CategoryNotFound => NotFound("Category not found."),

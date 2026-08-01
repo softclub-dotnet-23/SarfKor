@@ -102,6 +102,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<Store> Stores => Set<Store>();
     public DbSet<StoreEmployee> StoreEmployees => Set<StoreEmployee>();
     public DbSet<StoreEmployeeInvitation> StoreEmployeeInvitations => Set<StoreEmployeeInvitation>();
+    public DbSet<StoreOwnerInvitation> StoreOwnerInvitations => Set<StoreOwnerInvitation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

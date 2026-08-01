@@ -5,6 +5,7 @@ using Application.Identity.Commands.RefreshToken;
 using Application.Identity.Commands.Register;
 using Application.Identity.Commands.ResetPassword;
 using Application.Stores.Commands.AcceptStoreEmployeeInvitation;
+using Application.Stores.Commands.ConfirmStoreOwnerInvitation;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -128,6 +129,30 @@ public sealed class AuthController : ControllerBase
             AcceptStoreEmployeeInvitationOutcome.AccountAlreadyExisted => Ok(result),
             AcceptStoreEmployeeInvitationOutcome.InvalidOrExpiredToken => BadRequest("Invalid or expired invitation link."),
             AcceptStoreEmployeeInvitationOutcome.RegistrationFailed => BadRequest("Could not create the account — check password requirements."),
+            _ => Problem()
+        };
+    }
+
+    [HttpPost("confirm-store-owner-invite")]
+    [EnableRateLimiting("password-reset")]
+    public async Task<IActionResult> ConfirmStoreOwnerInvite(
+        ConfirmStoreOwnerInvitationCommand command,
+        [FromServices] ICommandHandler<ConfirmStoreOwnerInvitationCommand, ConfirmStoreOwnerInvitationResult> handler,
+        [FromServices] IValidator<ConfirmStoreOwnerInvitationCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            ConfirmStoreOwnerInvitationOutcome.Confirmed => Ok(result),
+            ConfirmStoreOwnerInvitationOutcome.InvalidOrExpiredCode => BadRequest("Invalid or expired code."),
+            ConfirmStoreOwnerInvitationOutcome.TooManyAttempts => BadRequest("Too many attempts — ask the administrator to resend the invitation."),
+            ConfirmStoreOwnerInvitationOutcome.EmailAlreadyRegistered => Conflict("This email already has an account."),
+            ConfirmStoreOwnerInvitationOutcome.RegistrationFailed => BadRequest("Could not create the account — check password requirements."),
             _ => Problem()
         };
     }

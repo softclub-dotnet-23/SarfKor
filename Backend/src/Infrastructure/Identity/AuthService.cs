@@ -2,6 +2,7 @@ using Application.Abstractions;
 using Domain.Identity;
 using Domain.Security;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Identity;
 
@@ -125,6 +126,16 @@ public sealed class AuthService(
     {
         var user = await userManager.FindByEmailAsync(email);
         return user?.Id;
+    }
+
+    public async Task<IReadOnlyDictionary<string, string>> GetEmailsByUserIdsAsync(IReadOnlyCollection<string> userIds, CancellationToken cancellationToken)
+    {
+        var rows = await userManager.Users
+            .Where(u => userIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.Email })
+            .ToListAsync(cancellationToken);
+
+        return rows.Where(r => r.Email is not null).ToDictionary(r => r.Id, r => r.Email!);
     }
 
     public async Task<string?> GeneratePasswordResetTokenAsync(string email, CancellationToken cancellationToken)

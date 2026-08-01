@@ -45,7 +45,7 @@ public class ScanBarcodeQueryHandlerTests
             ]);
 
         _storeRepository
-            .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetApprovedByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([
                 new Store { Id = 10, OwnerUserId = "o1", Name = "Store A", Address = "A", Location = new GeoLocation(0, 0) },
                 new Store { Id = 20, OwnerUserId = "o2", Name = "Store B", Address = "B", Location = new GeoLocation(0, 0) }
@@ -76,7 +76,7 @@ public class ScanBarcodeQueryHandlerTests
             ]);
 
         _storeRepository
-            .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetApprovedByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([
                 new Store { Id = 10, OwnerUserId = "o1", Name = "Far, cheaper", Address = "A", Location = new GeoLocation(10, 10) },
                 new Store { Id = 20, OwnerUserId = "o2", Name = "Near, pricier", Address = "B", Location = new GeoLocation(0.001, 0.001) }
@@ -87,5 +87,29 @@ public class ScanBarcodeQueryHandlerTests
 
         Assert.NotNull(result);
         Assert.Equal(20, result!.Stores[0].StoreId);
+    }
+
+    [Fact]
+    public async Task Handle_StoreHasAPriceButIsPending_IsOmittedFromResults()
+    {
+        var product = new Product { Barcode = new Barcode("1234567890128"), Name = "Test", CountryOfOrigin = "TJ" };
+        product.Id = 1;
+        _productRepository.Setup(r => r.GetByBarcodeAsync("1234567890128", It.IsAny<CancellationToken>())).ReturnsAsync(product);
+
+        _priceEntryRepository
+            .Setup(r => r.GetLatestPerStoreAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new PriceEntry { ProductId = 1, StoreId = 10, Price = new Money(10, "TJS") }]);
+
+        // GetApprovedByIdsAsync excludes Pending stores at the repository level — the mock simply
+        // returns nothing for store 10, exactly as the real filtered query would.
+        _storeRepository
+            .Setup(r => r.GetApprovedByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(new ScanBarcodeQuery("1234567890128", null, null), CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Empty(result!.Stores);
     }
 }

@@ -29,7 +29,7 @@ public class GetExpiringOffersQueryHandlerTests
             .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         _storeRepository
-            .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetApprovedByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
         var handler = CreateHandler();
@@ -64,7 +64,7 @@ public class GetExpiringOffersQueryHandlerTests
 
         var store = new Store { Id = 10, OwnerUserId = "o1", Name = "Corner Shop", Address = "Addr", Location = new GeoLocation(0, 0) };
         _storeRepository
-            .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetApprovedByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([store]);
 
         var handler = CreateHandler();
@@ -96,8 +96,42 @@ public class GetExpiringOffersQueryHandlerTests
             .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         _storeRepository
-            .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetApprovedByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([new Store { Id = 10, OwnerUserId = "o1", Name = "Corner Shop", Address = "Addr", Location = new GeoLocation(0, 0) }]);
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(new GetExpiringOffersQuery(null, null, null), CancellationToken.None);
+
+        Assert.Empty(result.Offers);
+    }
+
+    [Fact]
+    public async Task Handle_OfferForPendingStore_IsSkippedRatherThanShown()
+    {
+        var offer = new ExpiringOffer
+        {
+            ProductId = 1,
+            StoreId = 10,
+            OriginalPrice = new Money(20, "TJS"),
+            DiscountedPrice = new Money(15, "TJS"),
+            ExpiresAt = DateTimeOffset.UtcNow.AddHours(2),
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        _expiringOfferRepository
+            .Setup(r => r.GetActiveAsync(null, It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([offer]);
+
+        var product = new Product { Barcode = new Barcode("1234567890128"), Name = "Milk", CountryOfOrigin = "TJ" };
+        product.Id = 1;
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([product]);
+
+        // GetApprovedByIdsAsync excludes Pending stores at the repository level.
+        _storeRepository
+            .Setup(r => r.GetApprovedByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new GetExpiringOffersQuery(null, null, null), CancellationToken.None);

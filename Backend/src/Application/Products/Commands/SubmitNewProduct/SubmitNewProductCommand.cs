@@ -6,4 +6,5 @@ public sealed record SubmitNewProductCommand(
     int CategoryId,
     int BrandId,
     string CountryOfOrigin,
-    string SubmittedByUserId);
+    string SubmittedByUserId,
+    bool CreateDirectly);

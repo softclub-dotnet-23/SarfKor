@@ -81,6 +81,7 @@ public static class DependencyInjection
         services.AddScoped<IUserConsentRepository, UserConsentRepository>();
         services.AddScoped<IStoreEmployeeRepository, StoreEmployeeRepository>();
         services.AddScoped<IStoreEmployeeInvitationRepository, StoreEmployeeInvitationRepository>();
+        services.AddScoped<IStoreOwnerInvitationRepository, StoreOwnerInvitationRepository>();
         services.AddScoped<IScanRepository, ScanRepository>();
         services.AddScoped<IPromotionRepository, PromotionRepository>();
         services.AddScoped<ICommissionRepository, CommissionRepository>();

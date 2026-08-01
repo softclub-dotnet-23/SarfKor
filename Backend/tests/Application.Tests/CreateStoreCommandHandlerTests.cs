@@ -33,6 +33,7 @@ public class CreateStoreCommandHandlerTests
         Assert.Equal("My Store", added.Name);
         Assert.Equal(38.56, added.Location.Latitude);
         Assert.Equal(68.78, added.Location.Longitude);
+        Assert.Equal(StoreStatus.Pending, added.Status);
 
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _authService.Verify(a => a.AssignRoleAsync("user-1", "StorePartner", It.IsAny<CancellationToken>()), Times.Once);

@@ -1,5 +1,6 @@
 using Application.Abstractions;
 using Application.Common;
+using Domain.Auditing;
 using Domain.Products;
 using Domain.ValueObjects;
 
@@ -10,6 +11,7 @@ public sealed class SubmitNewProductCommandHandler(
     IProductSubmissionRepository productSubmissionRepository,
     ICategoryRepository categoryRepository,
     IBrandRepository brandRepository,
+    IAuditLogRepository auditLogRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<SubmitNewProductCommand, SubmitNewProductResult>
 {
     public async Task<SubmitNewProductResult> Handle(SubmitNewProductCommand command, CancellationToken cancellationToken)
@@ -23,6 +25,37 @@ public sealed class SubmitNewProductCommandHandler(
 
         if (!await brandRepository.ExistsAsync(command.BrandId, cancellationToken))
             return new SubmitNewProductResult(SubmitNewProductOutcome.BrandNotFound, null);
+
+        // A StorePartner adding a product they actually stock is trusted the same way they're
+        // trusted to add prices/stock for it — no moderation queue at all, unlike the consumer
+        // crowdsource path below, which still needs a trust mechanism for arbitrary internet input.
+        if (command.CreateDirectly)
+        {
+            var directProduct = new Product
+            {
+                Barcode = new Barcode(command.Barcode),
+                Name = command.Name,
+                CategoryId = command.CategoryId,
+                BrandId = command.BrandId,
+                CountryOfOrigin = command.CountryOfOrigin
+            };
+
+            productRepository.Add(directProduct);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            auditLogRepository.Add(new AuditLog
+            {
+                PerformedByUserId = command.SubmittedByUserId,
+                Action = "Product.CreatedByPartner",
+                EntityType = nameof(Product),
+                EntityId = directProduct.Id,
+                Details = command.Barcode,
+                OccurredAt = DateTimeOffset.UtcNow
+            });
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return new SubmitNewProductResult(SubmitNewProductOutcome.Created, null, directProduct.Id);
+        }
 
         // Two shoppers scanning the same unrecognized barcode is the expected case, not the
         // exception — without this check every one of them would create their own duplicate

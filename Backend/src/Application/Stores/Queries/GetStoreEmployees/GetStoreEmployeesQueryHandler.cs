@@ -17,7 +17,12 @@ public sealed class GetStoreEmployeesQueryHandler(
             return new GetStoreEmployeesResult(GetStoreEmployeesOutcome.Forbidden, null);
 
         var employees = await storeEmployeeRepository.GetByStoreIdAsync(query.StoreId, cancellationToken);
-        var dtos = employees.Select(e => new StoreEmployeeDto(e.Id, e.UserId, e.Role, e.AddedAt)).ToList();
+        var dtos = employees
+            .Select(e => new StoreEmployeeDto(
+                e.Id, e.UserId, e.Role, e.AddedAt,
+                e.MonthlySalary?.Amount, e.MonthlySalary?.Currency,
+                e.ScheduleStart, e.ScheduleEnd))
+            .ToList();
 
         return new GetStoreEmployeesResult(GetStoreEmployeesOutcome.Found, dtos);
     }

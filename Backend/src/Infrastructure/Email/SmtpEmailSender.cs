@@ -41,6 +41,23 @@ public sealed class SmtpEmailSender(IConfiguration configuration) : IEmailSender
             cancellationToken);
     }
 
+    public Task SendStoreOwnerInvitationEmailAsync(string toEmail, string storeName, string code, CancellationToken cancellationToken)
+    {
+        var baseUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        var confirmLink = $"{baseUrl}/confirm-store-owner?email={Uri.EscapeDataString(toEmail)}";
+
+        return SendAsync(
+            toEmail,
+            "Подтверждение владельца магазина — Sarfkor",
+            $"""
+            <p>Администратор Sarfkor добавил вас как владельца магазина «{storeName}».</p>
+            <p>Код подтверждения: <strong>{code}</strong></p>
+            <p><a href="{confirmLink}">Перейдите сюда</a>, введите код и задайте пароль, чтобы начать работу.</p>
+            <p>Код действителен в течение 20 минут. Если вы не ожидали этого письма, просто проигнорируйте его.</p>
+            """,
+            cancellationToken);
+    }
+
     private async Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken cancellationToken)
     {
         var fromName = configuration["Smtp:FromName"] ?? "Sarfkor";

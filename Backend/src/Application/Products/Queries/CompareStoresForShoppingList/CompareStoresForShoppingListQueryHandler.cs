@@ -22,7 +22,7 @@ public sealed class CompareStoresForShoppingListQueryHandler(
 
         var completeMatches = totalByStore.Where(kv => kv.Value.MatchedCount == query.ProductIds.Count).ToList();
 
-        var stores = await storeRepository.GetByIdsAsync(completeMatches.Select(kv => kv.Key).ToList(), cancellationToken);
+        var stores = await storeRepository.GetApprovedByIdsAsync(completeMatches.Select(kv => kv.Key).ToList(), cancellationToken);
         var storesById = stores.ToDictionary(s => s.Id);
 
         var results = completeMatches

@@ -9,4 +9,5 @@ public class Store : Entity
     public required string Name { get; set; }
     public required string Address { get; set; }
     public required GeoLocation Location { get; set; }
+    public StoreStatus Status { get; set; }
 }

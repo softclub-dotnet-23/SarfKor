@@ -15,7 +15,7 @@ public sealed class GetExpiringOffersQueryHandler(
         var products = await productRepository.GetByIdsAsync(offers.Select(o => o.ProductId).Distinct().ToList(), cancellationToken);
         var productsById = products.ToDictionary(p => p.Id);
 
-        var stores = await storeRepository.GetByIdsAsync(offers.Select(o => o.StoreId).Distinct().ToList(), cancellationToken);
+        var stores = await storeRepository.GetApprovedByIdsAsync(offers.Select(o => o.StoreId).Distinct().ToList(), cancellationToken);
         var storesById = stores.ToDictionary(s => s.Id);
 
         var dtos = offers

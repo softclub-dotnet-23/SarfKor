@@ -9,6 +9,8 @@ public class StoreEmployeeConfiguration : IEntityTypeConfiguration<StoreEmployee
 {
     public void Configure(EntityTypeBuilder<StoreEmployee> builder)
     {
+        builder.ComplexProperty(x => x.MonthlySalary, b => b.Property(m => m.Amount).HasPrecision(18, 2));
+
         builder.HasOne<Store>()
             .WithMany()
             .HasForeignKey(x => x.StoreId)

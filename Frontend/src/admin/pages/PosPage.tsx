@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type FormEvent, type SVGProps } from 'reac
 import { AnimatePresence, motion } from 'framer-motion'
 import { Card } from '../components/Card'
 import { Select } from '../components/Select'
+import { Toast } from '../components/Toast'
+import { EmptyState } from '../components/EmptyState'
 import {
   BarcodeIcon,
   PlusIcon,
@@ -228,7 +230,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
       <button onClick={() => setExpanded((v) => !v)} className="flex w-full items-center justify-between gap-3 text-left">
         <div>
           <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">
-            Продажа #{sale.saleTransactionId} {sale.voided && <span className="text-[#f87171]">· отменена</span>}
+            Продажа #{sale.saleTransactionId} {sale.voided && <span className="text-[color:var(--admin-danger)]">· отменена</span>}
           </div>
           <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
             {fmt(sale.totalAmount)} {sale.currency} · {new Date(sale.completedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
@@ -251,7 +253,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setVoidOpen((v) => !v)}
-                className="flex items-center gap-1.5 rounded-lg bg-[#f8717122] px-3 py-1.5 text-[11.5px] font-semibold text-[#f87171] hover:opacity-80"
+                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-danger-dim)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-danger)] hover:opacity-80"
               >
                 <AlertIcon width={12} height={12} />
                 Отменить продажу
@@ -287,11 +289,11 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
                 placeholder="Причина отмены (обязательно)"
                 className="rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--admin-text)] outline-none"
               />
-              {voidError && <div className="text-[11.5px] font-medium text-[#f87171]">{voidError}</div>}
+              {voidError && <div className="text-[11.5px] font-medium text-[color:var(--admin-danger)]">{voidError}</div>}
               <button
                 type="submit"
                 disabled={voidBusy || !voidReason.trim()}
-                className="self-start rounded-lg bg-[#f87171] px-3.5 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                className="self-start rounded-lg bg-[color:var(--admin-danger)] px-3.5 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
               >
                 {voidBusy ? 'Отменяем…' : 'Подтвердить отмену'}
               </button>
@@ -621,7 +623,7 @@ export function PosPage() {
         </form>
 
         {scanError && (
-          <div className="flex items-center gap-2.5 rounded-xl bg-[#f87171]/10 px-4 py-3 text-[13px] font-medium text-[#f87171]">
+          <div className="flex items-center gap-2.5 rounded-xl bg-[color:var(--admin-danger-dim)] px-4 py-3 text-[13px] font-medium text-[color:var(--admin-danger)]">
             <AlertIcon width={16} height={16} className="shrink-0" />
             {scanError}
           </div>
@@ -676,7 +678,7 @@ export function PosPage() {
                   setCartBundles([])
                   idempotencyKeyRef.current = null
                 }}
-                className="text-xs font-medium text-[color:var(--admin-text-tertiary)] hover:text-[#f87171]"
+                className="text-xs font-medium text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-danger)]"
               >
                 Очистить
               </button>
@@ -720,7 +722,7 @@ export function PosPage() {
                 </div>
                 <button
                   onClick={() => removeLine(line.productId)}
-                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[color:var(--admin-text-tertiary)] hover:text-[#f87171]"
+                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-danger)]"
                   aria-label="Удалить"
                 >
                   <TrashIcon width={13} height={13} />
@@ -744,7 +746,7 @@ export function PosPage() {
                 </div>
                 <button
                   onClick={() => removeBundleLine(b.productBundleId)}
-                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[color:var(--admin-text-tertiary)] hover:text-[#f87171]"
+                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-danger)]"
                   aria-label="Удалить набор"
                 >
                   <TrashIcon width={13} height={13} />
@@ -753,9 +755,7 @@ export function PosPage() {
             ))}
           </AnimatePresence>
           {cart.length === 0 && cartBundles.length === 0 && (
-            <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">
-              Чек пуст — отсканируйте товар слева
-            </div>
+            <EmptyState title="Чек пуст" body="Отсканируйте товар слева, чтобы добавить его в продажу" />
           )}
         </div>
 
@@ -773,7 +773,7 @@ export function PosPage() {
         </div>
 
         {checkoutError && (
-          <div className="flex items-center gap-2 rounded-xl bg-[#f87171]/10 px-3.5 py-2.5 text-[12.5px] font-medium text-[#f87171]">
+          <div className="flex items-center gap-2 rounded-xl bg-[color:var(--admin-danger-dim)] px-3.5 py-2.5 text-[12.5px] font-medium text-[color:var(--admin-danger)]">
             <AlertIcon width={14} height={14} className="shrink-0" />
             {checkoutError}
           </div>
@@ -814,26 +814,17 @@ export function PosPage() {
         </Card>
       )}
 
-      <AnimatePresence>
-        {successInfo && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="fixed bottom-8 right-8 z-50 flex items-center gap-3 rounded-2xl bg-[#0f172a] px-5 py-4 text-white shadow-2xl"
-          >
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-[#34d399]/20 text-[#34d399]">
-              <CheckIcon width={18} height={18} />
-            </span>
-            <div>
-              <div className="text-sm font-bold">Продажа оформлена</div>
-              <div className="text-xs text-white/60">
-                {fmt(successInfo.totalAmount)} {successInfo.currency}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Toast open={!!successInfo} variant="success">
+        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/15">
+          <CheckIcon width={13} height={13} />
+        </span>
+        <span>
+          Продажа оформлена ·{' '}
+          <span className="opacity-70">
+            {successInfo ? `${fmt(successInfo.totalAmount)} ${successInfo.currency}` : ''}
+          </span>
+        </span>
+      </Toast>
     </div>
   )
 }

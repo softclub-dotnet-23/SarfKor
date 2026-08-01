@@ -92,10 +92,13 @@ export function StoreOnboardingPage() {
 
   return (
     <div className="admin-shell flex min-h-screen items-center justify-center bg-[color:var(--admin-content)] p-6 text-[color:var(--admin-text)]">
-      <div className="w-full max-w-md rounded-[22px] bg-[color:var(--admin-card)] p-8 ring-1 ring-[color:var(--admin-border)]">
+      <div className="w-full max-w-md rounded-[22px] bg-[color:var(--admin-card)] p-8 ring-1 ring-[color:var(--admin-border)] [box-shadow:var(--admin-shadow-lift)]">
         <span
           className="mb-5 grid h-12 w-12 place-items-center rounded-2xl text-white"
-          style={{ background: 'linear-gradient(135deg,#38bdf8,#0ea5e9)' }}
+          style={{
+            background:
+              'linear-gradient(135deg, var(--admin-accent), color-mix(in srgb, var(--admin-accent) 65%, black))',
+          }}
         >
           <StoreIcon width={22} height={22} />
         </span>
@@ -128,7 +131,7 @@ export function StoreOnboardingPage() {
         )}
 
         {alreadyPartnerWithoutStore && !hasPickableStores && !storesLoading && (
-          <div className="mb-6 rounded-xl bg-[#fbbf2418] p-4 text-[12.5px] leading-relaxed text-[color:var(--admin-text-secondary)]">
+          <div className="mb-6 rounded-xl bg-[color:var(--admin-warning-dim)] p-4 text-[12.5px] leading-relaxed text-[color:var(--admin-text-secondary)]">
             У вашего аккаунта есть права партнёра, но за ним пока не числится ни одного магазина. Создайте новый ниже
             {!showManualEntry && (
               <>
@@ -222,7 +225,7 @@ export function StoreOnboardingPage() {
           </button>
 
           {error && (
-            <div className="rounded-lg bg-[#f8717118] px-3.5 py-2.5 text-[12.5px] font-medium text-[#f87171]">{error}</div>
+            <div className="rounded-lg bg-[color:var(--admin-danger-dim)] px-3.5 py-2.5 text-[12.5px] font-medium text-[color:var(--admin-danger)]">{error}</div>
           )}
 
           <button

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Card } from '../components/Card'
 import { Select } from '../components/Select'
+import { Loading } from '../components/Loading'
+import { ErrorState } from '../components/ErrorState'
 import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import {
@@ -146,14 +148,14 @@ function EmployeesSection() {
           {busy ? 'Добавляем…' : 'Добавить'}
         </button>
       </form>
-      {formError && <div className="mb-3 text-[12px] font-medium text-[#f87171]">{formError}</div>}
-      {formSuccess && <div className="mb-3 text-[12px] font-medium text-[#4ade80]">{formSuccess}</div>}
+      {formError && <div className="mb-3 text-[12px] font-medium text-[color:var(--admin-danger)]">{formError}</div>}
+      {formSuccess && <div className="mb-3 text-[12px] font-medium text-[color:var(--admin-success)]">{formSuccess}</div>}
       <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
         Если сотрудник уже зарегистрирован в Sarfkor под этим email, доступ к панели выдаётся сразу. Если нет — ему
         придёт письмо со ссылкой, чтобы задать пароль и присоединиться.
       </p>
 
-      {error && <div className="mb-3 text-[12px] font-medium text-[#f87171]">{error}</div>}
+      {error && <div className="mb-3 text-[12px] font-medium text-[color:var(--admin-danger)]">{error}</div>}
 
       <div className="flex flex-col gap-2.5">
         {employees === null && !error && (
@@ -176,7 +178,7 @@ function EmployeesSection() {
               onClick={() => handleRemove(emp.storeEmployeeId)}
               disabled={removingId === emp.storeEmployeeId}
               aria-label="Удалить сотрудника"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[#f8717122] hover:text-[#f87171] disabled:opacity-50"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-danger-dim)] hover:text-[color:var(--admin-danger)] disabled:opacity-50"
             >
               <TrashIcon width={14} height={14} />
             </button>
@@ -234,13 +236,13 @@ export function StaffPage() {
   }, [storeId])
 
   if (loading) {
-    return <div className="py-24 text-center text-[color:var(--admin-text-tertiary)]">Загружаем данные…</div>
+    return <Loading label="Загружаем данные…" />
   }
 
   if (error || !shifts) {
     return (
-      <Card className="p-8 text-center">
-        <p className="text-[14px] text-[color:var(--admin-text-secondary)]">{error || 'Нет данных'}</p>
+      <Card>
+        <ErrorState message={error || 'Нет данных'} />
       </Card>
     )
   }
@@ -257,7 +259,7 @@ export function StaffPage() {
         </Card>
         <Card className="p-5">
           <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Сейчас на смене</div>
-          <div className="mt-2 text-[26px] font-extrabold text-[#34d399]">{openShifts.length}</div>
+          <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-success)]">{openShifts.length}</div>
         </Card>
         <Card className="p-5">
           <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Кассиров активно (30 дней)</div>
@@ -281,7 +283,7 @@ export function StaffPage() {
               <div className="flex items-center gap-3">
                 <span
                   className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[13px] font-bold text-white"
-                  style={{ background: 'linear-gradient(135deg,#38bdf8,#0ea5e9)' }}
+                  style={{ background: 'linear-gradient(135deg, var(--admin-accent), color-mix(in srgb, var(--admin-accent) 65%, black))' }}
                 >
                   {shortId(s.cashierUserId, user?.userId).charAt(0).toUpperCase()}
                 </span>
@@ -302,7 +304,7 @@ export function StaffPage() {
                 </div>
                 <span
                   className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold ${
-                    s.endedAt ? 'bg-[color:var(--admin-border)] text-[color:var(--admin-text-tertiary)]' : 'bg-[#34d39922] text-[#34d399]'
+                    s.endedAt ? 'bg-[color:var(--admin-border)] text-[color:var(--admin-text-tertiary)]' : 'bg-[color:var(--admin-success-dim)] text-[color:var(--admin-success)]'
                   }`}
                 >
                   {s.endedAt ? 'Закрыта' : 'Открыта'}
@@ -349,7 +351,7 @@ export function StaffPage() {
                     <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{(a.voidRate * 100).toFixed(1)}%</td>
                     <td className="py-3">
                       {a.isAnomalous && (
-                        <span className="rounded-full bg-[#f8717122] px-2.5 py-1 text-[11px] font-semibold text-[#f87171]">Аномалия</span>
+                        <span className="rounded-full bg-[color:var(--admin-danger-dim)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--admin-danger)]">Аномалия</span>
                       )}
                     </td>
                   </tr>

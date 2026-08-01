@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Card } from '../components/Card'
 import { LineChart } from '../components/LineChart'
 import { RingChart } from '../components/RingChart'
+import { Loading } from '../components/Loading'
+import { ErrorState } from '../components/ErrorState'
 import { RevenueIcon, PackageIcon, AlertIcon, ClockIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { storesApi, salesApi, ApiError, type StoreDashboard, type ProfitReport, type ReorderAlert, type CashierShift } from '../../lib/api'
@@ -111,19 +113,13 @@ export function DashboardPage() {
   const [dailyGoal] = useState(() => Number(localStorage.getItem(DAILY_GOAL_KEY)) || 150)
 
   if (loading) {
-    return <div className="py-24 text-center text-[color:var(--admin-text-tertiary)]">Загружаем данные магазина…</div>
+    return <Loading label="Загружаем данные магазина…" />
   }
 
   if (error || !data) {
     return (
-      <Card className="p-8 text-center">
-        <p className="mb-4 text-[14px] text-[color:var(--admin-text-secondary)]">{error || 'Нет данных'}</p>
-        <button
-          onClick={reload}
-          className="rounded-xl bg-[color:var(--admin-accent)] px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-90"
-        >
-          Повторить
-        </button>
+      <Card>
+        <ErrorState message={error || 'Нет данных'} onRetry={reload} />
       </Card>
     )
   }
@@ -263,14 +259,14 @@ export function DashboardPage() {
                 key={alert.productId}
                 className="flex items-center gap-3 rounded-[14px] bg-[color:var(--admin-card)] p-3 ring-1 ring-[color:var(--admin-border)]"
               >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#fbbf2422] text-[#fbbf24]">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[color:var(--admin-warning-dim)] text-[color:var(--admin-warning)]">
                   <AlertIcon width={16} height={16} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13px] font-semibold text-[color:var(--admin-text)]">
                     Товар #{alert.productId}
                   </div>
-                  <div className="mt-0.5 text-[11px] font-medium text-[#fbbf24]">
+                  <div className="mt-0.5 text-[11px] font-medium text-[color:var(--admin-warning)]">
                     Осталось {alert.currentQuantity} из {alert.thresholdQuantity}
                   </div>
                 </div>

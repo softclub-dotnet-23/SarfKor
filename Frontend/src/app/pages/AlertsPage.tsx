@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { priceAlertsApi } from '../../lib/api'
-import { EmptyState, ErrorState, LINE, Reveal, Skeleton, TXT, money, useAsync } from '../ui'
+import { EmptyState, ErrorState, LINE, Reveal, SectionTitle, Skeleton, TXT, money, useAsync } from '../ui'
 
 /**
  * Price alerts. The backend has no delete — an alert is deactivated, not removed —
@@ -90,12 +90,7 @@ export function AlertsPage() {
 
       {off.length > 0 && (
         <>
-          <p
-            className="mb-5 text-[11px] font-bold uppercase tracking-[0.2em]"
-            style={{ color: TXT.rest }}
-          >
-            Отключённые
-          </p>
+          <SectionTitle>Отключённые</SectionTitle>
           <ul className="flex flex-col">
             {off.map((a) => (
               <li

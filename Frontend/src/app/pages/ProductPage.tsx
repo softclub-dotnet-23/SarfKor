@@ -159,7 +159,7 @@ export function ProductPage() {
         <section
           className="mb-4 rounded-2xl border p-8 sm:p-10"
           style={{
-            borderColor: 'rgba(255,255,255,0.16)',
+            borderColor: LINE,
             background:
               'radial-gradient(120% 140% at 12% 0%, rgba(255,255,255,0.055), transparent 62%)',
           }}

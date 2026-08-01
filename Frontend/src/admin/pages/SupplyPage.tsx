@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode, type SVGProps } from 'react'
 import { Card } from '../components/Card'
 import { Select } from '../components/Select'
+import { Loading } from '../components/Loading'
 import { TruckIcon, PlusIcon, TrashIcon, RefreshIcon, PhoneIcon, MailIcon, AlertIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { ApiError } from '../../lib/api/client'
@@ -114,9 +115,9 @@ const PO_STATUS_LABEL: Record<PurchaseOrder['status'], string> = {
 
 const PO_STATUS_STYLE: Record<PurchaseOrder['status'], string> = {
   Draft: 'bg-[color:var(--admin-border)] text-[color:var(--admin-text-tertiary)]',
-  Submitted: 'bg-[#fbbf2422] text-[#fbbf24]',
-  Received: 'bg-[#34d39922] text-[#34d399]',
-  Cancelled: 'bg-[#f8717122] text-[#f87171]',
+  Submitted: 'bg-[color:var(--admin-warning-dim)] text-[color:var(--admin-warning)]',
+  Received: 'bg-[color:var(--admin-success-dim)] text-[color:var(--admin-success)]',
+  Cancelled: 'bg-[color:var(--admin-danger-dim)] text-[color:var(--admin-danger)]',
 }
 
 const TRANSFER_STATUS_LABEL: Record<StockTransfer['status'], string> = {
@@ -128,9 +129,9 @@ const TRANSFER_STATUS_LABEL: Record<StockTransfer['status'], string> = {
 
 const TRANSFER_STATUS_STYLE: Record<StockTransfer['status'], string> = {
   Pending: 'bg-[color:var(--admin-border)] text-[color:var(--admin-text-tertiary)]',
-  InTransit: 'bg-[#fbbf2422] text-[#fbbf24]',
-  Completed: 'bg-[#34d39922] text-[#34d399]',
-  Cancelled: 'bg-[#f8717122] text-[#f87171]',
+  InTransit: 'bg-[color:var(--admin-warning-dim)] text-[color:var(--admin-warning)]',
+  Completed: 'bg-[color:var(--admin-success-dim)] text-[color:var(--admin-success)]',
+  Cancelled: 'bg-[color:var(--admin-danger-dim)] text-[color:var(--admin-danger)]',
 }
 
 function StatusBadge({ label, className }: { label: string; className: string }) {
@@ -140,7 +141,7 @@ function StatusBadge({ label, className }: { label: string; className: string })
 function FieldError({ message }: { message: string }) {
   if (!message) return null
   return (
-    <div className="flex items-center gap-1.5 text-[12px] font-medium text-[#f87171]">
+    <div className="flex items-center gap-1.5 text-[12px] font-medium text-[color:var(--admin-danger)]">
       <AlertIcon width={13} height={13} className="shrink-0" />
       {message}
     </div>
@@ -231,7 +232,7 @@ function SuppliersSection({
           </button>
         </div>
 
-        {loading && <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Загружаем…</div>}
+        {loading && <Loading />}
 
         {!loading && error && (
           <div className="py-6 text-center">
@@ -465,7 +466,7 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
                     onClick={() => removeLine(i)}
                     disabled={lines.length === 1}
                     aria-label="Удалить строку"
-                    className="grid h-full min-h-[42px] w-full place-items-center rounded-xl bg-[color:var(--admin-hover)] text-[color:var(--admin-text-tertiary)] hover:text-[#f87171] disabled:opacity-40 sm:w-10"
+                    className="grid h-full min-h-[42px] w-full place-items-center rounded-xl bg-[color:var(--admin-hover)] text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-danger)] disabled:opacity-40 sm:w-10"
                   >
                     <TrashIcon width={14} height={14} />
                   </button>
@@ -503,7 +504,7 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
           </button>
         </div>
 
-        {loading && <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Загружаем…</div>}
+        {loading && <Loading />}
 
         {!loading && error && (
           <div className="py-6 text-center">
@@ -715,7 +716,7 @@ function TransfersSection({ storeId }: { storeId: number }) {
           </button>
         </div>
 
-        {loading && <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Загружаем…</div>}
+        {loading && <Loading />}
 
         {!loading && error && (
           <div className="py-6 text-center">

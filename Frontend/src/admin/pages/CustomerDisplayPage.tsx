@@ -45,7 +45,7 @@ export function CustomerDisplayPage() {
             exit={{ opacity: 0 }}
             className="flex flex-1 flex-col items-center justify-center gap-6 text-center"
           >
-            <span className="grid h-24 w-24 place-items-center rounded-full bg-[#34d39922] text-[#34d399]">
+            <span className="grid h-24 w-24 place-items-center rounded-full bg-[color:var(--admin-success-dim)] text-[color:var(--admin-success)]">
               <CheckIcon width={48} height={48} />
             </span>
             <div className="text-[40px] font-extrabold">Спасибо за покупку!</div>

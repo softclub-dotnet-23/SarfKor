@@ -55,6 +55,232 @@
 @keyframes sk-laser{0%{top:9%}50%{top:84%}100%{top:9%}}
 @keyframes sk-frame{0%,100%{opacity:.35}50%{opacity:1}}
 @keyframes sk-spin{to{transform:rotate(360deg)}}
+
+/* ============================================================================
+   MOBILE
+   ============================================================================
+   Everything below lives inside a width query. Before this block the document
+   had no width media query at all, so the desktop composition cannot be reached
+   by any rule here — that is what makes the desktop pixel-identical rather than
+   merely "checked afterwards".
+
+   `!important` is used liberally and deliberately: the markup carries its layout
+   in inline style attributes, which outrank any stylesheet selector. Inside a
+   media query that only phones can enter, it is the only lever available.
+
+   Breakpoint is 860px so tablets in portrait (768) get the phone composition
+   too — at that width the two-column hero is already collapsing.
+   ------------------------------------------------------------------------- */
+@media (max-width:860px){
+
+  /* ---- shell ---------------------------------------------------------- */
+  /* dvh, not vh: the mobile URL bar changes the viewport as you scroll, and a
+     100vh hero puts its own CTA under the browser chrome on first paint. */
+  .sk-root{min-height:100dvh !important}
+  .sk-root [data-hero] > div,
+  .sk-root [data-scene-titles] > div{height:100dvh !important}
+
+  /* Nothing may introduce a sideways scroll. The film is a vertical medium and
+     a 1px horizontal drift on a phone reads as a bug. */
+  .sk-root{overflow-x:clip !important;max-width:100vw !important}
+
+  /* ---- header --------------------------------------------------------- */
+  .sk-root header > div{
+    height:60px !important;
+    padding:0 20px !important;
+    padding-left:max(20px,env(safe-area-inset-left)) !important;
+    padding-right:max(20px,env(safe-area-inset-right)) !important;
+  }
+  /* The desktop bar packs 661px of content into a 390px viewport: the six links
+     run 215px past the edge and the login button sits entirely off-screen. Both
+     move into the overlay. */
+  .sk-root [data-nav]{display:none !important}
+  .sk-root header > div > div:last-child{display:none !important}
+  .sk-root [data-burger]{display:flex !important}
+  /* Burger -> close, as a rotation of the two rules rather than a swap. */
+  .sk-root header [data-burger][aria-expanded="true"] span:first-child{transform:translateY(3.25px) rotate(45deg)}
+  .sk-root header [data-burger][aria-expanded="true"] span:last-child{transform:translateY(-3.25px) rotate(-45deg)}
+
+  /* ---- mobile menu ---------------------------------------------------- */
+  .sk-root [data-menu]{
+    display:block !important;
+    position:fixed;inset:0;z-index:60;
+    visibility:hidden;pointer-events:none;
+  }
+  .sk-root [data-menu][data-open="true"]{visibility:visible;pointer-events:auto}
+  .sk-root [data-menu-scrim]{
+    position:absolute;inset:0;background:rgba(0,0,0,.72);
+    opacity:0;transition:opacity .5s var(--ease-out);
+    -webkit-backdrop-filter:blur(22px) saturate(120%);backdrop-filter:blur(22px) saturate(120%);
+  }
+  .sk-root [data-menu][data-open="true"] [data-menu-scrim]{opacity:1}
+  .sk-root [data-menu-panel]{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;justify-content:center;
+    gap:2px;
+    padding:calc(60px + env(safe-area-inset-top)) max(28px,env(safe-area-inset-left)) calc(28px + env(safe-area-inset-bottom));
+  }
+  .sk-root [data-menu-item]{
+    display:flex;align-items:baseline;gap:16px;
+    border:0;background:none;padding:14px 0;margin:0;
+    font-family:inherit;text-align:left;cursor:pointer;width:100%;
+    /* 52px of vertical reach per row — comfortably past the 44px minimum. */
+    min-height:52px;
+    opacity:0;transform:translateY(14px);
+    transition:opacity .5s var(--ease-out),transform .6s var(--ease-out);
+  }
+  .sk-root [data-menu][data-open="true"] [data-menu-item]{opacity:1;transform:none}
+  /* Staggered arrival, same 70ms beat the header uses when it assembles. */
+  .sk-root [data-menu][data-open="true"] [data-menu-item]:nth-child(1){transition-delay:.06s}
+  .sk-root [data-menu][data-open="true"] [data-menu-item]:nth-child(2){transition-delay:.13s}
+  .sk-root [data-menu][data-open="true"] [data-menu-item]:nth-child(3){transition-delay:.20s}
+  .sk-root [data-menu][data-open="true"] [data-menu-item]:nth-child(4){transition-delay:.27s}
+  .sk-root [data-menu][data-open="true"] [data-menu-item]:nth-child(5){transition-delay:.34s}
+  .sk-root [data-menu][data-open="true"] [data-menu-item]:nth-child(6){transition-delay:.41s}
+  .sk-root [data-menu-num]{
+    flex:0 0 auto;width:22px;
+    font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;
+    color:var(--text-tertiary);letter-spacing:.08em;
+  }
+  .sk-root [data-menu-label]{
+    font-size:clamp(26px,7.4vw,34px);font-weight:700;letter-spacing:-.035em;
+    line-height:1.1;color:var(--text-primary);
+  }
+  .sk-root [data-menu-foot]{
+    margin-top:36px;padding-top:26px;border-top:1px solid var(--hairline);
+    opacity:0;transform:translateY(14px);
+    transition:opacity .5s var(--ease-out) .46s,transform .6s var(--ease-out) .46s;
+  }
+  .sk-root [data-menu][data-open="true"] [data-menu-foot]{opacity:1;transform:none}
+  .sk-root [data-menu-cta]{
+    display:block;width:100%;min-height:54px;
+    border:0;border-radius:999px;font-family:inherit;
+    background:var(--btn-dark-grad);color:var(--bg-app);
+    font-size:16px;font-weight:600;cursor:pointer;
+  }
+  .sk-root [data-menu-account]{display:flex;align-items:center;justify-content:space-between;gap:14px}
+  .sk-root [data-menu-email]{
+    font-size:13px;font-weight:500;color:var(--text-secondary);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .sk-root [data-menu-ghost]{
+    flex:0 0 auto;min-height:46px;padding:0 20px;
+    border:1px solid var(--border-strong);border-radius:999px;
+    background:none;color:var(--text-primary);
+    font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+  }
+
+  /* ---- hero ----------------------------------------------------------- */
+  /* Desktop puts the copy and the product side by side at 52% / 44%. On a 390px
+     screen that leaves a 178px text column with a 229px button inside it. Mobile
+     gets its own composition instead: copy centred in the upper half, the product
+     anchored to the bottom edge and allowed to crop — the device stays the
+     subject without fighting the type for width. */
+  .sk-root [data-hero-main]{
+    padding:calc(84px + env(safe-area-inset-top)) 24px 0 !important;
+    align-items:center !important;
+  }
+  .sk-root [data-hero-main] > div:first-child{
+    max-width:100% !important;width:100% !important;
+    align-items:center !important;text-align:center !important;
+  }
+  .sk-root [data-hero-h1]{font-size:clamp(30px,8.6vw,40px) !important;line-height:1.06 !important}
+  .sk-root [data-hero-main] p{font-size:15px !important;line-height:1.55 !important;max-width:32ch;margin-inline:auto}
+  .sk-root [data-hero-rule]{display:none !important}
+
+  /* Thumb-friendly: full width, stacked, 54px tall. */
+  .sk-root [data-hero-item]:nth-of-type(3){
+    width:100% !important;flex-direction:column !important;
+    gap:10px !important;margin-top:28px !important;
+  }
+  .sk-root [data-hero-item]:nth-of-type(3) button{
+    width:100% !important;min-height:54px !important;
+    justify-content:center !important;font-size:16px !important;
+  }
+
+  /* Decorative desktop furniture that has no room on a phone. */
+  .sk-root [data-hero-word],
+  .sk-root [data-hero-pill]{display:none !important}
+  .sk-root [data-hero-item]:last-of-type{display:none !important}
+
+  /* The product: bottom-anchored and centred. Only the box is set here — the
+     scene writes `transform` on this element every frame, so anything positional
+     done with transform would be overwritten on the next tick. */
+  .sk-root [data-hero-stage]{
+    top:auto !important;bottom:-7vh !important;
+    left:0 !important;right:0 !important;width:100% !important;
+    height:52dvh !important;
+  }
+  /* `scale` is a separate property from `transform`, so shrinking the device here
+     survives the per-frame transform writes in setupPhone(). */
+  .sk-root [data-hero-stage] div[style*="preserve-3d"]{scale:.52 !important}
+
+  /* ---- global rhythm --------------------------------------------------- */
+  /* Sections were authored for a 1200px canvas; on a phone the inner padding is
+     what stops every chapter reading as edge-to-edge text. */
+  .sk-root section [style*="max-width:1200px"],
+  .sk-root section [style*="max-width:1440px"],
+  .sk-root section [style*="max-width:1120px"]{
+    padding-left:max(22px,env(safe-area-inset-left)) !important;
+    padding-right:max(22px,env(safe-area-inset-right)) !important;
+  }
+  /* Any multi-column grid becomes a single column. */
+  .sk-root section [style*="grid-template-columns"]{
+    grid-template-columns:1fr !important;
+    gap:16px !important;
+  }
+  /* Nothing may exceed the viewport. */
+  .sk-root section img,
+  .sk-root section svg{max-width:100% !important;height:auto}
+
+  /* Every control gets a real touch target. */
+  .sk-root section button{min-height:44px}
+}
+
+/* Tablet portrait / large phones in landscape. Full-bleed controls are right on a
+   390px phone and wrong at 768 — a 705px pill reads as a broken layout rather than
+   a generous one, so the column gets a ceiling while staying centred. */
+@media (min-width:601px) and (max-width:860px){
+  .sk-root [data-hero-item]:nth-of-type(3){max-width:440px !important;margin-inline:auto !important}
+  .sk-root [data-hero-main] p{max-width:46ch !important}
+  .sk-root [data-menu-panel]{max-width:520px;margin-inline:auto}
+  .sk-root [data-menu-cta]{max-width:440px;margin-inline:auto}
+}
+
+/* Narrow phones (320-360). The hero type and the menu need one more step down
+   before they start wrapping into unreadable shapes. */
+@media (max-width:361px){
+  .sk-root [data-hero-h1]{font-size:28px !important}
+  .sk-root [data-hero-main]{padding-left:18px !important;padding-right:18px !important}
+  .sk-root [data-menu-label]{font-size:24px !important}
+  .sk-root [data-menu-panel]{padding-left:22px !important;padding-right:22px !important}
+}
+
+/* Short viewports (iPhone SE class, 320x568 / 375x667 with browser chrome).
+   The copy block and a 52dvh device add up to more than the screen, and since
+   [data-hero-main] sits at z-index 3 the text lands on top of the phone instead
+   of beside it. Give the device less of the frame and tighten the copy until the
+   two stop meeting. */
+@media (max-width:860px) and (max-height:700px){
+  .sk-root [data-hero-main]{padding-top:calc(68px + env(safe-area-inset-top)) !important}
+  .sk-root [data-hero-stage]{height:38dvh !important;bottom:-3vh !important}
+  .sk-root [data-hero-h1]{font-size:26px !important}
+  .sk-root [data-hero-main] p{font-size:14px !important;line-height:1.5 !important}
+  .sk-root [data-hero-item]:nth-of-type(3){margin-top:18px !important;gap:8px !important}
+  .sk-root [data-hero-item]:nth-of-type(3) button{min-height:48px !important;font-size:15px !important}
+}
+
+/* Landscape phones: the hero is 100dvh with a bottom-anchored device, which
+   leaves no vertical room at all when the screen is 390px tall. Drop the product
+   and let the copy own the frame. */
+@media (max-width:860px) and (orientation:landscape) and (max-height:520px){
+  .sk-root [data-hero-stage]{display:none !important}
+  .sk-root [data-hero-main]{padding-top:70px !important;justify-content:center !important}
+  .sk-root [data-hero-h1]{font-size:26px !important}
+  .sk-root [data-menu-panel]{justify-content:flex-start !important;overflow-y:auto}
+  .sk-root [data-menu-item]{min-height:44px;padding:8px 0}
+  .sk-root [data-menu-label]{font-size:20px !important}
+}
 </style>
 </helmet>
 <div class="sk-root" ref="{{ rootRef }}" style="position:relative;min-height:100vh;overflow-x:clip">
@@ -69,6 +295,12 @@
         <div style="width:34px;height:34px;border-radius:11px;background:var(--brand-grad);box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 4px 12px -2px rgba(106,106,106,.5);display:flex;align-items:center;justify-content:center;color:#0a0a0a;font-weight:800;font-size:19px;letter-spacing:-.02em">S</div>
         <span style="font-size:19px;font-weight:700;letter-spacing:-.02em">Sarfkor</span>
       </div>
+      <!-- Burger. display:none until the mobile breakpoint, so the desktop bar is
+           byte-for-byte what it was. 44px box = Apple's minimum touch target. -->
+      <button data-burger onClick="{{ toggleMenu }}" aria-label="{{ menuBtnLabel }}" aria-expanded="{{ menuOpen }}" style="display:none;border:0;background:none;padding:0;width:44px;height:44px;margin-right:-10px;cursor:pointer;align-items:center;justify-content:center;flex-direction:column;gap:5px">
+        <span data-burger-line style="display:block;width:20px;height:1.5px;background:var(--text-primary);border-radius:2px;transition:transform .5s var(--ease-out),opacity .35s var(--ease-out)"></span>
+        <span data-burger-line style="display:block;width:20px;height:1.5px;background:var(--text-primary);border-radius:2px;transition:transform .5s var(--ease-out),opacity .35s var(--ease-out)"></span>
+      </button>
       <nav style="display:flex;align-items:center;gap:28px" data-nav>
         <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="6">
           <button data-index="{{ item.i }}" onClick="{{ navClick }}" style="position:relative;border:0;background:none;color:{{ item.color }};padding:4px 0;font-size:13px;font-weight:{{ item.weight }};font-family:inherit;letter-spacing:.01em;transition:color .3s var(--ease-out);opacity:{{ item.op }}">{{ item.label }}</button>
@@ -87,6 +319,35 @@
       </div>
     </div>
   </header>
+
+  <!-- ============ MOBILE MENU ============
+       Full-screen, blurred, numbered the way ACT 00 numbers its words so the menu
+       belongs to the same film. Kept in the DOM and toggled by opacity/visibility
+       rather than mounted on demand: the blur layer is expensive to create, and
+       building it at tap time is what makes a menu feel cheap. Never rendered on
+       desktop — the container is display:none outside the mobile query. -->
+  <div data-menu data-open="{{ menuOpen }}" style="display:none">
+    <div data-menu-scrim onClick="{{ closeMenu }}"></div>
+    <nav data-menu-panel aria-label="Меню">
+      <sc-for list="{{ menuItems }}" as="m" hint-placeholder-count="6">
+        <button data-menu-item data-index="{{ m.i }}" onClick="{{ menuNavClick }}">
+          <span data-menu-num>{{ m.num }}</span>
+          <span data-menu-label>{{ m.label }}</span>
+        </button>
+      </sc-for>
+      <div data-menu-foot>
+        <sc-if value="{{ isLoggedIn }}" hint-placeholder-val="{{ false }}">
+          <div data-menu-account>
+            <span data-menu-email>{{ authUserEmail }}</span>
+            <button data-menu-ghost onClick="{{ menuLogout }}">Выйти</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isLoggedOut }}" hint-placeholder-val="{{ true }}">
+          <button data-menu-cta onClick="{{ menuLogin }}">Войти</button>
+        </sc-if>
+      </div>
+    </nav>
+  </div>
 
   <!-- ============ ACT 00 · ТИТРЫ ============ -->
   <section data-scene-titles style="position:relative;height:700vh">
@@ -591,7 +852,10 @@
 class Component extends DCLogic {
   state = { page:0, activeStore:'evar', tIndex:0, faqOpen:2, perPage:3,
     openApp:null, notesText:'Список покупок:\n• Молоко «Домик в деревне»\n• Хлеб бородинский\n• Яйца C1', settings:{wifi:true,bt:false,air:false,dark:true}, calc:{disp:'0',prev:null,op:null,fresh:true},
-    authUser:null, authReady:false };
+    authUser:null, authReady:false,
+    /* Mobile only. The desktop bar never consults this — the overlay and the
+       burger that drives it are both display:none above the breakpoint. */
+    menuOpen:false };
 
   rootRef=React.createRef(); headerRef=React.createRef(); stageRef=React.createRef();
   phoneWrapRef=React.createRef(); phoneRef=React.createRef(); screenRef=React.createRef();
@@ -1521,6 +1785,16 @@ class Component extends DCLogic {
     // guard: the next mount's sweep would cancel the very safety net. Idempotent.
     setTimeout(()=>{if(this._heroRevealing){window.scrollTo(0,Math.round(to));release();}},DUR+1500);
   }
+  /* Mobile menu open/close. Body scroll is locked while it is up — without this
+     the film keeps scrolling under the overlay and closing lands you somewhere
+     else entirely. The previous overflow is captured rather than assumed, because
+     the cold open may still own the lock when the menu is first opened. */
+  setMenu(open){
+    if(this.state.menuOpen===open)return;
+    if(open){this._menuPrevOverflow=document.body.style.overflow;document.body.style.overflow='hidden';}
+    else{document.body.style.overflow=this._menuPrevOverflow||'';}
+    this.setState({menuOpen:open});
+  }
   markInteract(){if(this.interacted)return;this.interacted=true;if(this.hintRef.current)this.hintRef.current.style.opacity='0';}
   setPage(p){this.setState({page:p});if(this.pagesRef.current)this.pagesRef.current.style.transform=`translateX(${p?-50:0}%)`;}
 
@@ -1861,6 +2135,18 @@ class Component extends DCLogic {
       notesInput:e=>this.setState({notesText:e.target.value}),
       toggleSetting:e=>{const k=e.currentTarget.dataset.k;this.setState(p=>({settings:{...p.settings,[k]:!p.settings[k]}}));},
       isLoggedIn,isLoggedOut,authUserEmail,
+      /* ---- mobile menu ----
+         The overlay reuses the same `nav` table the desktop bar is built from, so
+         the two can never drift apart. Opening locks the body: the film is one
+         long scroll and a menu that scrolls the page behind itself feels broken. */
+      menuOpen:s.menuOpen, menuBtnLabel:s.menuOpen?'Закрыть меню':'Меню',
+      menuItems:nav.map(([label,id],i)=>({i,label,num:String(i+1).padStart(2,'0')})),
+      toggleMenu:()=>this.setMenu(!this.state.menuOpen),
+      closeMenu:()=>this.setMenu(false),
+      // Close first, then scroll: the lock has to be released before the page moves.
+      menuNavClick:e=>{const i=+e.currentTarget.dataset.index;this.setMenu(false);this.scrollTo(nav[i][1]);},
+      menuLogin:()=>{this.setMenu(false);if(this._embedded)this._ask('navigate',{to:'/login'}).catch(()=>{});else window.location.href='/login';},
+      menuLogout:()=>{this.setMenu(false);this.doLogout();},
       doLogout:()=>this.doLogout(),
       goHome:()=>this.scrollTo('hero'),
       navClick:e=>this.scrollTo(nav[+e.currentTarget.dataset.index][1]),

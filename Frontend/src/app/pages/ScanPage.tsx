@@ -112,7 +112,7 @@ export function ScanPage() {
       <Reveal i={1}>
         <div
           className="relative mb-8 aspect-[4/5] w-full overflow-hidden rounded-2xl border sm:aspect-[16/10]"
-          style={{ borderColor: 'rgba(255,255,255,0.16)', background: '#050505' }}
+          style={{ borderColor: LINE, background: '#050505' }}
         >
           <video
             ref={videoRef}

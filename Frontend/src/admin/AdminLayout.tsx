@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import clsx from 'clsx'
 import { LogoMark } from '../components/Logo'
 import { useTheme } from '../theme/ThemeProvider'
@@ -110,18 +111,38 @@ function ShiftCard() {
         placeholder={myOpenShift ? 'Сумма в кассе' : 'Начальная сумма'}
         className="mb-2 w-full rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-2.5 py-1.5 text-[12px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
       />
-      {error && <div className="mb-2 text-[11px] font-medium text-[#f87171]">{error}</div>}
+      {error && <div className="mb-2 text-[11px] font-medium text-[color:var(--admin-danger)]">{error}</div>}
       <button
         onClick={handleToggleShift}
         disabled={busy || !storeId}
         className={clsx(
           'w-full rounded-lg py-1.5 text-[12px] font-semibold text-white transition-opacity disabled:opacity-50',
-          myOpenShift ? 'bg-[#f87171]' : 'bg-[color:var(--admin-accent)]',
+          myOpenShift ? 'bg-[color:var(--admin-danger)]' : 'bg-[color:var(--admin-accent)]',
         )}
       >
         {busy ? 'Секунду…' : myOpenShift ? 'Закрыть смену' : 'Открыть смену'}
       </button>
     </div>
+  )
+}
+
+/** Cross-fade + settle between pages — the same idle-free reveal language as
+ *  the landing/consumer app, applied once here rather than per admin page. */
+function PageTransition({ pathKey, children }: { pathKey: string; children: ReactNode }) {
+  const reduce = useReducedMotion()
+  if (reduce) return <>{children}</>
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={pathKey}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
   )
 }
 
@@ -190,13 +211,19 @@ export function AdminLayout() {
         </button>
       </aside>
 
-      {mobileNavOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
-          onClick={() => setMobileNavOpen(false)}
-          aria-hidden
-        />
-      )}
+      <AnimatePresence>
+        {mobileNavOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-30 bg-black/45 backdrop-blur-sm lg:hidden"
+            onClick={() => setMobileNavOpen(false)}
+            aria-hidden
+          />
+        )}
+      </AnimatePresence>
 
       {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -243,8 +270,11 @@ export function AdminLayout() {
 
           <div className="hidden shrink-0 items-center gap-2.5 border-l border-[color:var(--admin-border)] pl-4 sm:flex">
             <div
-              className="grid h-9 w-9 place-items-center rounded-xl text-[15px] font-bold text-white"
-              style={{ background: 'linear-gradient(135deg,#38bdf8,#0ea5e9)' }}
+              className="grid h-9 w-9 place-items-center rounded-xl text-[15px] font-bold text-white [box-shadow:var(--admin-shadow)]"
+              style={{
+                background:
+                  'linear-gradient(135deg, var(--admin-accent), color-mix(in srgb, var(--admin-accent) 65%, black))',
+              }}
             >
               {initial}
             </div>
@@ -260,7 +290,9 @@ export function AdminLayout() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
+          <PageTransition pathKey={location.pathname}>
+            <Outlet />
+          </PageTransition>
         </main>
       </div>
     </div>

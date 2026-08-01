@@ -83,7 +83,7 @@ export function HomePage() {
         <button
           onClick={() => navigate('/app/scan')}
           className="group relative mb-4 flex w-full items-center gap-6 rounded-2xl border p-7 text-left transition-all duration-700 hover:bg-white/[0.03] sm:p-9"
-          style={{ borderColor: 'rgba(255,255,255,0.16)', transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)' }}
+          style={{ borderColor: LINE, transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)' }}
         >
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-black transition-transform duration-700 group-hover:scale-[1.04]">
             <BarcodeGlyph size={26} />

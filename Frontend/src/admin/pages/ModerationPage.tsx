@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode, type CSSProperties } from 'react'
 import { LogoMark } from '../../components/Logo'
 import { Select } from '../components/Select'
+import { Card } from '../components/Card'
+import { EmptyState as SharedEmptyState } from '../components/EmptyState'
+import { ErrorState as SharedErrorState } from '../components/ErrorState'
+import { Loading as SharedLoading } from '../components/Loading'
 import { useAuth } from '../../auth/AuthContext'
 import { useTheme } from '../../theme/ThemeProvider'
 import { useThemeTransition } from '../../theme/useThemeTransition'
@@ -133,47 +137,28 @@ function usePendingReports() {
 
 /* ---------- shared bits ---------- */
 
-function Panel({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+// Thin scheme="mod" wrappers around the shared primitives (src/admin/components),
+// kept under the same names/signatures this file already calls everywhere —
+// this is what "promote ModerationPage's local versions to shared components"
+// means in practice: the visuals now live in one place instead of three.
+function Panel({ children, className = '', style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
   return (
-    <div
-      className={`rounded-2xl bg-[color:var(--mod-panel)] ring-1 ring-[color:var(--mod-border)] ${className}`}
-      style={style}
-    >
+    <Card scheme="mod" className={className} style={style}>
       {children}
-    </div>
+    </Card>
   )
 }
 
 function EmptyState({ text }: { text: string }) {
-  return (
-    <Panel className="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
-      <span className="grid h-14 w-14 place-items-center rounded-full bg-[color:var(--mod-ok-dim)] text-[color:var(--mod-ok)]">
-        <CheckIcon width={26} height={26} strokeWidth={2.5} />
-      </span>
-      <div>
-        <div className="text-[15px] font-bold text-[color:var(--mod-text)]">Очередь пуста</div>
-        <div className="mt-1 max-w-xs text-[13px] text-[color:var(--mod-muted)]">{text}</div>
-      </div>
-    </Panel>
-  )
+  return <SharedEmptyState scheme="mod" title="Очередь пуста" body={text} />
 }
 
 function ErrorState({ text, onRetry }: { text: string; onRetry: () => void }) {
-  return (
-    <Panel className="p-8 text-center">
-      <p className="mb-4 text-[14px] text-[color:var(--mod-muted)]">{text}</p>
-      <button
-        onClick={onRetry}
-        className="rounded-xl bg-[color:var(--mod-accent)] px-5 py-2.5 text-[13px] font-bold text-white transition-transform hover:brightness-110 active:scale-95"
-      >
-        Повторить
-      </button>
-    </Panel>
-  )
+  return <SharedErrorState scheme="mod" message={text} onRetry={onRetry} />
 }
 
 function Loading() {
-  return <div className="py-16 text-center text-[13px] text-[color:var(--mod-faint)]">Загрузка…</div>
+  return <SharedLoading scheme="mod" />
 }
 
 function ModRow({

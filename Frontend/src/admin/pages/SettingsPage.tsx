@@ -122,7 +122,7 @@ export function SettingsPage() {
           </div>
           <button
             onClick={logout}
-            className="shrink-0 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11px] font-semibold text-[#f87171] ring-1 ring-[color:var(--admin-border)] hover:bg-[#f87171]/10"
+            className="shrink-0 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-danger)] ring-1 ring-[color:var(--admin-border)] hover:bg-[color:var(--admin-danger-dim)]"
           >
             Выйти
           </button>

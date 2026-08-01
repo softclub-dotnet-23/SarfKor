@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import { Card } from '../components/Card'
 import { Select } from '../components/Select'
+import { Badge } from '../components/Badge'
+import { Loading } from '../components/Loading'
 import { TagIcon, PercentIcon, ClockIcon, AlertIcon, CheckIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { StarIcon } from '../../components/icons'
 import { useAuth } from '../../auth/AuthContext'
@@ -136,13 +138,13 @@ function discountValueLabel(p: Promotion) {
   return fmt(p.discountValue)
 }
 
-function promoStatus(p: Promotion): { label: string; color: string } {
+function promoStatus(p: Promotion): { label: string; variant: 'accent' | 'neutral' | 'success' } {
   const now = Date.now()
   const starts = new Date(p.startsAt).getTime()
   const ends = new Date(p.endsAt).getTime()
-  if (now < starts) return { label: 'Скоро начнётся', color: '#38bdf8' }
-  if (now > ends) return { label: 'Истекла', color: '#94a3b8' }
-  return { label: 'Активна', color: '#34d399' }
+  if (now < starts) return { label: 'Скоро начнётся', variant: 'accent' }
+  if (now > ends) return { label: 'Истекла', variant: 'neutral' }
+  return { label: 'Активна', variant: 'success' }
 }
 
 function PromotionsSection({ storeId }: { storeId: number }) {
@@ -333,7 +335,7 @@ function PromotionsSection({ storeId }: { storeId: number }) {
             </label>
           </div>
 
-          {createError && <div className="text-[12px] font-medium text-[#f87171]">{createError}</div>}
+          {createError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{createError}</div>}
 
           <button
             type="submit"
@@ -361,7 +363,7 @@ function PromotionsSection({ storeId }: { storeId: number }) {
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Активные акции</span>
         </div>
         {loading ? (
-          <div className="py-10 text-center text-[color:var(--admin-text-tertiary)]">Загружаем акции…</div>
+          <Loading label="Загружаем акции…" />
         ) : error ? (
           <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-secondary)]">{error}</div>
         ) : (
@@ -382,12 +384,9 @@ function PromotionsSection({ storeId }: { storeId: number }) {
                       {fmtDate(p.startsAt)} — {fmtDate(p.endsAt)}
                     </div>
                   </div>
-                  <span
-                    className="shrink-0 self-start rounded-full px-3 py-1.5 text-[11px] font-semibold sm:self-center"
-                    style={{ background: `${status.color}22`, color: status.color }}
-                  >
+                  <Badge variant={status.variant} className="shrink-0 self-start sm:self-center">
                     {status.label}
-                  </span>
+                  </Badge>
                 </div>
               )
             })}
@@ -563,7 +562,7 @@ function BundlesSection({ storeId }: { storeId: number }) {
                   type="button"
                   onClick={() => removeItemRow(i)}
                   disabled={items.length <= 1}
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[color:var(--admin-hover)] text-[#f87171] disabled:opacity-30"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[color:var(--admin-hover)] text-[color:var(--admin-danger)] disabled:opacity-30"
                 >
                   <TrashIcon width={15} height={15} />
                 </button>
@@ -579,7 +578,7 @@ function BundlesSection({ storeId }: { storeId: number }) {
             </button>
           </div>
 
-          {createError && <div className="text-[12px] font-medium text-[#f87171]">{createError}</div>}
+          {createError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{createError}</div>}
 
           <button
             type="submit"
@@ -607,7 +606,7 @@ function BundlesSection({ storeId }: { storeId: number }) {
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Наборы товаров магазина</span>
         </div>
         {loading ? (
-          <div className="py-10 text-center text-[color:var(--admin-text-tertiary)]">Загружаем наборы…</div>
+          <Loading label="Загружаем наборы…" />
         ) : error ? (
           <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-secondary)]">{error}</div>
         ) : (
@@ -810,7 +809,7 @@ function OffersSection({ storeId }: { storeId: number }) {
             />
           </label>
 
-          {createError && <div className="text-[12px] font-medium text-[#f87171]">{createError}</div>}
+          {createError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{createError}</div>}
 
           <button
             type="submit"
@@ -838,7 +837,7 @@ function OffersSection({ storeId }: { storeId: number }) {
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Предложения этого магазина</span>
         </div>
         {loading ? (
-          <div className="py-10 text-center text-[color:var(--admin-text-tertiary)]">Загружаем предложения…</div>
+          <Loading label="Загружаем предложения…" />
         ) : error ? (
           <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-secondary)]">{error}</div>
         ) : (
@@ -861,15 +860,9 @@ function OffersSection({ storeId }: { storeId: number }) {
                       </span>
                     </div>
                   </div>
-                  <span
-                    className="shrink-0 self-start rounded-full px-3 py-1.5 text-[11px] font-semibold sm:self-center"
-                    style={{
-                      background: remaining.expired ? '#94a3b822' : '#fbbf2422',
-                      color: remaining.expired ? '#94a3b8' : '#fbbf24',
-                    }}
-                  >
+                  <Badge variant={remaining.expired ? 'neutral' : 'warning'} className="shrink-0 self-start sm:self-center">
                     {remaining.label}
-                  </span>
+                  </Badge>
                 </div>
               )
             })}
@@ -988,7 +981,7 @@ function RepliesSection() {
             <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Отзывы</span>
           </div>
           {loading ? (
-            <div className="py-10 text-center text-[color:var(--admin-text-tertiary)]">Загружаем отзывы…</div>
+            <Loading label="Загружаем отзывы…" />
           ) : error ? (
             <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-secondary)]">{error}</div>
           ) : (
@@ -1002,7 +995,7 @@ function RepliesSection() {
                           key={i}
                           width={13}
                           height={13}
-                          className={i < r.rating ? 'text-[#fbbf24]' : 'text-[color:var(--admin-border)]'}
+                          className={i < r.rating ? 'text-[color:var(--admin-warning)]' : 'text-[color:var(--admin-border)]'}
                         />
                       ))}
                     </div>
@@ -1011,7 +1004,7 @@ function RepliesSection() {
                   <p className="mt-2 text-[13px] text-[color:var(--admin-text)]">{r.comment}</p>
 
                   {repliedIds.has(r.reviewId) ? (
-                    <div className="mt-2.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-[#34d399]">
+                    <div className="mt-2.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-[color:var(--admin-success)]">
                       <CheckIcon width={13} height={13} />
                       Ответ отправлен
                     </div>
@@ -1025,7 +1018,7 @@ function RepliesSection() {
                         rows={3}
                         className="w-full resize-none rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
                       />
-                      {replyError && <div className="text-[12px] font-medium text-[#f87171]">{replyError}</div>}
+                      {replyError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{replyError}</div>}
                       <div className="flex gap-2">
                         <button
                           onClick={() => submitReply(r.reviewId)}

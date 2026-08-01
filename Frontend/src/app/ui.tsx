@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { ApiError } from '../lib/api'
 
@@ -230,6 +230,30 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): AsyncState<T
 }
 
 /* ------------------------------------------------------------------ bits --- */
+
+/**
+ * The one card/panel surface. Before this, HomePage/ScanPage/ProductPage each
+ * inlined `rounded-2xl border` with their own one-off border color — usually
+ * `LINE`, but a couple of call sites drifted to a stray `rgba(255,255,255,0.16)`.
+ * This doesn't force a single padding scale (callers still pass their own
+ * `p-*` via `className`, since that legitimately varies by content), it just
+ * makes the border/radius impossible to get inconsistent again.
+ */
+export function Surface({
+  children,
+  className = '',
+  style,
+}: {
+  children: ReactNode
+  className?: string
+  style?: CSSProperties
+}) {
+  return (
+    <div className={`rounded-2xl border ${className}`} style={{ borderColor: LINE, ...style }}>
+      {children}
+    </div>
+  )
+}
 
 export function Skeleton({ h = 16, w = '100%', className = '' }: { h?: number; w?: string | number; className?: string }) {
   return (

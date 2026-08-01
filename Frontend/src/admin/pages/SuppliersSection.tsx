@@ -86,7 +86,7 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
         <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Поставщики</span>
       </div>
 
-      {error && <div className="mb-3 rounded-lg bg-[#f8717118] px-3.5 py-2.5 text-[12.5px] font-medium text-[#f87171]">{error}</div>}
+      {error && <div className="mb-3 rounded-lg bg-[color:var(--admin-danger-dim)] px-3.5 py-2.5 text-[12.5px] font-medium text-[color:var(--admin-danger)]">{error}</div>}
 
       <div className="flex flex-col gap-2">
         {suppliers?.map((s) => (
@@ -115,7 +115,7 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
                 <button
                   onClick={() => handleSaveEdit(s.supplierId)}
                   disabled={busyId === s.supplierId}
-                  className="grid h-8 w-8 place-items-center rounded-lg text-[#34d399] hover:bg-[#34d39918]"
+                  className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-success)] hover:bg-[color:var(--admin-success-dim)]"
                 >
                   <CheckIcon width={14} height={14} />
                 </button>
@@ -152,7 +152,7 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
                     onClick={() => handleDelete(s.supplierId)}
                     disabled={busyId === s.supplierId}
                     aria-label="Удалить"
-                    className="grid h-8 w-8 place-items-center rounded-lg text-[#f87171] hover:bg-[#f8717118] disabled:opacity-50"
+                    className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-danger)] hover:bg-[color:var(--admin-danger-dim)] disabled:opacity-50"
                   >
                     <TrashIcon width={14} height={14} />
                   </button>

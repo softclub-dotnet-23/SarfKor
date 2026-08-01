@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '../components/Card'
 import { AdminModal } from '../components/AdminModal'
 import { Select } from '../components/Select'
+import { Badge } from '../components/Badge'
+import { Loading } from '../components/Loading'
+import { ErrorState } from '../components/ErrorState'
+import { Reveal } from '../components/Reveal'
 import { SearchIcon, PlusIcon, AlertIcon, TruckIcon, BarcodeIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import {
@@ -352,23 +356,20 @@ export function InventoryPage() {
   }
 
   if (loading) {
-    return <div className="py-24 text-center text-[color:var(--admin-text-tertiary)]">Загружаем склад…</div>
+    return <Loading label="Загружаем склад…" />
   }
 
   if (error) {
     return (
-      <Card className="p-8 text-center">
-        <p className="mb-4 text-[14px] text-[color:var(--admin-text-secondary)]">{error}</p>
-        <button onClick={load} className="rounded-xl bg-[color:var(--admin-accent)] px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-90">
-          Повторить
-        </button>
+      <Card>
+        <ErrorState message={error} onRetry={load} />
       </Card>
     )
   }
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <Reveal className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="p-5">
           <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Позиций на складе</div>
           <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-text)]">{stock?.length ?? 0}</div>
@@ -377,7 +378,7 @@ export function InventoryPage() {
           <div className="flex items-start justify-between gap-2">
             <div>
               <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Требуют пополнения</div>
-              <div className="mt-2 text-[26px] font-extrabold text-[#fbbf24]">{alerts.length}</div>
+              <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-warning)]">{alerts.length}</div>
             </div>
             <button
               onClick={() => {
@@ -394,8 +395,9 @@ export function InventoryPage() {
           <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Всего единиц</div>
           <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-text)]">{fmt(totalUnits)}</div>
         </Card>
-      </div>
+      </Reveal>
 
+      <Reveal i={1}>
       <Card className="p-5">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
@@ -445,17 +447,11 @@ export function InventoryPage() {
                     </td>
                     <td className="py-3 pr-3">
                       {alert ? (
-                        <span className="rounded-full bg-[#fbbf2422] px-2.5 py-1 text-[11px] font-semibold text-[#fbbf24]">
-                          Мало · {s.quantity} (порог {alert.thresholdQuantity})
-                        </span>
+                        <Badge variant="warning">Мало · {s.quantity} (порог {alert.thresholdQuantity})</Badge>
                       ) : s.quantity === 0 ? (
-                        <span className="rounded-full bg-[#f8717122] px-2.5 py-1 text-[11px] font-semibold text-[#f87171]">
-                          Нет в наличии
-                        </span>
+                        <Badge variant="danger">Нет в наличии</Badge>
                       ) : (
-                        <span className="rounded-full bg-[#34d39922] px-2.5 py-1 text-[11px] font-semibold text-[#34d399]">
-                          {s.quantity}
-                        </span>
+                        <Badge variant="success">{s.quantity}</Badge>
                       )}
                     </td>
                     <td className="py-3 text-right">
@@ -509,6 +505,7 @@ export function InventoryPage() {
           </table>
         </div>
       </Card>
+      </Reveal>
 
       {/* Scan-to-identify, for a first-ever receipt of a product not yet in stock */}
       <AdminModal open={scanOpen} onClose={() => setScanOpen(false)} title="Приход по штрихкоду">
@@ -523,7 +520,7 @@ export function InventoryPage() {
             placeholder="Штрихкод"
             className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
           />
-          {scanError && <div className="text-[12px] font-medium text-[#f87171]">{scanError}</div>}
+          {scanError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{scanError}</div>}
           {notFoundBarcode && (
             <button
               type="button"
@@ -594,7 +591,7 @@ export function InventoryPage() {
                   options={categories.map((c) => ({ value: String(c.categoryId), label: c.name }))}
                 />
               )}
-              {newCategoryError && <span className="text-[11px] text-[#f87171]">{newCategoryError}</span>}
+              {newCategoryError && <span className="text-[11px] text-[color:var(--admin-danger)]">{newCategoryError}</span>}
             </div>
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
@@ -631,7 +628,7 @@ export function InventoryPage() {
                   options={brands.map((b) => ({ value: String(b.brandId), label: b.name }))}
                 />
               )}
-              {newBrandError && <span className="text-[11px] text-[#f87171]">{newBrandError}</span>}
+              {newBrandError && <span className="text-[11px] text-[color:var(--admin-danger)]">{newBrandError}</span>}
             </div>
           </div>
           <label className="flex flex-col gap-1.5">
@@ -643,7 +640,7 @@ export function InventoryPage() {
               className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
             />
           </label>
-          {submitError && <div className="text-[12px] font-medium text-[#f87171]">{submitError}</div>}
+          {submitError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{submitError}</div>}
           <button
             onClick={confirmSubmitNewProduct}
             disabled={submitBusy || !submitName.trim() || !submitCategoryId || !submitBrandId || !submitCountry.trim()}
@@ -694,7 +691,7 @@ export function InventoryPage() {
               </div>
             </label>
 
-            {receiptError && <div className="text-[12px] font-medium text-[#f87171]">{receiptError}</div>}
+            {receiptError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{receiptError}</div>}
 
             <button
               onClick={confirmReceipt}
@@ -736,7 +733,7 @@ export function InventoryPage() {
             >
               {costDone ? 'Сохранено ✓' : costBusy ? 'Сохраняем…' : 'Сохранить'}
             </button>
-            {costError && <div className="text-[12px] font-medium text-[#f87171]">{costError}</div>}
+            {costError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{costError}</div>}
           </div>
         )}
       </AdminModal>
@@ -770,7 +767,7 @@ export function InventoryPage() {
             >
               {priceDone ? 'Сохранено ✓' : priceBusy ? 'Сохраняем…' : 'Сохранить'}
             </button>
-            {priceError && <div className="text-[12px] font-medium text-[#f87171]">{priceError}</div>}
+            {priceError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{priceError}</div>}
           </div>
         )}
       </AdminModal>
@@ -827,7 +824,7 @@ export function InventoryPage() {
             />
           </label>
 
-          {ruleError && <div className="text-[12px] font-medium text-[#f87171]">{ruleError}</div>}
+          {ruleError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{ruleError}</div>}
 
           <button
             onClick={confirmCreateRule}

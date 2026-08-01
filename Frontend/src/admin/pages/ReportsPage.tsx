@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Card } from '../components/Card'
 import { LineChart } from '../components/LineChart'
+import { Loading } from '../components/Loading'
+import { ErrorState } from '../components/ErrorState'
 import { DownloadIcon, RevenueIcon, PackageIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { storesApi, productsApi, ApiError, type ProfitReport } from '../../lib/api'
@@ -99,22 +101,19 @@ export function ReportsPage() {
   }
 
   if (loading) {
-    return <div className="py-24 text-center text-[color:var(--admin-text-tertiary)]">Загружаем отчёты…</div>
+    return <Loading label="Загружаем отчёты…" />
   }
 
   if (error || !profit) {
     return (
-      <Card className="p-8 text-center">
-        <p className="mb-4 text-[14px] text-[color:var(--admin-text-secondary)]">{error || 'Нет данных'}</p>
-        <button
-          onClick={() => {
+      <Card>
+        <ErrorState
+          message={error || 'Нет данных'}
+          onRetry={() => {
             setLoading(true)
             load(range)
           }}
-          className="rounded-xl bg-[color:var(--admin-accent)] px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-90"
-        >
-          Повторить
-        </button>
+        />
       </Card>
     )
   }
@@ -163,7 +162,7 @@ export function ReportsPage() {
         </Card>
         <Card className="p-5">
           <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Прибыль</div>
-          <div className="mt-2 text-[24px] font-extrabold text-[#34d399]">
+          <div className="mt-2 text-[24px] font-extrabold text-[color:var(--admin-success)]">
             {fmt(profit.profit)} {profit.currency}
           </div>
         </Card>

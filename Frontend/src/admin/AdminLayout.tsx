@@ -148,7 +148,7 @@ export function AdminLayout() {
       {/* Sidebar */}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-40 flex w-[240px] shrink-0 flex-col border-r border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-4 pb-5 pt-6 transition-transform lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-[240px] shrink-0 flex-col border-r border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-4 pb-5 pt-6 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] [box-shadow:var(--admin-shadow)] lg:static lg:shadow-none lg:translate-x-0',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -166,10 +166,10 @@ export function AdminLayout() {
               onClick={() => setMobileNavOpen(false)}
               className={({ isActive }) =>
                 clsx(
-                  'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[14px] font-medium transition-colors',
+                  'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[14px] font-medium transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
                   isActive
                     ? 'bg-[color:var(--admin-accent-soft)] font-semibold text-[color:var(--admin-accent)]'
-                    : 'text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]',
+                    : 'text-[color:var(--admin-text-secondary)] hover:translate-x-0.5 hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]',
                 )
               }
             >
@@ -200,7 +200,7 @@ export function AdminLayout() {
 
       {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center gap-4 border-b border-[color:var(--admin-border)] px-6 py-4">
+        <header className="relative z-10 flex shrink-0 items-center gap-4 border-b border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-6 py-4 [box-shadow:0_1px_0_var(--admin-border),0_4px_16px_-8px_rgba(0,0,0,0.12)]">
           <button
             onClick={() => setMobileNavOpen(true)}
             aria-label="Меню"

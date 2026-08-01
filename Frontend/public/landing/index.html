@@ -177,7 +177,7 @@
      anchored to the bottom edge and allowed to crop — the device stays the
      subject without fighting the type for width. */
   .sk-root [data-hero-main]{
-    padding:calc(84px + env(safe-area-inset-top)) 24px 0 !important;
+    padding:calc(64px + env(safe-area-inset-top)) 24px 0 !important;
     align-items:center !important;
   }
   .sk-root [data-hero-main] > div:first-child{
@@ -185,56 +185,276 @@
     align-items:center !important;text-align:center !important;
   }
   .sk-root [data-hero-h1]{font-size:clamp(30px,8.6vw,40px) !important;line-height:1.06 !important}
-  .sk-root [data-hero-main] p{font-size:15px !important;line-height:1.55 !important;max-width:32ch;margin-inline:auto}
+  .sk-root [data-hero-main] p{font-size:15px !important;line-height:1.55 !important;max-width:32ch;margin-inline:auto;margin-top:16px !important}
   .sk-root [data-hero-rule]{display:none !important}
 
   /* Thumb-friendly: full width, stacked, 54px tall. */
   .sk-root [data-hero-item]:nth-of-type(3){
     width:100% !important;flex-direction:column !important;
-    gap:10px !important;margin-top:28px !important;
+    gap:10px !important;margin-top:20px !important;
   }
   .sk-root [data-hero-item]:nth-of-type(3) button{
     width:100% !important;min-height:54px !important;
     justify-content:center !important;font-size:16px !important;
   }
 
-  /* Decorative desktop furniture that has no room on a phone. */
+  /* Decorative desktop furniture that has no room on a phone. Same treatment as
+     the desktop-only word/pill: the hand glyph is pure ornament, and reclaiming
+     its ~56px (glyph + margin) is what buys the enlarged phone below vertical
+     clearance from the copy without shrinking the type. */
   .sk-root [data-hero-word],
   .sk-root [data-hero-pill]{display:none !important}
+  .sk-root [data-hero-item]:first-of-type,
   .sk-root [data-hero-item]:last-of-type{display:none !important}
 
-  /* The product: bottom-anchored and centred. Only the box is set here — the
-     scene writes `transform` on this element every frame, so anything positional
-     done with transform would be overwritten on the next tick. */
+  /* The product: bottom-anchored and allowed to crop, not centred — centring an
+     object taller than its box makes it spill upward by half its own overflow,
+     which is what was quietly eating into the copy's clearance before this was
+     measured against the real (post-reveal, post-idle-sway) layout rather than a
+     first-paint snapshot. flex-end pins its bottom to the (deliberately
+     off-screen) stage edge instead, so all the overflow crops downward. */
   .sk-root [data-hero-stage]{
-    top:auto !important;bottom:-7vh !important;
+    top:auto !important;bottom:-24vh !important;
     left:0 !important;right:0 !important;width:100% !important;
-    height:52dvh !important;
+    height:52dvh !important;align-items:flex-end !important;
   }
   /* `scale` is a separate property from `transform`, so shrinking the device here
-     survives the per-frame transform writes in setupPhone(). */
-  .sk-root [data-hero-stage] div[style*="preserve-3d"]{scale:.52 !important}
+     survives the per-frame transform writes in setupPhone(). Scoped to
+     `[data-phone-wrap]` specifically, not `div[style*="preserve-3d"]`: the inner
+     phone div *also* declares `transform-style:preserve-3d` (for its own back/front
+     faces), so the old substring selector matched both wrapper and phone and
+     scaled them twice (.52 x .52 = ~0.27 of the 300px box) — the device read as
+     small and lost rather than as the hero subject. One element, one multiplier. */
+  .sk-root [data-phone-wrap]{scale:1.14 !important}
 
   /* ---- global rhythm --------------------------------------------------- */
-  /* Sections were authored for a 1200px canvas; on a phone the inner padding is
-     what stops every chapter reading as edge-to-edge text. */
-  .sk-root section [style*="max-width:1200px"],
-  .sk-root section [style*="max-width:1440px"],
-  .sk-root section [style*="max-width:1120px"]{
-    padding-left:max(22px,env(safe-area-inset-left)) !important;
-    padding-right:max(22px,env(safe-area-inset-right)) !important;
-  }
-  /* Any multi-column grid becomes a single column. */
-  .sk-root section [style*="grid-template-columns"]{
-    grid-template-columns:1fr !important;
-    gap:16px !important;
-  }
+  /* NB: no `[style*="max-width:1200px"]` rule here either. React serialises inline
+     styles with a space after the colon ("max-width: 1200px"), so substring
+     selectors written the way the source reads match nothing at all — a silently
+     dead rule. Every section that needs gutters gets them by id or data-attribute
+     in the per-chapter block below, which cannot rot that way. */
+  /* NB: no blanket `[style*="grid-template-columns"] -> 1fr` rule here. It looks
+     like a reasonable catch-all and is actively destructive: [data-grid-wrap] is
+     a grid too, and collapsing its 18 columns stacked 180 dots into a single
+     column 63 000px tall inside a 100vh sticky frame — while also desyncing the
+     wave, which derives x/y from `i % 18` in JS. Each grid below is recomposed by
+     name instead. */
   /* Nothing may exceed the viewport. */
   .sk-root section img,
   .sk-root section svg{max-width:100% !important;height:auto}
 
   /* Every control gets a real touch target. */
   .sk-root section button{min-height:44px}
+
+  /* ==========================================================================
+     PER-CHAPTER MOBILE COMPOSITIONS
+     ==========================================================================
+     Each chapter below is reframed for a portrait screen rather than scaled.
+     The desktop canvas is ~1200px wide and short; a phone is ~390px wide and
+     tall, so the recurring move is the same: give type more of the width (vw
+     units instead of the desktop clamp ceilings), turn side-by-side pairs into
+     vertical ones, and let the subject own the frame instead of sharing it.
+     -------------------------------------------------------------------------- */
+
+  /* ---- ACT 00 · titles ------------------------------------------------- */
+  /* The three words are the whole frame. At the desktop clamp they land at 58px
+     on a phone and read as a caption; 17vw makes them the event they are. */
+  .sk-root [data-tt-word]{
+    font-size:clamp(52px,17vw,96px) !important;
+    letter-spacing:-.045em !important;
+  }
+  .sk-root [data-tt-meta] span{font-size:11px !important}
+  .sk-root [data-tt-meta] span:first-child{left:22px !important}
+  .sk-root [data-tt-meta] span:last-child{right:22px !important}
+
+  /* ---- ACT 02 · barcode ------------------------------------------------ */
+  /* 18 bars at the desktop min width total 157px — a sliver floating in the
+     middle of the screen. Widen the bars and the field so the code fills the
+     frame the way it does on desktop. */
+  .sk-root [data-bc-chapter]{
+    top:88px !important;left:22px !important;right:22px !important;
+    font-size:10px !important;letter-spacing:.16em !important;line-height:1.5;
+  }
+  .sk-root [data-bc-bars]{width:88vw !important;height:30vh !important;gap:4px !important}
+  .sk-root [data-bc-bar]{width:7px !important}
+  .sk-root [data-bc-out] > div{font-size:clamp(38px,11.5vw,64px) !important;line-height:1 !important}
+
+  /* ---- ACT 03 · kinetic manifesto -------------------------------------- */
+  .sk-root [data-kin-eyebrow]{font-size:10px !important;letter-spacing:.16em !important;margin-bottom:24px !important}
+  .sk-root [data-kin-word]{font-size:clamp(46px,14.5vw,84px) !important;letter-spacing:-.05em !important}
+  .sk-root [data-scene-kin] > div > div,
+  .sk-root [data-kin-word]:first-child{line-height:.95}
+  .sk-root [data-kin-tail]{margin-top:30px !important;font-size:14.5px !important;max-width:34ch !important}
+
+  /* ---- 4 STEPS · how it works ------------------------------------------ */
+  /* Desktop pairs copy and device across two columns. On a phone the device goes
+     on top as the subject and the copy reads beneath it — the same beat order the
+     chapter already has, rotated 90 degrees. */
+  .sk-root [data-hiw-title]{top:64px !important;padding:0 22px}
+  .sk-root [data-hiw-title] > div{font-size:10px !important;letter-spacing:.16em !important;margin-bottom:10px !important}
+  .sk-root [data-hiw-title] h2{font-size:clamp(26px,7.6vw,38px) !important;line-height:1 !important}
+  .sk-root [data-ghost]{font-size:46vw !important;left:-6% !important;opacity:.55}
+
+  .sk-root [data-scene]{
+    grid-template-columns:1fr !important;
+    grid-template-rows:auto auto !important;
+    gap:22px !important;
+    padding:0 22px !important;
+    align-content:center !important;
+    padding-top:132px !important;
+  }
+  .sk-root [data-hiw-copy]{order:2 !important;text-align:center}
+  .sk-root [data-hiw-stage]{order:1 !important}
+  /* `scale` rather than `transform`: the step animation writes transform on this
+     element every frame, so a transform here would be gone on the next tick. */
+  .sk-root [data-hiw-phone]{scale:.62 !important}
+  .sk-root [data-hiw-stage]{height:300px !important}
+  .sk-root [data-hiw-copy] h3{font-size:clamp(22px,6.4vw,30px) !important;margin-bottom:12px !important}
+  .sk-root [data-hiw-copy] p{font-size:15px !important;line-height:1.5 !important;margin:0 auto 16px !important;max-width:34ch !important}
+  .sk-root [data-hiw-copy] > div:first-child{margin-bottom:14px !important;font-size:12px !important;padding:6px 13px !important}
+  .sk-root [data-hiw-copy] > div:last-child{align-items:center !important;gap:9px !important}
+  .sk-root [data-hiw-copy] > div:last-child > div{font-size:14px !important}
+  .sk-root [data-dots]{bottom:26px !important}
+  .sk-root [data-dot]{width:30px !important;height:6px !important}
+
+  /* ---- ACT 04 · price rail --------------------------------------------- */
+  /* One card fills the screen with the next one peeking — the standard phone
+     carousel read, and it makes the horizontal drag legible as an affordance. */
+  .sk-root [data-scene-rail] > div > div:first-child{padding:0 22px !important;margin-bottom:4vh !important}
+  .sk-root [data-scene-rail] h2{font-size:clamp(28px,9vw,44px) !important;line-height:1 !important}
+  .sk-root [data-scene-rail] > div > div:first-child > div:first-child{font-size:10px !important;letter-spacing:.16em !important;margin-bottom:12px !important}
+  .sk-root [data-rail-track]{gap:14px !important;padding:0 22px !important}
+  .sk-root [data-rail-card]{
+    flex:0 0 74vw !important;
+    padding:26px 24px !important;border-radius:22px !important;
+  }
+  .sk-root [data-rail-card] > div:nth-child(2){font-size:44px !important;margin:18px 0 8px !important}
+
+  /* ---- ACT 05 · stats -------------------------------------------------- */
+  /* Two by two. One column would run the four figures off the bottom of the
+     screen and break the "one glance" reading the chapter depends on. */
+  .sk-root [data-stats-grid]{
+    grid-template-columns:1fr 1fr !important;
+    gap:30px 18px !important;
+  }
+  .sk-root [data-stats-grid] [data-stat]{font-size:clamp(30px,9vw,44px) !important}
+  .sk-root [data-stats-grid] > div > div:first-child{width:40px !important;height:40px !important;border-radius:12px !important;margin-bottom:12px !important}
+  .sk-root [data-stats-grid] > div > div:last-child{font-size:13px !important}
+  .sk-root #stats{padding:6vh 22px 10vh !important}
+
+  /* ---- ACT 06 · price path --------------------------------------------- */
+  .sk-root [data-scene-path]{}
+  .sk-root [data-scene-path] > div{padding:0 22px !important}
+  .sk-root [data-path-title]{font-size:clamp(26px,8vw,40px) !important;margin-bottom:3.5vh !important}
+  .sk-root [data-path-svg]{width:94vw !important}
+  .sk-root [data-path-tail]{margin-top:3.5vh !important;font-size:14.5px !important;max-width:34ch !important}
+
+  /* ---- breaths --------------------------------------------------------- */
+  .sk-root [data-breath-line]{
+    font-size:clamp(21px,6.4vw,30px) !important;
+    max-width:15em !important;line-height:1.35 !important;
+  }
+  .sk-root [data-scene-breath] > div{padding:0 26px !important}
+
+  /* ---- ACT 07 · dot grid ----------------------------------------------- */
+  /* Columns stay at 18 — the wave derives x/y from `i % 18` in JS, so this is
+     one grid whose shape is not free. Only the field width and gap move. */
+  .sk-root [data-grid-wrap]{width:92vw !important;gap:6px !important}
+  .sk-root [data-grid-copy] > div:last-child{font-size:clamp(28px,9.5vw,46px) !important;line-height:1 !important}
+  .sk-root [data-grid-copy] > div:first-child{font-size:10px !important;letter-spacing:.16em !important;margin-bottom:14px !important}
+
+  /* ---- stores map ------------------------------------------------------ */
+  .sk-root [data-stores-grid]{
+    grid-template-columns:1fr !important;
+    gap:32px !important;
+  }
+  .sk-root #stores{padding:8vh 22px !important}
+  .sk-root #stores h2{font-size:clamp(30px,8.6vw,44px) !important;margin-bottom:18px !important}
+  .sk-root #stores p{font-size:15.5px !important;max-width:none !important}
+  .sk-root [data-stores-grid] > div:last-child{aspect-ratio:1/1 !important;border-radius:24px !important}
+  /* The popup is 220px on a ~346px map — anchored by percentage it would hang off
+     the edge. Pin it to the card instead of to the marker. */
+  .sk-root [data-popup]{
+    left:12px !important;right:12px !important;top:auto !important;bottom:12px !important;
+    width:auto !important;
+  }
+
+  /* ---- CH.08 · orbit --------------------------------------------------- */
+  /* The ring radius is 35% of vmin from JS; on a phone vmin is the width, so the
+     pills swing to within a few px of the edge. Shrinking the pills is what buys
+     the margin back without touching the orbit maths. */
+  .sk-root [data-orbit-item]{
+    padding:9px 14px !important;font-size:12px !important;border-radius:999px !important;
+  }
+  .sk-root [data-orbit-cap]{bottom:10vh !important;font-size:13px !important;padding:0 26px}
+
+  /* ---- CH.09 · glass --------------------------------------------------- */
+  .sk-root [data-glass-word]{font-size:clamp(52px,16vw,96px) !important;letter-spacing:-.055em !important}
+  .sk-root [data-glass-slab]{width:84vw !important;height:30vh !important;border-radius:24px !important}
+  .sk-root [data-glass-cap]{bottom:11vh !important;font-size:14.5px !important;padding:0 26px !important;max-width:34ch !important}
+
+  /* ---- testimonials ---------------------------------------------------- */
+  /* perPageMedia() already drops the track to one card below 640. What breaks is
+     the arrows: at left/right -8px with a 50% translate they sit ~32px outside the
+     viewport, unreachable. Rather than cramming them back in, they go away — a
+     phone carousel is driven by the dots, which are already wired to dotClick and
+     only needed a real touch target. Selected structurally, because these two
+     buttons carry no class or data attribute of their own. */
+  .sk-root #testimonials{padding:8vh 22px !important}
+  .sk-root #testimonials h2{font-size:clamp(30px,8.6vw,44px) !important}
+  .sk-root #testimonials > div > div:first-child{margin-bottom:32px !important}
+  .sk-root #testimonials > div > div:last-child > button{display:none !important}
+  .sk-root [data-tdots]{margin-top:24px !important;gap:12px !important}
+  .sk-root [data-tdots] button{
+    min-height:44px !important;
+    /* the visible pill stays 8px; the reach around it is what grows */
+    background-clip:content-box !important;
+    padding:18px 0 !important;
+  }
+  .sk-root [data-tcard]{padding:0 !important}
+  .sk-root [data-tcard] > div{padding:24px !important;border-radius:20px !important}
+
+  /* ---- FAQ ------------------------------------------------------------- */
+  .sk-root [data-faq-grid]{
+    grid-template-columns:1fr !important;
+    gap:26px !important;
+  }
+  .sk-root #faq{padding:8vh 22px 12vh !important}
+  .sk-root #faq h2{font-size:clamp(30px,8.6vw,44px) !important;margin-bottom:0 !important}
+  /* Two floating squares that exist to fill desktop whitespace. A phone has no
+     whitespace to fill, and they push the actual questions below the fold. */
+  .sk-root [data-faq-deco]{display:none !important}
+  .sk-root #faq button > span:first-child{font-size:16px !important}
+  .sk-root #faq button{padding:20px 20px !important}
+  .sk-root #faq p{padding:0 20px 22px !important;font-size:15px !important}
+
+  /* ---- CH.11 · particles ----------------------------------------------- */
+  .sk-root [data-particle-cap]{bottom:11vh !important;padding:0 24px !important}
+  .sk-root [data-particle-cap] > div:first-child{font-size:10px !important;letter-spacing:.16em !important;margin-bottom:12px !important}
+  .sk-root [data-particle-cap] > div:last-child{font-size:clamp(19px,5.6vw,27px) !important;line-height:1.25 !important}
+
+  /* ---- savings counter -------------------------------------------------- */
+  .sk-root [data-sav-label]{font-size:10px !important;letter-spacing:.16em !important;margin-bottom:20px !important}
+  .sk-root [data-sav-num]{font-size:clamp(64px,21vw,116px) !important}
+  .sk-root [data-sav-tail]{margin-top:24px !important;font-size:14.5px !important;max-width:32ch !important}
+
+  /* ---- CH.13 · wipe ----------------------------------------------------- */
+  .sk-root [data-wipe-layer] [data-wipe-inner],
+  .sk-root [data-scene-wipe] > div > div:first-child{font-size:clamp(38px,12vw,68px) !important}
+
+  /* ---- footer ----------------------------------------------------------- */
+  .sk-root footer{padding:96px 22px calc(32px + env(safe-area-inset-bottom)) !important}
+  .sk-root footer h2{font-size:clamp(34px,10vw,54px) !important;margin-bottom:16px !important}
+  .sk-root footer p{font-size:16px !important;margin-bottom:26px !important}
+  /* Stacked, full width, thumb height — same treatment as the hero CTAs. */
+  .sk-root footer > div > div:nth-of-type(1){flex-direction:column !important;gap:10px !important}
+  .sk-root footer > div > div:nth-of-type(1) button{
+    width:100% !important;min-height:54px !important;border-radius:14px !important;font-size:16px !important;
+  }
+  .sk-root [data-foot-row]{
+    margin-top:48px !important;flex-direction:column !important;
+    align-items:center !important;text-align:center !important;gap:14px !important;
+  }
 }
 
 /* Tablet portrait / large phones in landscape. Full-bleed controls are right on a
@@ -245,28 +465,45 @@
   .sk-root [data-hero-main] p{max-width:46ch !important}
   .sk-root [data-menu-panel]{max-width:520px;margin-inline:auto}
   .sk-root [data-menu-cta]{max-width:440px;margin-inline:auto}
+  /* The phone-breakpoint scale (1.14) is a fixed px size, so on a 768-820px
+     tablet canvas it reads as barely a third of the width with a huge unused
+     gap beneath the copy. One step up keeps it the dominant object here too. */
+  .sk-root [data-phone-wrap]{scale:1.6 !important}
 }
 
-/* Narrow phones (320-360). The hero type and the menu need one more step down
-   before they start wrapping into unreadable shapes. */
-@media (max-width:361px){
+/* Narrow phones (320-375: this now also covers the 375-wide iPhone SE/mini
+   class — at the base 1.07 scale a fixed 300px box reads as 80%+ of a 375px
+   screen, over the 65-75% target, while the same scale is correct at 390+).
+   The hero type and the menu need one more step down before they start
+   wrapping into unreadable shapes. */
+@media (max-width:380px){
   .sk-root [data-hero-h1]{font-size:28px !important}
   .sk-root [data-hero-main]{padding-left:18px !important;padding-right:18px !important}
   .sk-root [data-menu-label]{font-size:24px !important}
   .sk-root [data-menu-panel]{padding-left:22px !important;padding-right:22px !important}
+  /* The base mobile scale (1.07) is tuned for 375-430; on a 320-360 screen the
+     phone's fixed 300px box does not shrink with the viewport, so the same
+     scale reads as 85%+ of the width. One step down keeps it in the same
+     65-75% band the wider phones land in. */
+  .sk-root [data-phone-wrap]{scale:.82 !important}
 }
 
 /* Short viewports (iPhone SE class, 320x568 / 375x667 with browser chrome).
-   The copy block and a 52dvh device add up to more than the screen, and since
-   [data-hero-main] sits at z-index 3 the text lands on top of the phone instead
-   of beside it. Give the device less of the frame and tighten the copy until the
-   two stop meeting. */
+   The copy block and the enlarged device add up to more than the screen, and
+   since [data-hero-main] sits at z-index 3 the text lands on top of the phone
+   instead of beside it. Give the device less of the frame, push more of its
+   (allowed-to-crop) height below the fold, and tighten the copy until the two
+   stop meeting. */
 @media (max-width:860px) and (max-height:700px){
-  .sk-root [data-hero-main]{padding-top:calc(68px + env(safe-area-inset-top)) !important}
-  .sk-root [data-hero-stage]{height:38dvh !important;bottom:-3vh !important}
+  .sk-root [data-hero-main]{padding-top:calc(52px + env(safe-area-inset-top)) !important}
+  /* `scale` centres on the element's own midpoint, so growing it also pushes the
+     visual bottom edge past whatever `bottom` alone would suggest — verified
+     against the live, fully-settled (post-reveal, post-damped-rotation) layout
+     rather than computed on paper, since the two didn't agree the first time. */
+  .sk-root [data-hero-stage]{height:30dvh !important;bottom:-56vh !important}
   .sk-root [data-hero-h1]{font-size:26px !important}
-  .sk-root [data-hero-main] p{font-size:14px !important;line-height:1.5 !important}
-  .sk-root [data-hero-item]:nth-of-type(3){margin-top:18px !important;gap:8px !important}
+  .sk-root [data-hero-main] p{font-size:14px !important;line-height:1.5 !important;margin-top:10px !important}
+  .sk-root [data-hero-item]:nth-of-type(3){margin-top:14px !important;gap:8px !important}
   .sk-root [data-hero-item]:nth-of-type(3) button{min-height:48px !important;font-size:15px !important}
 }
 
@@ -375,7 +612,7 @@
     <!-- floating product stage -->
     <div ref="{{ stageRef }}" data-hero-stage style="position:absolute;top:0;bottom:0;right:-1%;width:min(520px,44%);display:flex;align-items:center;justify-content:center;perspective:1400px;cursor:grab;touch-action:none;z-index:2;opacity:0">
       <div style="position:absolute;width:62%;height:60%;border-radius:50%;background:radial-gradient(circle,rgba(117,117,117,.28),transparent 68%);filter:blur(50px)"></div>
-      <div ref="{{ phoneWrapRef }}" style="position:relative;transform-style:preserve-3d;scale:.74">
+      <div ref="{{ phoneWrapRef }}" data-phone-wrap style="position:relative;transform-style:preserve-3d;scale:.74">
         <div ref="{{ phoneRef }}" style="position:relative;width:300px;height:616px;transform-style:preserve-3d;transform:rotateX(6deg) rotateY(-22deg)">
           <div style="position:absolute;inset:2px;border-radius:42px;background:linear-gradient(155deg,#eaeaea 0%,#c6c6c6 35%,#adadad 50%,#c3c3c3 68%,#dedede 100%)"></div>
           <!-- back -->

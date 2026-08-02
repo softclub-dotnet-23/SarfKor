@@ -99,11 +99,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Fetches the caller's owned/employed stores and, if none is cached locally yet and there's
   // exactly one, adopts it automatically — this is what recovers a StorePartner's/cashier's store
   // on a fresh browser instead of stranding them on the onboarding screen (GET /api/me/stores).
-  async function fetchAndApplyMyStores(roles: string[]): Promise<MyStore[]> {
-    if (!roles.includes('StorePartner')) {
-      setMyStores([])
-      return []
-    }
+  //
+  // Deliberately does NOT gate on the caller's role: an earlier version skipped the request
+  // unless `roles` already included 'StorePartner', reading `roles` from `user` in the closure.
+  // That's a stale-closure trap — e.g. StoreOnboardingPage's handleCreate calls refreshRoles()
+  // (which grants StorePartner server-side and setUser()s a fresh token) immediately followed by
+  // refreshMyStores(), but the setUser() from refreshRoles() hasn't re-rendered yet, so
+  // refreshMyStores() still closes over the pre-creation `user` without the new role and silently
+  // no-ops to an empty list — RequireStore then sees the new storeId with an empty myStores,
+  // calls it stale, and bounces back to onboarding. The endpoint itself is safe to call
+  // unconditionally (GET /api/me/stores just returns [] for a plain User, keyed off the JWT
+  // subject, not the role) — the one extra request for a non-partner account is cheaper than
+  // this whole class of staleness bug.
+  async function fetchAndApplyMyStores(): Promise<MyStore[]> {
     try {
       const res = await meApi.getMyStores()
       setMyStores(res.stores)
@@ -123,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokens(tokens)
     const nextUser = userFromAccessToken(tokens.accessToken)
     setUser(nextUser)
-    await fetchAndApplyMyStores(nextUser?.roles ?? [])
+    await fetchAndApplyMyStores()
     return { roles: nextUser?.roles ?? [] }
   }
 
@@ -140,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isExpired) {
         const nextUser = userFromAccessToken(tokens.accessToken)
         setUser(nextUser)
-        await fetchAndApplyMyStores(nextUser?.roles ?? [])
+        await fetchAndApplyMyStores()
         if (!cancelled) setLoading(false)
         return
       }
@@ -161,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         const nextUser = userFromAccessToken(refreshed.accessToken)
         setUser(nextUser)
-        await fetchAndApplyMyStores(nextUser?.roles ?? [])
+        await fetchAndApplyMyStores()
       } catch {
         if (cancelled) return
         clearTokens()
@@ -235,7 +243,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userFromAccessToken(refreshed.accessToken))
       },
       refreshMyStores: async () => {
-        await fetchAndApplyMyStores(user?.roles ?? [])
+        await fetchAndApplyMyStores()
       },
       hasRole: (role: string) => user?.roles.includes(role) ?? false,
     }),

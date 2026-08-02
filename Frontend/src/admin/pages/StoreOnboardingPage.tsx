@@ -68,6 +68,9 @@ export function StoreOnboardingPage() {
       // Creating a store grants StorePartner server-side, but the JWT already
       // in hand doesn't carry that claim yet — refresh to get a token that does.
       await refreshRoles()
+      // myStores must include the new store before navigating, or RequireStore sees
+      // storeId set but myStores still empty, calls that stale, and bounces back here.
+      await refreshMyStores()
       navigate('/admin', { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось создать магазин')

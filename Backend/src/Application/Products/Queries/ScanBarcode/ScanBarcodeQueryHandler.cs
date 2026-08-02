@@ -6,7 +6,8 @@ namespace Application.Products.Queries.ScanBarcode;
 public sealed class ScanBarcodeQueryHandler(
     IProductRepository productRepository,
     IPriceEntryRepository priceEntryRepository,
-    IStoreRepository storeRepository) : IQueryHandler<ScanBarcodeQuery, ScanBarcodeResult?>
+    IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer) : IQueryHandler<ScanBarcodeQuery, ScanBarcodeResult?>
 {
     public async Task<ScanBarcodeResult?> Handle(ScanBarcodeQuery query, CancellationToken cancellationToken)
     {
@@ -17,6 +18,22 @@ public sealed class ScanBarcodeQueryHandler(
         var priceEntries = await priceEntryRepository.GetLatestPerStoreAsync(product.Id, cancellationToken);
         var stores = await storeRepository.GetApprovedByIdsAsync(priceEntries.Select(p => p.StoreId).ToList(), cancellationToken);
         var storesById = stores.ToDictionary(s => s.Id);
+
+        // A logged-in StorePartner/cashier must always see their own store's price at their own
+        // register, even before Admin has approved the store for consumer-facing search.
+        if (query.CallerUserId is not null)
+        {
+            var unapprovedStoreIds = priceEntries.Select(p => p.StoreId).Distinct().Where(id => !storesById.ContainsKey(id));
+            foreach (var storeId in unapprovedStoreIds)
+            {
+                if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(storeId, query.CallerUserId, cancellationToken))
+                    continue;
+
+                var ownStore = await storeRepository.GetByIdAsync(storeId, cancellationToken);
+                if (ownStore is not null)
+                    storesById[storeId] = ownStore;
+            }
+        }
 
         var results = priceEntries
             .Where(p => storesById.ContainsKey(p.StoreId))

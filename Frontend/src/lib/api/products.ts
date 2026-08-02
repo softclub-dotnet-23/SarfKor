@@ -17,10 +17,14 @@ export interface ScanBarcodeResult {
 
 // Only exact-barcode lookup exists on the backend today — there is no
 // name/keyword product search endpoint (see Backend audit notes).
+// auth defaults to true here (not false): the backend accepts this endpoint anonymously,
+// but when a JWT is present it also widens results to include the caller's own store even
+// while that store is still Pending admin approval -- needed for InventoryPage/PosPage, which
+// share this same call. apiFetch only *attaches* the token if one exists, so a signed-out
+// consumer on ProductPage is unaffected.
 export function scanBarcode(barcode: string, lat?: number, lng?: number) {
   return apiFetch<ScanBarcodeResult>(`/api/products/scan/${encodeURIComponent(barcode)}`, {
     query: { lat, lng },
-    auth: false,
   })
 }
 
@@ -87,12 +91,13 @@ export interface SubmitNewProductRequest {
   countryOfOrigin: string
 }
 
-// Files an unrecognized barcode as a pending submission -- does not create the Product directly.
-// Any authenticated user can submit. A StorePartner can immediately self-approve their own
-// submission via selfApproveNewProduct below (no Admin needed); anyone else's stays in the queue
-// for Admin moderation (see /admin/moderation).
+// A StorePartner's submission is trusted and created directly -- the response already carries
+// productId, no self-approve call needed (backend: CreateDirectly = User.IsInRole("StorePartner")).
+// Any other authenticated caller instead gets a pending ProductSubmission (productSubmissionId,
+// no productId yet) that stays in the moderation queue for Admin, or can be self-approved via
+// selfApproveNewProduct below if the submitter turns out to also hold StorePartner.
 export function submitNewProduct(req: SubmitNewProductRequest) {
-  return apiFetch<{ outcome: string; productSubmissionId?: number }>('/api/products/submissions', {
+  return apiFetch<{ outcome: string; productSubmissionId?: number; productId?: number }>('/api/products/submissions', {
     method: 'POST',
     body: req,
   })

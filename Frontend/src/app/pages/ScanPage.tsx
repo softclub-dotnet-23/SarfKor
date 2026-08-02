@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, EASE, LINE, Reveal, TXT } from '../ui'
 import { BarcodeGlyph } from './HomePage'
+import { useBarcodeScanner } from '../../hooks/useBarcodeScanner'
 
 /**
  * Mobile-first scanner.
@@ -11,82 +12,13 @@ import { BarcodeGlyph } from './HomePage'
  * iPhones — silently gets the manual keypad instead. The camera is a fast path,
  * never the only path.
  */
-const FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'itf']
-
-type Phase = 'idle' | 'starting' | 'live' | 'denied' | 'unsupported'
-
 export function ScanPage() {
   const navigate = useNavigate()
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const rafRef = useRef<number | null>(null)
-  const [phase, setPhase] = useState<Phase>('idle')
   const [manual, setManual] = useState('')
 
-  const supported =
-    typeof window !== 'undefined' &&
-    'BarcodeDetector' in window &&
-    !!navigator.mediaDevices?.getUserMedia
-
-  const stop = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current)
-      rafRef.current = null
-    }
-    streamRef.current?.getTracks().forEach((t) => t.stop())
-    streamRef.current = null
-  }, [])
-
-  // The camera must be released on unmount, otherwise the indicator light stays
-  // on after navigating away.
-  useEffect(() => stop, [stop])
-
-  const start = useCallback(async () => {
-    if (!supported) {
-      setPhase('unsupported')
-      return
-    }
-    setPhase('starting')
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-      })
-      streamRef.current = stream
-      const video = videoRef.current
-      if (!video) return
-      video.srcObject = stream
-      await video.play()
-      setPhase('live')
-
-      const detector = new BarcodeDetector({ formats: FORMATS })
-      let last = 0
-      const tick = async (ts: number) => {
-        rafRef.current = null
-        if (!streamRef.current) return
-        // ~6 reads/sec: detect() is expensive and running it every frame drops
-        // the preview to a slideshow on mid-range phones.
-        if (ts - last > 160 && video.readyState >= 2) {
-          last = ts
-          try {
-            const hits = await detector.detect(video)
-            const code = hits[0]?.rawValue?.trim()
-            if (code) {
-              stop()
-              navigate(`/app/p/${encodeURIComponent(code)}`)
-              return
-            }
-          } catch {
-            /* a single failed frame is not a failed scan */
-          }
-        }
-        rafRef.current = requestAnimationFrame(tick)
-      }
-      rafRef.current = requestAnimationFrame(tick)
-    } catch {
-      setPhase('denied')
-      stop()
-    }
-  }, [supported, stop, navigate])
+  const { videoRef, phase, supported, start } = useBarcodeScanner({
+    onDetect: (code) => navigate(`/app/p/${encodeURIComponent(code)}`),
+  })
 
   function submitManual(e: FormEvent) {
     e.preventDefault()
@@ -150,14 +82,12 @@ export function ScanPage() {
                 <BarcodeGlyph size={38} />
               </span>
 
-              {phase === 'idle' && (
+              {phase === 'idle' && supported && (
                 <>
                   <p className="mb-6 max-w-[300px] text-[13.5px]" style={{ color: TXT.secondary }}>
-                    {supported
-                      ? 'Разрешите доступ к камере, чтобы найти товар по штрихкоду.'
-                      : 'В этом браузере камера для сканирования недоступна — введите код вручную.'}
+                    Разрешите доступ к камере, чтобы найти товар по штрихкоду.
                   </p>
-                  {supported && <Button onClick={start}>Включить камеру</Button>}
+                  <Button onClick={start}>Включить камеру</Button>
                 </>
               )}
 
@@ -167,11 +97,12 @@ export function ScanPage() {
                 </p>
               )}
 
-              {phase === 'denied' && (
+              {(phase === 'denied' || phase === 'error') && (
                 <>
                   <p className="mb-6 max-w-[300px] text-[13.5px]" style={{ color: TXT.secondary }}>
-                    Доступ к камере закрыт. Разрешите его в настройках браузера или введите код
-                    вручную.
+                    {phase === 'denied'
+                      ? 'Доступ к камере закрыт. Разрешите его в настройках браузера или введите код вручную.'
+                      : 'Не удалось получить доступ к камере. Введите код вручную.'}
                   </p>
                   <Button variant="ghost" onClick={start}>
                     Попробовать снова
@@ -179,10 +110,23 @@ export function ScanPage() {
                 </>
               )}
 
+              {phase === 'no-camera' && (
+                <p className="max-w-[300px] text-[13.5px]" style={{ color: TXT.secondary }}>
+                  На этом устройстве не найдена камера. Введите код вручную.
+                </p>
+              )}
+
               {phase === 'unsupported' && (
                 <p className="max-w-[300px] text-[13.5px]" style={{ color: TXT.secondary }}>
                   Этот браузер не поддерживает сканирование. Введите код вручную — результат будет
                   тот же.
+                </p>
+              )}
+
+              {phase === 'insecure' && (
+                <p className="max-w-[300px] text-[13.5px]" style={{ color: TXT.secondary }}>
+                  Камера работает только по HTTPS (или на localhost) — с этого адреса браузер её не
+                  даёт использовать. Введите код вручную.
                 </p>
               )}
             </div>

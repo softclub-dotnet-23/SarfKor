@@ -28,7 +28,7 @@ public sealed class ProductsController : ControllerBase
         [FromServices] IValidator<ScanBarcodeQuery> validator,
         CancellationToken cancellationToken)
     {
-        var query = new ScanBarcodeQuery(barcode, lat, lng);
+        var query = new ScanBarcodeQuery(barcode, lat, lng, User.FindFirstValue(ClaimTypes.NameIdentifier));
 
         var validationResult = await validator.ValidateAsync(query, cancellationToken);
         if (!validationResult.IsValid)

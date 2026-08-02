@@ -4,8 +4,10 @@ import { Card } from '../components/Card'
 import { Select } from '../components/Select'
 import { Toast } from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
+import { BarcodeScannerView } from '../components/BarcodeScannerView'
 import {
   BarcodeIcon,
+  CameraIcon,
   PlusIcon,
   MinusIcon,
   TrashIcon,
@@ -16,6 +18,7 @@ import {
   EyeIcon,
 } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
+import { useBarcodeScanner } from '../../hooks/useBarcodeScanner'
 import { publishCustomerDisplayState } from '../lib/customerDisplay'
 import {
   productsApi,
@@ -445,6 +448,7 @@ export function PosPage() {
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState('')
   const [lastScan, setLastScan] = useState<ScanBarcodeResult | null>(null)
+  const [cameraOpen, setCameraOpen] = useState(false)
 
   const [cart, setCart] = useState<CartLine[]>([])
   const [cartBundles, setCartBundles] = useState<{ productBundleId: number; name: string; bundlePrice: number; currency: string; quantity: number }[]>([])
@@ -488,9 +492,9 @@ export function PosPage() {
     setCart((c) => c.filter((l) => l.productId !== productId))
   }
 
-  async function handleScan(e: React.FormEvent) {
-    e.preventDefault()
-    const code = barcode.trim()
+  // Shared by the manual-entry form and the camera scanner below -- both just need
+  // to resolve a raw barcode string to a cart line (or an explanatory error).
+  async function lookupAndAddToCart(code: string) {
     if (!code || scanning) return
     setScanning(true)
     setScanError('')
@@ -514,10 +518,36 @@ export function PosPage() {
       setLastScan(null)
     } finally {
       setScanning(false)
-      setBarcode('')
-      inputRef.current?.focus()
     }
   }
+
+  async function handleScan(e: React.FormEvent) {
+    e.preventDefault()
+    const code = barcode.trim()
+    if (!code || scanning) return
+    await lookupAndAddToCart(code)
+    setBarcode('')
+    inputRef.current?.focus()
+  }
+
+  // continuous: true -- a cashier rings up many items in a row, so the camera keeps
+  // reading after each hit instead of closing (the hook's own value-based dedupe
+  // stops the same barcode from being added twice while it's still in frame).
+  const scanner = useBarcodeScanner({
+    onDetect: (code) => {
+      lookupAndAddToCart(code)
+    },
+    continuous: true,
+  })
+
+  useEffect(() => {
+    if (cameraOpen) {
+      scanner.start()
+    } else {
+      scanner.stop()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraOpen])
 
   const total =
     cart.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0) +
@@ -604,23 +634,49 @@ export function PosPage() {
   return (
     <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
       <div className="flex min-w-0 flex-col gap-5">
-        <form onSubmit={handleScan} className="relative">
-          <BarcodeIcon
-            width={17}
-            height={17}
-            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--admin-text-tertiary)]"
+        <div className="flex gap-2">
+          <form onSubmit={handleScan} className="relative flex-1">
+            <BarcodeIcon
+              width={17}
+              height={17}
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--admin-text-tertiary)]"
+            />
+            <input
+              ref={inputRef}
+              autoFocus
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+              type="text"
+              placeholder="Сканируйте штрихкод (или введите вручную) и нажмите Enter"
+              disabled={scanning}
+              className="w-full rounded-[14px] border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] py-3.5 pl-11 pr-4 text-sm text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)] disabled:opacity-60"
+            />
+          </form>
+          {scanner.supported && (
+            <button
+              type="button"
+              onClick={() => setCameraOpen((v) => !v)}
+              title={cameraOpen ? 'Скрыть камеру' : 'Сканировать камерой'}
+              aria-pressed={cameraOpen}
+              className={`shrink-0 rounded-[14px] border px-4 transition-colors ${
+                cameraOpen
+                  ? 'border-[color:var(--admin-accent)] bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]'
+                  : 'border-[color:var(--admin-border)] bg-[color:var(--admin-card)] text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]'
+              }`}
+            >
+              <CameraIcon width={17} height={17} />
+            </button>
+          )}
+        </div>
+
+        {cameraOpen && (
+          <BarcodeScannerView
+            videoRef={scanner.videoRef}
+            phase={scanner.phase}
+            onStart={scanner.start}
+            className="aspect-video max-h-[280px] w-full"
           />
-          <input
-            ref={inputRef}
-            autoFocus
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            type="text"
-            placeholder="Сканируйте штрихкод (или введите вручную) и нажмите Enter"
-            disabled={scanning}
-            className="w-full rounded-[14px] border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] py-3.5 pl-11 pr-4 text-sm text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)] disabled:opacity-60"
-          />
-        </form>
+        )}
 
         {scanError && (
           <div className="flex items-center gap-2.5 rounded-xl bg-[color:var(--admin-danger-dim)] px-4 py-3 text-[13px] font-medium text-[color:var(--admin-danger)]">

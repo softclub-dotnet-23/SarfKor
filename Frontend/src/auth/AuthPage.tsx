@@ -519,35 +519,6 @@ function AuthPage({ mode }: { mode: Mode }) {
                   'Войдите, чтобы вернуться к своему магазину и отчётам.'
                 )}
               </motion.p>
-
-              <form
-                onSubmit={handleSubmit}
-                className="flex flex-col"
-                style={{ gap: 'clamp(18px,3.2vh,34px)' }}
-              >
-                <motion.div {...rise(4, reduce)}>
-                  <Field
-                    label="Email"
-                    inputRef={emailRef}
-                    type="email"
-                    required
-                    disabled={busy}
-                    autoComplete="username"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </motion.div>
-
-                <motion.div {...rise(5, reduce)}>
-                  <Field
-                    label="Пароль"
-                    hint={isRegister ? 'Минимум 8 символов' : undefined}
-                    action={
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        className="text-[10.5px] font-bold uppercase tracking-[0.1em] transition-colors duration-300 hover:text-[color:var(--admin-text)]"
-                        style={{ color: TXT.tertiary }}
               {stage === 'confirm' ? (
                 <form onSubmit={handleConfirmSubmit} className="flex flex-col" style={{ gap: 'clamp(18px,3.2vh,34px)' }}>
                   <motion.div {...rise(4, reduce)}>
@@ -607,59 +578,6 @@ function AuthPage({ mode }: { mode: Mode }) {
                       className="group relative w-full overflow-hidden rounded-full bg-white text-[14.5px] font-semibold tracking-wide text-black transition-all duration-700 hover:-translate-y-0.5 hover:shadow-[0_12px_38px_rgba(255,255,255,0.14)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-90"
                       style={{ paddingBlock: 'clamp(13px,2vh,17px)', transitionTimingFunction: 'cubic-bezier(.16,1,.3,1)' }}
                     >
-                      {/* monochrome, per the no-accent-colour rule: the alert reads as
-                          an alert through weight, a white rule and position, not hue */}
-                      <span className="block border-l-2 border-[color:var(--admin-text)] pl-4 text-[13px] font-semibold leading-relaxed text-[color:var(--admin-text)]">
-                        {error}
-                      </span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <motion.div {...rise(6, reduce)} style={{ paddingTop: 'clamp(2px,1.2vh,10px)' }}>
-                  <button
-                    type="submit"
-                    disabled={busy}
-                    className="group relative w-full overflow-hidden rounded-full bg-[color:var(--admin-text)] text-[14.5px] font-semibold tracking-wide text-[color:var(--admin-content)] transition-all duration-700 hover:-translate-y-0.5 hover:shadow-[0_12px_38px_color-mix(in_srgb,var(--admin-text)_14%,transparent)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-90"
-                    style={{
-                      paddingBlock: 'clamp(13px,2vh,17px)',
-                      transitionTimingFunction: 'cubic-bezier(.16,1,.3,1)',
-                    }}
-                  >
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                      style={{
-                        background: 'linear-gradient(180deg,color-mix(in srgb,var(--admin-content) 85%,transparent) 0%,transparent 55%)',
-                        mixBlendMode: 'overlay',
-                      }}
-                    />
-                    <span className="relative flex items-center justify-center gap-2.5">
-                      {busy ? (
-                        <>
-                          <span
-                            aria-hidden
-                            className="h-[15px] w-[15px] rounded-full border-2 border-[color:var(--admin-content)]/25 border-t-[color:var(--admin-content)]"
-                            style={{ animation: 'sk-spin .7s linear infinite' }}
-                          />
-                          {success ? 'Готово' : 'Подождите…'}
-                        </>
-                      ) : (
-                        <>
-                          {isRegister ? 'Создать аккаунт' : 'Войти'}
-                          <span
-                            aria-hidden
-                            className="transition-transform duration-700 group-hover:translate-x-1.5"
-                            style={{ transitionTimingFunction: 'cubic-bezier(.16,1,.3,1)' }}
-                          >
-                            →
-                          </span>
-                        </>
-                      )}
-                    </span>
-                  </button>
-                </motion.div>
-              </form>
                       <span className="relative flex items-center justify-center gap-2.5">
                         {busy ? (
                           <>
@@ -726,7 +644,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                     {!isRegister && (
                       <Link
                         to="/forgot-password"
-                        className="mt-2.5 block text-right text-[11.5px] font-semibold tracking-wide transition-colors duration-300 hover:text-white"
+                        className="mt-2.5 block text-right text-[11.5px] font-semibold tracking-wide transition-colors duration-300 hover:text-[color:var(--admin-text)]"
                         style={{ color: TXT.tertiary }}
                       >
                         Забыли пароль?
@@ -828,13 +746,37 @@ function AuthPage({ mode }: { mode: Mode }) {
                 className="text-[13px]"
                 style={{ color: TXT.tertiary, marginTop: 'clamp(18px,3.6vh,44px)' }}
               >
-                {isRegister ? 'Уже есть аккаунт? ' : 'Ещё нет аккаунта? '}
-                <Link
-                  to={isRegister ? '/login' : '/register'}
-                  className="font-semibold text-[color:var(--admin-text)] underline decoration-[color:var(--admin-border)] underline-offset-[6px] transition-all duration-500 hover:decoration-[color:var(--admin-text)]"
-                >
-                  {isRegister ? 'Войти' : 'Зарегистрироваться'}
-                </Link>
+                {stage === 'confirm' ? (
+                  <>
+                    Не пришёл код?{' '}
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={busy}
+                      className="font-semibold text-[color:var(--admin-text)] underline decoration-[color:var(--admin-border)] underline-offset-[6px] transition-all duration-500 hover:decoration-[color:var(--admin-text)] disabled:opacity-50"
+                    >
+                      Отправить ещё раз
+                    </button>
+                    {' · '}
+                    <button
+                      type="button"
+                      onClick={() => setStage('credentials')}
+                      className="font-semibold text-[color:var(--admin-text)] underline decoration-[color:var(--admin-border)] underline-offset-[6px] transition-all duration-500 hover:decoration-[color:var(--admin-text)]"
+                    >
+                      Назад
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {isRegister ? 'Уже есть аккаунт? ' : 'Ещё нет аккаунта? '}
+                    <Link
+                      to={isRegister ? '/login' : '/register'}
+                      className="font-semibold text-[color:var(--admin-text)] underline decoration-[color:var(--admin-border)] underline-offset-[6px] transition-all duration-500 hover:decoration-[color:var(--admin-text)]"
+                    >
+                      {isRegister ? 'Войти' : 'Зарегистрироваться'}
+                    </Link>
+                  </>
+                )}
               </motion.p>
             </div>
           </div>

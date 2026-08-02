@@ -144,7 +144,7 @@ public sealed class AuthController : ControllerBase
         return result.Outcome switch
         {
             ResetPasswordOutcome.Reset => Ok(),
-            _ => BadRequest("Invalid or expired reset link.")
+            _ => BadRequest("Invalid or expired code.")
         };
     }
 

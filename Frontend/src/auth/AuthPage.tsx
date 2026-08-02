@@ -624,6 +624,15 @@ function AuthPage({ mode }: { mode: Mode }) {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                     />
+                    {!isRegister && (
+                      <Link
+                        to="/forgot-password"
+                        className="mt-2.5 block text-right text-[11.5px] font-semibold tracking-wide transition-colors duration-300 hover:text-white"
+                        style={{ color: TXT.tertiary }}
+                      >
+                        Забыли пароль?
+                      </Link>
+                    )}
                   </motion.div>
 
                   <AnimatePresence initial={false}>

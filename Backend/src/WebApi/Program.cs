@@ -219,6 +219,23 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "Sarfkor API v1"));
+
+    // SmtpEmailSender already handles a missing Smtp:Username/Smtp:Password by logging the email
+    // instead of sending it — deliberately, so OTP flows (register/forgot-password) stay testable
+    // without real mail infrastructure. But that per-email log line is easy to miss, and every
+    // endpoint still returns success either way (ForgotPasswordCommandHandler's anti-enumeration
+    // guarantee — see its own comment — must hold even when SMTP is broken), so nothing in the API
+    // response can tell a developer "this is only pretending to send." This banner fires once at
+    // startup instead, before anyone has to trigger a register/reset and go grep the log to find
+    // out. Development-only on purpose: Production must stay silent about this exact configuration
+    // detail the same way it stays silent about whether any given email is registered.
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Smtp:Username"]) || string.IsNullOrWhiteSpace(builder.Configuration["Smtp:Password"]))
+    {
+        app.Services.GetRequiredService<ILogger<Program>>().LogWarning(
+            "=== SMTP NOT CONFIGURED === Registration and password-reset emails will be logged to " +
+            "this console instead of actually sent. Run `dotnet user-secrets set Smtp:Username ...` " +
+            "and `dotnet user-secrets set Smtp:Password ...` from Backend/src/WebApi to send real email.");
+    }
 }
 else
 {

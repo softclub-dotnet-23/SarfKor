@@ -197,20 +197,42 @@ public sealed class AuthService(
         return rows.Where(r => r.Email is not null).ToDictionary(r => r.Id, r => r.Email!);
     }
 
-    public async Task<string?> GeneratePasswordResetTokenAsync(string email, CancellationToken cancellationToken)
+    public async Task<string?> GeneratePasswordResetCodeAsync(string email, CancellationToken cancellationToken)
     {
         var user = await userManager.FindByEmailAsync(email);
-        return user is null ? null : await userManager.GeneratePasswordResetTokenAsync(user);
+        // Deliberately not gated on EmailConfirmed — someone who never finished registering can
+        // still have simply forgotten the password they set, and confirming just needs the code,
+        // not the old password, so there's no reason to block this on that unrelated flag.
+        return user is null ? null : await IssueEmailVerificationCodeAsync(user, cancellationToken);
     }
 
-    public async Task<bool> ResetPasswordAsync(string email, string token, string newPassword, CancellationToken cancellationToken)
+    public async Task<bool> ResetPasswordAsync(string email, string code, string newPassword, CancellationToken cancellationToken)
     {
         var user = await userManager.FindByEmailAsync(email);
-        if (user is null)
+        if (user is null || user.EmailConfirmationCodeHash is null || user.EmailConfirmationCodeExpiresAt < DateTimeOffset.UtcNow)
             return false;
 
-        var result = await userManager.ResetPasswordAsync(user, token, newPassword);
-        if (!result.Succeeded)
+        if (user.EmailConfirmationAttempts >= MaxEmailConfirmationAttempts)
+            return false;
+
+        if (!OtpCode.Matches(email, code, user.EmailConfirmationCodeHash))
+        {
+            user.EmailConfirmationAttempts++;
+            await userManager.UpdateAsync(user);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return false;
+        }
+
+        user.EmailConfirmationCodeHash = null;
+        user.EmailConfirmationCodeExpiresAt = null;
+        user.EmailConfirmationAttempts = 0;
+        await userManager.UpdateAsync(user);
+
+        // No old password needed — the code above is what already proved this request is
+        // legitimate, same as ConfirmEmailAsync using the code instead of the account's password.
+        await userManager.RemovePasswordAsync(user);
+        var addResult = await userManager.AddPasswordAsync(user, newPassword);
+        if (!addResult.Succeeded)
             return false;
 
         // A stolen refresh token must die the moment the real owner takes back the account.
@@ -229,7 +251,10 @@ public sealed class AuthService(
         return true;
     }
 
-    private async Task<RegisterAccountResult> ResendConfirmationCodeAsync(ApplicationUser user, CancellationToken cancellationToken)
+    private async Task<RegisterAccountResult> ResendConfirmationCodeAsync(ApplicationUser user, CancellationToken cancellationToken) =>
+        new(null, false, RequiresEmailConfirmation: true, EmailConfirmationCode: await IssueEmailVerificationCodeAsync(user, cancellationToken));
+
+    private async Task<string> IssueEmailVerificationCodeAsync(ApplicationUser user, CancellationToken cancellationToken)
     {
         var code = OtpCode.Generate();
         user.EmailConfirmationCodeHash = OtpCode.Hash(user.Email!, code);
@@ -237,7 +262,7 @@ public sealed class AuthService(
         user.EmailConfirmationAttempts = 0;
         await userManager.UpdateAsync(user);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return new RegisterAccountResult(null, false, RequiresEmailConfirmation: true, EmailConfirmationCode: code);
+        return code;
     }
 
     private async Task<AuthResult> IssueTokenPairAsync(ApplicationUser user)

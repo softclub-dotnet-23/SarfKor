@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card } from '../components/Card'
+import { Panel, SectionHeader } from '../cabinet/components/primitives'
 import { useTheme } from '../../theme/ThemeProvider'
 import { useThemeTransition } from '../../theme/useThemeTransition'
 import { useAuth } from '../../auth/AuthContext'
 import { SunIcon, MoonIcon } from '../../components/icons'
-import { StoreIcon, KeyIcon, CheckIcon } from '../components/icons'
+import { CheckIcon } from '../components/icons'
 import { SuppliersSection } from './SuppliersSection'
 
 const DAILY_GOAL_KEY = 'sarfkor-daily-goal'
@@ -27,13 +27,10 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-[820px] flex-col gap-6">
-      <Card className="p-6">
-        <div className="mb-5 flex items-center gap-2">
-          <StoreIcon width={18} height={18} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Магазин</span>
-        </div>
-        <div className="mb-5 flex items-center justify-between rounded-xl bg-[color:var(--admin-hover)] px-4 py-3">
+    <div className="mx-auto flex max-w-[820px] flex-col gap-5">
+      <Panel>
+        <SectionHeader title="Магазин" />
+        <div className="mb-5 flex items-center justify-between rounded-2xl bg-[color:var(--admin-hover)] px-4 py-3.5">
           <div>
             <div className="text-[13px] font-semibold text-[color:var(--admin-text)]">ID магазина: {storeId}</div>
             <div className="mt-0.5 text-[11px] text-[color:var(--admin-text-tertiary)]">
@@ -67,53 +64,47 @@ export function SettingsPage() {
           </label>
           <button
             type="submit"
-            className="flex items-center justify-center gap-2 self-start rounded-xl bg-[color:var(--admin-accent)] px-5 py-2.5 text-[13px] font-bold text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center justify-center gap-2 self-start rounded-full bg-[color:var(--admin-text)] px-5 py-2.5 text-[13px] font-bold text-[color:var(--admin-content)] transition-transform hover:scale-[1.02] active:scale-[0.98]"
           >
             {saved ? <CheckIcon width={15} height={15} /> : null}
             {saved ? 'Сохранено' : 'Сохранить изменения'}
           </button>
         </form>
-      </Card>
+      </Panel>
 
-      <Card className="p-6">
-        <div className="mb-5 flex items-center gap-2">
-          <SunIcon width={18} height={18} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Оформление</span>
-        </div>
-        <div className="flex gap-3">
+      <Panel>
+        <SectionHeader title="Оформление" />
+        <div className="flex gap-2 rounded-full bg-[color:var(--admin-hover)] p-1.5">
           <button
             onClick={(e) => runThemeTransition(e.currentTarget, () => setTheme('light'))}
-            className={`flex flex-1 flex-col items-center gap-2 rounded-xl border py-4 text-[13px] font-semibold transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-[13px] font-semibold transition-colors duration-200 ${
               theme === 'light'
-                ? 'border-[color:var(--admin-accent)] bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]'
-                : 'border-[color:var(--admin-border)] text-[color:var(--admin-text-secondary)]'
+                ? 'bg-[color:var(--admin-card)] text-[color:var(--admin-text)] [box-shadow:var(--admin-shadow)]'
+                : 'text-[color:var(--admin-text-tertiary)]'
             }`}
           >
-            <SunIcon width={20} height={20} />
+            <SunIcon width={16} height={16} />
             Светлая
           </button>
           <button
             onClick={(e) => runThemeTransition(e.currentTarget, () => setTheme('dark'))}
-            className={`flex flex-1 flex-col items-center gap-2 rounded-xl border py-4 text-[13px] font-semibold transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-[13px] font-semibold transition-colors duration-200 ${
               theme === 'dark'
-                ? 'border-[color:var(--admin-accent)] bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]'
-                : 'border-[color:var(--admin-border)] text-[color:var(--admin-text-secondary)]'
+                ? 'bg-[color:var(--admin-card)] text-[color:var(--admin-text)] [box-shadow:var(--admin-shadow)]'
+                : 'text-[color:var(--admin-text-tertiary)]'
             }`}
           >
-            <MoonIcon width={20} height={20} />
+            <MoonIcon width={16} height={16} />
             Тёмная
           </button>
         </div>
-      </Card>
+      </Panel>
 
       <SuppliersSection storeId={storeId} />
 
-      <Card className="p-6">
-        <div className="mb-5 flex items-center gap-2">
-          <KeyIcon width={18} height={18} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Аккаунт</span>
-        </div>
-        <div className="flex items-center justify-between rounded-xl bg-[color:var(--admin-hover)] px-4 py-3">
+      <Panel>
+        <SectionHeader title="Аккаунт" />
+        <div className="flex items-center justify-between rounded-2xl bg-[color:var(--admin-hover)] px-4 py-3.5">
           <div>
             <div className="text-[13px] font-semibold text-[color:var(--admin-text)]">{user?.email}</div>
             <div className="mt-0.5 text-[11px] text-[color:var(--admin-text-tertiary)]">
@@ -122,12 +113,12 @@ export function SettingsPage() {
           </div>
           <button
             onClick={logout}
-            className="shrink-0 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-danger)] ring-1 ring-[color:var(--admin-border)] hover:bg-[color:var(--admin-danger-dim)]"
+            className="shrink-0 rounded-full bg-[color:var(--admin-card)] px-3.5 py-1.5 text-[11px] font-semibold text-[color:var(--admin-danger)] ring-1 ring-[color:var(--admin-border)] hover:bg-[color:var(--admin-danger-dim)]"
           >
             Выйти
           </button>
         </div>
-      </Card>
+      </Panel>
     </div>
   )
 }

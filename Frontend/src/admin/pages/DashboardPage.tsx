@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Card } from '../components/Card'
 import { LineChart } from '../components/LineChart'
 import { RingChart } from '../components/RingChart'
 import { Loading } from '../components/Loading'
 import { ErrorState } from '../components/ErrorState'
-import { RevenueIcon, PackageIcon, AlertIcon, ClockIcon } from '../components/icons'
+import { Panel, SectionHeader, Stat, Row, RowDivider, EmptyRow } from '../cabinet/components/primitives'
+import { AlertIcon, ClockIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { storesApi, salesApi, ApiError, type StoreDashboard, type ProfitReport, type ReorderAlert, type CashierShift } from '../../lib/api'
 import { daysAgo, firstOfMonth, today, weekdayLabel } from '../lib/dates'
@@ -78,35 +78,6 @@ function useDashboardData(storeId: number) {
   return { data, loading, error, reload: load }
 }
 
-function KpiCard({
-  label,
-  value,
-  suffix,
-  icon,
-  accent,
-}: {
-  label: string
-  value: number
-  suffix?: string
-  icon: React.ReactNode
-  accent: string
-}) {
-  return (
-    <Card className="p-5">
-      <div className="mb-3.5 flex items-center justify-between">
-        <span className="text-[13px] font-medium text-[color:var(--admin-text-secondary)]">{label}</span>
-        <span className="grid h-9 w-9 place-items-center rounded-[10px]" style={{ background: `${accent}22`, color: accent }}>
-          {icon}
-        </span>
-      </div>
-      <div className="whitespace-nowrap text-[28px] font-extrabold leading-none tracking-tight text-[color:var(--admin-text)]">
-        {fmt(value)}
-        {suffix ? <span className="ml-1 text-base font-semibold text-[color:var(--admin-text-tertiary)]">{suffix}</span> : null}
-      </div>
-    </Card>
-  )
-}
-
 export function DashboardPage() {
   const { storeId } = useAuth()
   const { data, loading, error, reload } = useDashboardData(storeId!)
@@ -118,9 +89,9 @@ export function DashboardPage() {
 
   if (error || !data) {
     return (
-      <Card>
+      <Panel>
         <ErrorState message={error || 'Нет данных'} onRetry={reload} />
-      </Card>
+      </Panel>
     )
   }
 
@@ -130,43 +101,32 @@ export function DashboardPage() {
   const recentShifts = [...shifts].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, 4)
 
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-col gap-6 xl:flex-row">
-      <div className="flex min-w-0 flex-1 flex-col gap-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <KpiCard label="Продано сегодня" value={dashboard.todaySalesCount} icon={<PackageIcon width={18} height={18} />} accent="#38bdf8" />
-          <KpiCard
-            label="Себестоимость сегодня"
-            value={profitToday.totalCost}
-            suffix={profitToday.currency}
-            icon={<PackageIcon width={18} height={18} />}
-            accent="#fbbf24"
-          />
-          <KpiCard
-            label="Выручка сегодня"
-            value={dashboard.todayRevenue}
-            suffix={dashboard.currency}
-            icon={<RevenueIcon width={18} height={18} />}
-            accent="#34d399"
-          />
-        </div>
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-5 xl:flex-row">
+      <div className="flex min-w-0 flex-1 flex-col gap-5">
+        <Panel className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <Stat label="Продано сегодня" value={fmt(dashboard.todaySalesCount)} accent="#38bdf8" />
+          <Stat label="Себестоимость сегодня" value={fmt(profitToday.totalCost)} suffix={profitToday.currency} accent="#fbbf24" />
+          <Stat label="Выручка сегодня" value={fmt(dashboard.todayRevenue)} suffix={dashboard.currency} accent="#34d399" />
+        </Panel>
 
-        <Card className="p-6">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <div className="text-[16px] font-bold text-[color:var(--admin-text)]">Выручка за 7 дней</div>
-              <div className="mt-0.5 text-xs text-[color:var(--admin-text-tertiary)]">По данным /reports/daily-sales</div>
-            </div>
-            <button onClick={reload} className="text-xs font-semibold text-[color:var(--admin-accent)] hover:opacity-80">
-              Обновить
-            </button>
-          </div>
+        <Panel>
+          <SectionHeader
+            eyebrow="/reports/daily-sales"
+            title="Выручка за 7 дней"
+            action={
+              <button onClick={reload} className="text-[11.5px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80">
+                Обновить
+              </button>
+            }
+          />
           <LineChart data={week} />
-        </Card>
+        </Panel>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <Card className="flex flex-col items-center p-6">
-            <div className="mb-1 self-start text-[16px] font-bold text-[color:var(--admin-text)]">Маржинальность</div>
-            <div className="mb-5 self-start text-xs text-[color:var(--admin-text-tertiary)]">С начала месяца</div>
+          <Panel className="flex flex-col items-center">
+            <div className="w-full">
+              <SectionHeader eyebrow="С начала месяца" title="Маржинальность" />
+            </div>
             <RingChart value={marginPct} label="маржа" colorFrom="#0ea5e9" colorTo="#38bdf8" />
             <div className="mt-4 text-[28px] font-extrabold tracking-tight text-[color:var(--admin-text)]">
               {fmt(profitMonth.profit)} <span className="text-base font-medium text-[color:var(--admin-text-tertiary)]">{profitMonth.currency}</span>
@@ -174,11 +134,10 @@ export function DashboardPage() {
             <div className="mt-1 text-xs text-[color:var(--admin-text-tertiary)]">
               Выручка {fmt(profitMonth.revenue)} · себестоимость {fmt(profitMonth.totalCost)}
             </div>
-          </Card>
-          <Card className="flex flex-col items-center p-6">
-            <div className="mb-1 self-start text-[16px] font-bold text-[color:var(--admin-text)]">Цель дня</div>
-            <div className="mb-5 self-start text-xs text-[color:var(--admin-text-tertiary)]">
-              Настраивается в разделе «Настройки»
+          </Panel>
+          <Panel className="flex flex-col items-center">
+            <div className="w-full">
+              <SectionHeader eyebrow="Настраивается в «Настройках»" title="Цель дня" />
             </div>
             <RingChart value={goalPct} label="выполнено" colorFrom="#38bdf8" colorTo="#818cf8" />
             <div className="mt-4 flex items-center gap-4">
@@ -192,88 +151,60 @@ export function DashboardPage() {
                 <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">цель</div>
               </div>
             </div>
-          </Card>
+          </Panel>
         </div>
       </div>
 
       {/* Right panel */}
       <div className="flex w-full flex-col gap-5 xl:w-[300px] xl:shrink-0">
-        <Card className="p-5">
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
+        <Panel>
+          <div className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[color:var(--admin-text-tertiary)]">
             Магазин
           </div>
           <div className="mb-1 text-[16px] font-extrabold text-[color:var(--admin-text)]">ID: {storeId}</div>
           <div className="text-[12px] text-[color:var(--admin-text-tertiary)]">
             {dashboard.productsInStockCount} товаров на складе
           </div>
-        </Card>
+        </Panel>
 
-        <div>
-          <div className="mb-3.5 flex items-center justify-between">
-            <span className="text-[14px] font-bold text-[color:var(--admin-text)]">Последние смены</span>
-          </div>
-          <div className="flex flex-col gap-2.5">
-            {recentShifts.length === 0 && (
-              <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">Ещё не было ни одной смены</p>
-            )}
-            {recentShifts.map((shift) => (
-              <div
-                key={shift.cashierShiftId}
-                className="flex items-center gap-3 rounded-[14px] bg-[color:var(--admin-card)] p-3 ring-1 ring-[color:var(--admin-border)]"
-              >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]">
-                  <ClockIcon width={16} height={16} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12.5px] font-semibold text-[color:var(--admin-text)]">
-                    {new Date(shift.startedAt).toLocaleDateString('ru-RU')}
-                  </div>
-                  <div className="mt-0.5 truncate text-[11px] text-[color:var(--admin-text-tertiary)]">
-                    {shift.endedAt
-                      ? shift.closingCash !== undefined && shift.expectedCash !== undefined
-                        ? `Закрыта · расхождение ${fmt(shift.closingCash - shift.expectedCash)}`
-                        : 'Закрыта'
-                      : 'Открыта'}
-                  </div>
-                </div>
-                <div className="shrink-0 text-[13px] font-bold text-[color:var(--admin-text)]">
-                  {fmt(shift.openingCash)} {shift.currency}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Panel>
+          <SectionHeader title="Последние смены" />
+          {recentShifts.length === 0 && <EmptyRow>Ещё не было ни одной смены</EmptyRow>}
+          {recentShifts.map((shift, i) => (
+            <div key={shift.cashierShiftId}>
+              {i > 0 && <RowDivider />}
+              <Row
+                icon={<ClockIcon width={15} height={15} />}
+                iconTone="accent"
+                title={new Date(shift.startedAt).toLocaleDateString('ru-RU')}
+                subtitle={
+                  shift.endedAt
+                    ? shift.closingCash !== undefined && shift.expectedCash !== undefined
+                      ? `Закрыта · расхождение ${fmt(shift.closingCash - shift.expectedCash)}`
+                      : 'Закрыта'
+                    : 'Открыта'
+                }
+                trailing={`${fmt(shift.openingCash)} ${shift.currency}`}
+              />
+            </div>
+          ))}
+        </Panel>
 
-        <div>
-          <div className="mb-3.5 flex items-center justify-between">
-            <span className="text-[14px] font-bold text-[color:var(--admin-text)]">Требует внимания</span>
-          </div>
-          <div className="flex flex-col gap-2.5">
-            {alerts.length === 0 && (
-              <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">
-                Нет товаров ниже порога — либо правила дозаказа ещё не настроены
-              </p>
-            )}
-            {alerts.map((alert) => (
-              <div
-                key={alert.productId}
-                className="flex items-center gap-3 rounded-[14px] bg-[color:var(--admin-card)] p-3 ring-1 ring-[color:var(--admin-border)]"
-              >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[color:var(--admin-warning-dim)] text-[color:var(--admin-warning)]">
-                  <AlertIcon width={16} height={16} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-semibold text-[color:var(--admin-text)]">
-                    Товар #{alert.productId}
-                  </div>
-                  <div className="mt-0.5 text-[11px] font-medium text-[color:var(--admin-warning)]">
-                    Осталось {alert.currentQuantity} из {alert.thresholdQuantity}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Panel>
+          <SectionHeader title="Требует внимания" />
+          {alerts.length === 0 && <EmptyRow>Нет товаров ниже порога — либо правила дозаказа ещё не настроены</EmptyRow>}
+          {alerts.map((alert, i) => (
+            <div key={alert.productId}>
+              {i > 0 && <RowDivider />}
+              <Row
+                icon={<AlertIcon width={15} height={15} />}
+                iconTone="warning"
+                title={`Товар #${alert.productId}`}
+                subtitle={`Осталось ${alert.currentQuantity} из ${alert.thresholdQuantity}`}
+              />
+            </div>
+          ))}
+        </Panel>
       </div>
     </div>
   )

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Card } from '../components/Card'
 import { Select } from '../components/Select'
 import { Loading } from '../components/Loading'
 import { ErrorState } from '../components/ErrorState'
-import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, TrashIcon } from '../components/icons'
+import { Panel, SectionHeader, Stat, Row, RowDivider, EmptyRow } from '../cabinet/components/primitives'
+import { ClockIcon, ShieldIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import {
   storesApi,
@@ -111,11 +111,8 @@ function EmployeesSection() {
   }
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <ShieldIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-        <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Сотрудники магазина</span>
-      </div>
+    <Panel>
+      <SectionHeader title="Сотрудники магазина" />
 
       <form onSubmit={handleAdd} className="mb-4 flex flex-col gap-2.5 sm:flex-row sm:items-end">
         <label className="flex flex-1 flex-col gap-1.5">
@@ -157,40 +154,30 @@ function EmployeesSection() {
 
       {error && <div className="mb-3 text-[12px] font-medium text-[color:var(--admin-danger)]">{error}</div>}
 
-      <div className="flex flex-col gap-2.5">
-        {employees === null && !error && (
-          <div className="py-6 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Загрузка…</div>
-        )}
-        {employees?.map((emp) => (
-          <div
-            key={emp.storeEmployeeId}
-            className="flex items-center justify-between gap-3 rounded-[14px] bg-[color:var(--admin-hover)] p-3.5"
-          >
-            <div className="min-w-0">
-              <div className="truncate text-[13px] font-semibold text-[color:var(--admin-text)]">
-                {shortId(emp.userId, user?.userId)}
-              </div>
-              <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
-                {emp.role === 'Owner' ? 'Владелец' : 'Кассир'} · с {new Date(emp.addedAt).toLocaleDateString('ru-RU')}
-              </div>
-            </div>
-            <button
-              onClick={() => handleRemove(emp.storeEmployeeId)}
-              disabled={removingId === emp.storeEmployeeId}
-              aria-label="Удалить сотрудника"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-danger-dim)] hover:text-[color:var(--admin-danger)] disabled:opacity-50"
-            >
-              <TrashIcon width={14} height={14} />
-            </button>
+      <div>
+        {employees === null && !error && <EmptyRow>Загрузка…</EmptyRow>}
+        {employees?.map((emp, i) => (
+          <div key={emp.storeEmployeeId}>
+            {i > 0 && <RowDivider />}
+            <Row
+              title={shortId(emp.userId, user?.userId)}
+              subtitle={`${emp.role === 'Owner' ? 'Владелец' : 'Кассир'} · с ${new Date(emp.addedAt).toLocaleDateString('ru-RU')}`}
+              trailing={
+                <button
+                  onClick={() => handleRemove(emp.storeEmployeeId)}
+                  disabled={removingId === emp.storeEmployeeId}
+                  aria-label="Удалить сотрудника"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-danger-dim)] hover:text-[color:var(--admin-danger)] disabled:opacity-50"
+                >
+                  <TrashIcon width={14} height={14} />
+                </button>
+              }
+            />
           </div>
         ))}
-        {employees?.length === 0 && (
-          <div className="py-6 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">
-            В магазине пока нет добавленных сотрудников
-          </div>
-        )}
+        {employees?.length === 0 && <EmptyRow>В магазине пока нет добавленных сотрудников</EmptyRow>}
       </div>
-    </Card>
+    </Panel>
   )
 }
 
@@ -241,9 +228,9 @@ export function StaffPage() {
 
   if (error || !shifts) {
     return (
-      <Card>
+      <Panel>
         <ErrorState message={error || 'Нет данных'} />
-      </Card>
+      </Panel>
     )
   }
 
@@ -251,138 +238,91 @@ export function StaffPage() {
   const sortedShifts = [...shifts].sort((a, b) => b.startedAt.localeCompare(a.startedAt))
 
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="p-5">
-          <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Смен всего</div>
-          <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-text)]">{shifts.length}</div>
-        </Card>
-        <Card className="p-5">
-          <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Сейчас на смене</div>
-          <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-success)]">{openShifts.length}</div>
-        </Card>
-        <Card className="p-5">
-          <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Кассиров активно (30 дней)</div>
-          <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-text)]">{anomalies.length}</div>
-        </Card>
-      </div>
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-5">
+      <Panel className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <Stat label="Смен всего" value={shifts.length} accent="#38bdf8" />
+        <Stat label="Сейчас на смене" value={openShifts.length} accent="var(--admin-success)" />
+        <Stat label="Кассиров активно (30 дней)" value={anomalies.length} accent="#818cf8" />
+      </Panel>
 
       <EmployeesSection />
 
-      <Card className="p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <ClockIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Смены</span>
-        </div>
-        <div className="flex flex-col gap-3">
-          {sortedShifts.map((s) => (
-            <div
-              key={s.cashierShiftId}
-              className="flex flex-col gap-2 rounded-[16px] bg-[color:var(--admin-hover)] p-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="flex items-center gap-3">
+      <Panel>
+        <SectionHeader title="Смены" />
+        {sortedShifts.length === 0 && <EmptyRow>Смен ещё не было</EmptyRow>}
+        {sortedShifts.map((s, i) => (
+          <div key={s.cashierShiftId}>
+            {i > 0 && <RowDivider />}
+            <Row
+              icon={<ClockIcon width={15} height={15} />}
+              iconTone={s.endedAt ? 'neutral' : 'accent'}
+              title={shortId(s.cashierUserId, user?.userId)}
+              subtitle={
+                <>
+                  {new Date(s.startedAt).toLocaleString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  {s.endedAt ? ` — ${new Date(s.endedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                  {' · '}
+                  {fmt(s.openingCash)} {s.currency}
+                  {s.closingCash !== undefined ? ` → ${fmt(s.closingCash)} ${s.currency}` : ''}
+                </>
+              }
+              trailing={
                 <span
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[13px] font-bold text-white"
-                  style={{ background: 'linear-gradient(135deg, var(--admin-accent), color-mix(in srgb, var(--admin-accent) 65%, black))' }}
-                >
-                  {shortId(s.cashierUserId, user?.userId).charAt(0).toUpperCase()}
-                </span>
-                <div>
-                  <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">
-                    {shortId(s.cashierUserId, user?.userId)}
-                  </div>
-                  <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
-                    {new Date(s.startedAt).toLocaleString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    {s.endedAt ? ` — ${new Date(s.endedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : ''}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right text-[12px] text-[color:var(--admin-text-secondary)]">
-                  <div>Открытие: {fmt(s.openingCash)} {s.currency}</div>
-                  {s.closingCash !== undefined && <div>Закрытие: {fmt(s.closingCash)} {s.currency}</div>}
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold ${
+                  className={`rounded-full px-3 py-1.5 text-[11px] font-semibold ${
                     s.endedAt ? 'bg-[color:var(--admin-border)] text-[color:var(--admin-text-tertiary)]' : 'bg-[color:var(--admin-success-dim)] text-[color:var(--admin-success)]'
                   }`}
                 >
                   {s.endedAt ? 'Закрыта' : 'Открыта'}
                 </span>
-              </div>
-            </div>
-          ))}
-          {sortedShifts.length === 0 && (
-            <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Смен ещё не было</div>
-          )}
-        </div>
-      </Card>
+              }
+            />
+          </div>
+        ))}
+      </Panel>
 
-      <Card className="p-5">
-        <div className="mb-1 flex items-center gap-2">
-          <AlertIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Активность кассиров за 30 дней</span>
-        </div>
-        <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-          Аномальным считается кассир с необычно высокой долей отмен продаж — эта метрика считается на бэкенде.
-        </p>
+      <Panel>
+        <SectionHeader
+          eyebrow="Аномальным считается кассир с необычно высокой долей отмен продаж — эта метрика считается на бэкенде"
+          title="Активность кассиров за 30 дней"
+        />
         {anomaliesForbidden ? (
-          <div className="py-10 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">
-            Эта метрика видна только владельцу магазина
-          </div>
+          <EmptyRow>Эта метрика видна только владельцу магазина</EmptyRow>
+        ) : anomalies.length === 0 ? (
+          <EmptyRow>Нет продаж за последние 30 дней</EmptyRow>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] border-collapse text-left text-[13px]">
-              <thead>
-                <tr className="text-[11px] uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
-                  <th className="pb-3 font-semibold">Кассир</th>
-                  <th className="pb-3 font-semibold">Продаж</th>
-                  <th className="pb-3 font-semibold">Отмен</th>
-                  <th className="pb-3 font-semibold">% отмен</th>
-                  <th className="pb-3 font-semibold" />
-                </tr>
-              </thead>
-              <tbody>
-                {anomalies.map((a) => (
-                  <tr key={a.cashierUserId} className="border-t border-[color:var(--admin-border)]">
-                    <td className="py-3 pr-3 font-semibold text-[color:var(--admin-text)]">{shortId(a.cashierUserId, user?.userId)}</td>
-                    <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{a.totalSales}</td>
-                    <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{a.voidedSales}</td>
-                    <td className="py-3 pr-3 text-[color:var(--admin-text-secondary)]">{(a.voidRate * 100).toFixed(1)}%</td>
-                    <td className="py-3">
-                      {a.isAnomalous && (
-                        <span className="rounded-full bg-[color:var(--admin-danger-dim)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--admin-danger)]">Аномалия</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {anomalies.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-10 text-center text-[color:var(--admin-text-tertiary)]">
-                      Нет продаж за последние 30 дней
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          anomalies.map((a, i) => (
+            <div key={a.cashierUserId}>
+              {i > 0 && <RowDivider />}
+              <Row
+                title={shortId(a.cashierUserId, user?.userId)}
+                subtitle={`${a.totalSales} продаж · ${a.voidedSales} отмен · ${(a.voidRate * 100).toFixed(1)}% отмен`}
+                trailing={
+                  a.isAnomalous ? (
+                    <span className="rounded-full bg-[color:var(--admin-danger-dim)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--admin-danger)]">
+                      Аномалия
+                    </span>
+                  ) : undefined
+                }
+              />
+            </div>
+          ))
         )}
-      </Card>
+      </Panel>
 
-      <Card className="p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <ShieldIcon width={18} height={18} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Роли и доступ</span>
-        </div>
-        <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
+      <Panel>
+        <SectionHeader title="Роли и доступ" />
+        <p className="-mt-2 mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
           Отдельной JWT-роли «кассир» пока нет — все, кто работает с кассой этого магазина, входят под ролью
           StorePartner. Доступ к себестоимости и отчётам о прибыли ограничен отдельно: только владелец магазина, не
           добавленные сотрудники.
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {ROLE_ACCESS.map((r) => (
-            <div key={r.role} className="rounded-[14px] bg-[color:var(--admin-hover)] p-4">
-              <div className="mb-2.5 text-[13px] font-bold text-[color:var(--admin-text)]">{r.role}</div>
+            <div key={r.role} className="rounded-[18px] bg-[color:var(--admin-hover)] p-4">
+              <div className="mb-2.5 flex items-center gap-1.5 text-[13px] font-bold text-[color:var(--admin-text)]">
+                <ShieldIcon width={14} height={14} className="text-[color:var(--admin-accent)]" />
+                {r.role}
+              </div>
               <ul className="flex flex-col gap-1.5">
                 {r.access.map((item) => (
                   <li key={item} className="flex items-center gap-1.5 text-[12px] text-[color:var(--admin-text-secondary)]">
@@ -394,7 +334,7 @@ export function StaffPage() {
             </div>
           ))}
         </div>
-      </Card>
+      </Panel>
     </div>
   )
 }

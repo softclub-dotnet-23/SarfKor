@@ -22,7 +22,7 @@ import { FavoritesPage } from './app/pages/FavoritesPage'
 import { AlertsPage } from './app/pages/AlertsPage'
 import { ProfilePage } from './app/pages/ProfilePage'
 import { SettingsPage as AppSettingsPage } from './app/pages/SettingsPage'
-import { AdminLayout } from './admin/AdminLayout'
+import { CabinetShell } from './admin/cabinet/CabinetShell'
 import { StoreOnboardingPage } from './admin/pages/StoreOnboardingPage'
 import { ModerationPage } from './admin/pages/ModerationPage'
 import { DashboardPage } from './admin/pages/DashboardPage'
@@ -71,7 +71,7 @@ createRoot(document.getElementById('root')!).render(
               </Route>
               <Route element={<RequireStore />}>
                 <Route path="pos/display" element={<CustomerDisplayPage />} />
-                <Route element={<AdminLayout />}>
+                <Route element={<CabinetShell />}>
                   <Route path="pos" element={<PosPage />} />
                   <Route path="inventory" element={<InventoryPage />} />
                   <Route element={<RequireOwner />}>

@@ -584,16 +584,14 @@ export function InventoryPage() {
             Отсканируйте или введите штрихкод товара, чтобы найти его и оприходовать поставку.
           </p>
 
-          {scanner.supported && (
-            <button
-              type="button"
-              onClick={() => setCameraOpen((v) => !v)}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-hover)] py-2.5 text-[13px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
-            >
-              <CameraIcon width={15} height={15} />
-              {cameraOpen ? 'Скрыть камеру' : 'Сканировать камерой'}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setCameraOpen((v) => !v)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-hover)] py-2.5 text-[13px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+          >
+            <CameraIcon width={15} height={15} />
+            {cameraOpen ? 'Скрыть камеру' : 'Сканировать камерой'}
+          </button>
 
           {cameraOpen && (
             <BarcodeScannerView videoRef={scanner.videoRef} phase={scanner.phase} onStart={scanner.start} />

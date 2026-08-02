@@ -652,21 +652,19 @@ export function PosPage() {
               className="w-full rounded-[14px] border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] py-3.5 pl-11 pr-4 text-sm text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)] disabled:opacity-60"
             />
           </form>
-          {scanner.supported && (
-            <button
-              type="button"
-              onClick={() => setCameraOpen((v) => !v)}
-              title={cameraOpen ? 'Скрыть камеру' : 'Сканировать камерой'}
-              aria-pressed={cameraOpen}
-              className={`shrink-0 rounded-[14px] border px-4 transition-colors ${
-                cameraOpen
-                  ? 'border-[color:var(--admin-accent)] bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]'
-                  : 'border-[color:var(--admin-border)] bg-[color:var(--admin-card)] text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]'
-              }`}
-            >
-              <CameraIcon width={17} height={17} />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setCameraOpen((v) => !v)}
+            title={cameraOpen ? 'Скрыть камеру' : 'Сканировать камерой'}
+            aria-pressed={cameraOpen}
+            className={`shrink-0 rounded-[14px] border px-4 transition-colors ${
+              cameraOpen
+                ? 'border-[color:var(--admin-accent)] bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]'
+                : 'border-[color:var(--admin-border)] bg-[color:var(--admin-card)] text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]'
+            }`}
+          >
+            <CameraIcon width={17} height={17} />
+          </button>
         </div>
 
         {cameraOpen && (

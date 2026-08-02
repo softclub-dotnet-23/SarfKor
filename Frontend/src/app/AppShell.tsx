@@ -1,6 +1,9 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../auth/AuthContext'
+import { useTheme } from '../theme/ThemeProvider'
+import { useThemeTransition } from '../theme/useThemeTransition'
+import { SunIcon, MoonIcon } from '../components/icons'
 import { AppStyles, EASE, LINE, TXT } from './ui'
 
 /**
@@ -55,19 +58,19 @@ function NavItem({
               layoutId="sk-nav-active"
               aria-hidden
               className="absolute -left-8 top-1/2 h-[18px] w-px -translate-y-1/2"
-              style={{ background: '#fff' }}
+              style={{ background: TXT.primary }}
               transition={{ duration: 0.45, ease: EASE }}
             />
           )}
           <span
             className="w-[18px] shrink-0 text-[10px] font-semibold tabular-nums tracking-[0.1em] transition-colors duration-500"
-            style={{ color: isActive ? TXT.rest : 'rgba(255,255,255,0.28)' }}
+            style={{ color: isActive ? TXT.rest : 'var(--app-line)' }}
           >
             {String(index + 1).padStart(2, '0')}
           </span>
           <span
             className="text-[14.5px] font-semibold tracking-tight transition-colors duration-500"
-            style={{ color: isActive ? '#fff' : TXT.rest }}
+            style={{ color: isActive ? TXT.primary : TXT.rest }}
           >
             {label}
           </span>
@@ -81,6 +84,9 @@ export function AppShell() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const { theme, toggleTheme } = useTheme()
+  const { runThemeTransition } = useThemeTransition()
+  const isDark = theme === 'dark'
 
   const role = user?.roles?.includes('Admin')
     ? 'Admin'
@@ -94,7 +100,7 @@ export function AppShell() {
   }
 
   return (
-    <div className="sk-app relative min-h-screen bg-black text-white">
+    <div className="sk-app relative min-h-screen bg-[color:var(--bg-app)] text-[color:var(--app-text-primary)]">
       <AppStyles />
 
       {/* one soft key light, fixed to the viewport so pages scroll through it */}
@@ -103,7 +109,7 @@ export function AppShell() {
         className="pointer-events-none fixed inset-0 z-0"
         style={{
           background:
-            'radial-gradient(90vmax 70vmax at 78% -10%, rgba(255,255,255,0.055), transparent 60%)',
+            'radial-gradient(90vmax 70vmax at 78% -10%, color-mix(in srgb, var(--app-text-primary) 5.5%, transparent), transparent 60%)',
         }}
       />
 
@@ -115,7 +121,7 @@ export function AppShell() {
         >
           <div>
             <NavLink to="/" className="mb-16 inline-flex items-center gap-3">
-              <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-white text-[15px] font-extrabold tracking-tight text-black">
+              <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[color:var(--app-text-primary)] text-[15px] font-extrabold tracking-tight text-[color:var(--bg-app)]">
                 S
               </span>
               <span className="text-[16px] font-bold tracking-tight">Sarfkor</span>
@@ -133,12 +139,12 @@ export function AppShell() {
             <NavLink to="/app/profile" className="mb-4 flex items-center gap-3">
               <span
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[12px] font-bold"
-                style={{ background: 'rgba(255,255,255,0.10)', color: '#fff' }}
+                style={{ background: 'var(--app-line)', color: TXT.primary }}
               >
                 {initials(user?.email ?? '')}
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-[13px] font-semibold text-white">
+                <span className="block truncate text-[13px] font-semibold" style={{ color: TXT.primary }}>
                   {user?.email ?? '—'}
                 </span>
                 <span className="block text-[11px]" style={{ color: TXT.rest }}>
@@ -149,17 +155,25 @@ export function AppShell() {
             <div className="flex items-center gap-4 text-[12px]">
               <NavLink
                 to="/app/settings"
-                className="transition-colors duration-300 hover:text-white"
+                className="transition-colors duration-300 hover:text-[color:var(--app-text-primary)]"
                 style={{ color: TXT.rest }}
               >
                 Настройки
               </NavLink>
               <button
                 onClick={handleLogout}
-                className="transition-colors duration-300 hover:text-white"
+                className="transition-colors duration-300 hover:text-[color:var(--app-text-primary)]"
                 style={{ color: TXT.rest }}
               >
                 Выйти
+              </button>
+              <button
+                onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
+                aria-label="Переключить тему"
+                className="ml-auto grid h-7 w-7 shrink-0 place-items-center rounded-lg transition-colors duration-300"
+                style={{ color: TXT.rest }}
+              >
+                {isDark ? <SunIcon width={14} height={14} /> : <MoonIcon width={14} height={14} />}
               </button>
             </div>
           </div>
@@ -173,18 +187,28 @@ export function AppShell() {
             style={{ borderColor: LINE }}
           >
             <NavLink to="/" className="flex items-center gap-2.5">
-              <span className="grid h-7 w-7 place-items-center rounded-[9px] bg-white text-[13px] font-extrabold text-black">
+              <span className="grid h-7 w-7 place-items-center rounded-[9px] bg-[color:var(--app-text-primary)] text-[13px] font-extrabold text-[color:var(--bg-app)]">
                 S
               </span>
               <span className="text-[15px] font-bold tracking-tight">Sarfkor</span>
             </NavLink>
-            <NavLink
-              to="/app/profile"
-              className="grid h-8 w-8 place-items-center rounded-full text-[11px] font-bold"
-              style={{ background: 'rgba(255,255,255,0.10)' }}
-            >
-              {initials(user?.email ?? '')}
-            </NavLink>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
+                aria-label="Переключить тему"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                style={{ color: TXT.rest }}
+              >
+                {isDark ? <SunIcon width={15} height={15} /> : <MoonIcon width={15} height={15} />}
+              </button>
+              <NavLink
+                to="/app/profile"
+                className="grid h-8 w-8 place-items-center rounded-full text-[11px] font-bold"
+                style={{ background: 'var(--app-line)' }}
+              >
+                {initials(user?.email ?? '')}
+              </NavLink>
+            </div>
           </div>
 
           <motion.div
@@ -202,7 +226,11 @@ export function AppShell() {
       {/* ── BOTTOM BAR (mobile) ────────────────────────────────── */}
       <nav
         className="fixed inset-x-0 bottom-0 z-20 border-t px-2 pb-[env(safe-area-inset-bottom)] lg:hidden"
-        style={{ borderColor: LINE, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(16px)' }}
+        style={{
+          borderColor: LINE,
+          background: 'color-mix(in srgb, var(--bg-app) 92%, transparent)',
+          backdropFilter: 'blur(16px)',
+        }}
       >
         <div className="flex items-stretch justify-around">
           {NAV.map((n) => (
@@ -214,13 +242,13 @@ export function AppShell() {
                       layoutId="sk-nav-active-m"
                       aria-hidden
                       className="absolute inset-x-3 top-0 h-px"
-                      style={{ background: '#fff' }}
+                      style={{ background: TXT.primary }}
                       transition={{ duration: 0.4, ease: EASE }}
                     />
                   )}
                   <span
                     className="truncate text-[10.5px] font-semibold tracking-tight transition-colors duration-300"
-                    style={{ color: isActive ? '#fff' : TXT.rest }}
+                    style={{ color: isActive ? TXT.primary : TXT.rest }}
                   >
                     {n.label}
                   </span>

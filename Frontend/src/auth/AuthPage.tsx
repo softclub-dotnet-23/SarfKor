@@ -6,6 +6,7 @@ import { useTheme } from '../theme/ThemeProvider'
 import { useThemeTransition } from '../theme/useThemeTransition'
 import { SunIcon, MoonIcon } from '../components/icons'
 import { Atmosphere, AtmosphereKeyframes, AuthStats } from './AuthAtmosphere'
+import { resolvePostAuthRoute } from './postAuthRoute'
 
 type Mode = 'login' | 'register'
 
@@ -232,21 +233,17 @@ function AuthPage({ mode }: { mode: Mode }) {
   }, [])
 
   function routeAfterAuth(roles: string[]) {
-    // A returning visit to a protected page goes back there; a fresh sign-in
-    // routes by role. A plain User with no StorePartner/Admin role: a brand-new
-    // registration has nothing to do yet but create their store, so send them
-    // straight into onboarding — an existing account logging in goes to the
-    // consumer app (must not change for old accounts that deliberately have no
-    // store; before /app existed that destination was the landing page).
+    // A returning visit to a protected page goes back there -- but only if that page
+    // is actually within this role's own section (see resolvePostAuthRoute); otherwise
+    // a stale/incidental deep-link (most commonly into /app) would override where the
+    // role actually belongs. A fresh sign-in with no honored deep-link routes by role.
+    // A plain User with no StorePartner/Admin role: a brand-new registration has
+    // nothing to do yet but create their store, so send them straight into onboarding —
+    // an existing account logging in goes to the consumer app (must not change for old
+    // accounts that deliberately have no store; before /app existed that destination
+    // was the landing page).
     const from = (location.state as { from?: Location })?.from?.pathname
-    const fallback = roles.includes('Admin')
-      ? '/admin/moderation'
-      : roles.includes('StorePartner')
-        ? '/admin'
-        : isRegister
-          ? '/admin/onboarding'
-          : '/app'
-    navigate(from ?? fallback, { replace: true })
+    navigate(resolvePostAuthRoute(roles, from, { isNewRegistration: isRegister }), { replace: true })
   }
 
   async function handleSubmit(e: FormEvent) {

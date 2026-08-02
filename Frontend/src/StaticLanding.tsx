@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
+import { getRoleHomeRoute } from './auth/postAuthRoute'
 
 // The landing is a static, same-origin document in public/landing. It owns its own
 // markup and animations, but deliberately owns *no* auth logic: instead of a second
@@ -112,14 +113,13 @@ export function StaticLanding() {
 
       reply({ ok: true, user: { email, roles: result.roles } })
 
-      // Same post-auth routing the React LoginPage uses, so signing in from the
-      // landing lands a partner/admin in the cabinet rather than back on the film.
-      const dest = result.roles.includes('Admin')
-        ? '/admin/moderation'
-        : result.roles.includes('StorePartner')
-          ? '/admin'
-          : null
-      if (dest) navigateRef.current(dest)
+      // Same role -> home-route mapping AuthPage uses, so signing in from the landing
+      // lands a partner/admin in the cabinet rather than back on the film. Unlike
+      // AuthPage, a plain User deliberately stays put on the landing instead of being
+      // pushed into /app -- only Admin/StorePartner get redirected here.
+      if (result.roles.includes('Admin') || result.roles.includes('StorePartner')) {
+        navigateRef.current(getRoleHomeRoute(result.roles))
+      }
     }
 
     window.addEventListener('message', onMessage)

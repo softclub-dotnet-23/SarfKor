@@ -133,7 +133,7 @@ export function ProductPage() {
       <Reveal>
         <Link
           to="/app/scan"
-          className="mb-8 inline-block text-[12px] transition-colors duration-300 hover:text-white"
+          className="mb-8 inline-block text-[12px] transition-colors duration-300 hover:text-[color:var(--app-text-primary)]"
           style={{ color: TXT.rest }}
         >
           ← Сканировать другой
@@ -161,7 +161,7 @@ export function ProductPage() {
           style={{
             borderColor: LINE,
             background:
-              'radial-gradient(120% 140% at 12% 0%, rgba(255,255,255,0.055), transparent 62%)',
+              'radial-gradient(120% 140% at 12% 0%, color-mix(in srgb, var(--app-text-primary) 5.5%, transparent), transparent 62%)',
           }}
         >
           <p
@@ -177,7 +177,7 @@ export function ProductPage() {
             </span>
           </p>
           <p className="mt-5 text-[14px]" style={{ color: TXT.secondary }}>
-            <span className="font-semibold text-white">{best.storeName}</span>
+            <span className="font-semibold text-[color:var(--app-text-primary)]">{best.storeName}</span>
             {km(best.distanceKm) && <> · {km(best.distanceKm)}</>}
           </p>
           {savings > 0 && (
@@ -218,12 +218,12 @@ export function ProductPage() {
                     <span className="flex min-w-0 items-baseline gap-4">
                       <span
                         className="w-[18px] shrink-0 text-[10px] font-semibold tabular-nums"
-                        style={{ color: i === 0 ? '#fff' : 'rgba(255,255,255,0.30)' }}
+                        style={{ color: i === 0 ? TXT.primary : 'var(--app-line)' }}
                       >
                         {String(i + 1).padStart(2, '0')}
                       </span>
                       <span className="min-w-0">
-                        <span className="block truncate text-[15px] font-semibold text-white">
+                        <span className="block truncate text-[15px] font-semibold text-[color:var(--app-text-primary)]">
                           {s.storeName}
                         </span>
                         <span className="mt-0.5 block text-[12px]" style={{ color: TXT.rest }}>
@@ -233,14 +233,14 @@ export function ProductPage() {
                         </span>
                       </span>
                     </span>
-                    <span className="shrink-0 text-[16px] font-bold tabular-nums text-white">
+                    <span className="shrink-0 text-[16px] font-bold tabular-nums text-[color:var(--app-text-primary)]">
                       {money(s.price, s.currency)}
                     </span>
                   </div>
                   <span
                     aria-hidden
                     className="mt-3.5 block h-[2px] w-full overflow-hidden rounded-full"
-                    style={{ background: 'rgba(255,255,255,0.06)' }}
+                    style={{ background: 'var(--app-line-soft)' }}
                   >
                     <PriceBar share={share} highlight={i === 0} />
                   </span>
@@ -261,7 +261,7 @@ function PriceBar({ share, highlight }: { share: number; highlight: boolean }) {
       className="block h-full rounded-full"
       style={{
         width: `${Math.max(8, share * 100)}%`,
-        background: highlight ? '#fff' : 'rgba(255,255,255,0.28)',
+        background: highlight ? 'var(--app-text-primary)' : 'var(--app-line)',
       }}
     />
   )
@@ -332,7 +332,7 @@ function ProductActions({ productId, suggested }: { productId: number; suggested
               value={target}
               onChange={(e) => setTarget(e.target.value.replace(/[^\d.]/g, ''))}
               inputMode="decimal"
-              className="w-full border-0 bg-transparent pb-3 text-[16px] tabular-nums text-white caret-white"
+              className="w-full border-0 bg-transparent pb-3 text-[16px] tabular-nums text-[color:var(--app-text-primary)] caret-[color:var(--app-text-primary)]"
               style={{ borderBottom: `1px solid ${LINE}` }}
             />
           </label>

@@ -75,7 +75,7 @@ export function ListsPage() {
               onChange={(e) => setName(e.target.value)}
               maxLength={80}
               placeholder="Например, «Продукты на неделю»"
-              className="w-full border-0 bg-transparent pb-3 text-[16px] text-white caret-white placeholder:text-white/25"
+              className="w-full border-0 bg-transparent pb-3 text-[16px] text-[color:var(--app-text-primary)] caret-[color:var(--app-text-primary)] placeholder:text-[color:var(--app-text-rest)]"
               style={{ borderBottom: `1px solid ${LINE}` }}
             />
           </label>
@@ -158,7 +158,7 @@ function ListCard({
   return (
     <section className="rounded-2xl border p-7" style={{ borderColor: LINE }}>
       <div className="mb-6 flex items-baseline justify-between gap-4">
-        <h2 className="truncate text-[19px] font-bold tracking-tight text-white">{list.name}</h2>
+        <h2 className="truncate text-[19px] font-bold tracking-tight text-[color:var(--app-text-primary)]">{list.name}</h2>
         <span className="shrink-0 text-[11px] tabular-nums" style={{ color: TXT.rest }}>
           {list.items.length} поз.
         </span>
@@ -177,7 +177,7 @@ function ListCard({
                 className="flex items-center justify-between gap-4 border-b py-3"
                 style={{ borderColor: LINE }}
               >
-                <span className="min-w-0 truncate text-[14px] text-white">
+                <span className="min-w-0 truncate text-[14px] text-[color:var(--app-text-primary)]">
                   Товар #{it.productId}
                   <span className="ml-2 text-[12px]" style={{ color: TXT.rest }}>
                     × {it.quantity}
@@ -186,7 +186,7 @@ function ListCard({
                 <button
                   onClick={() => removeItem(it.itemId)}
                   aria-label={`Убрать товар ${it.productId}`}
-                  className="shrink-0 text-[12px] transition-colors duration-300 hover:text-white"
+                  className="shrink-0 text-[12px] transition-colors duration-300 hover:text-[color:var(--app-text-primary)]"
                   style={{ color: TXT.rest }}
                 >
                   Убрать
@@ -223,7 +223,7 @@ function ListCard({
                         style={{ borderColor: LINE }}
                       >
                         <span className="min-w-0">
-                          <span className="block truncate text-[15px] font-semibold text-white">
+                          <span className="block truncate text-[15px] font-semibold text-[color:var(--app-text-primary)]">
                             {s.storeName}
                           </span>
                           <span className="mt-0.5 block text-[12px]" style={{ color: TXT.rest }}>
@@ -236,7 +236,7 @@ function ListCard({
                         </span>
                         <span
                           className="shrink-0 text-[17px] font-bold tabular-nums"
-                          style={{ color: i === 0 ? '#fff' : TXT.secondary }}
+                          style={{ color: i === 0 ? TXT.primary : TXT.secondary }}
                         >
                           {money(s.totalPrice, s.currency)}
                         </span>

@@ -67,6 +67,17 @@
      alone; values flip per-theme because a "highlight" on a dark surface
      needs to be a much dimmer white than on a light one. */
   --inset-sheen: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(11, 15, 25, 0.06);
+  /* Consumer app tokens (src/app/ui.tsx's TXT/LINE point at these instead of
+     hardcoded hex). Four text steps + two line weights, each alpha chosen to
+     clear the same WCAG floor the dark values were originally hand-tuned to
+     (TXT.rest = the dimmest alpha still AA-legible for body text): 0.48 black
+     on white is ~4.6:1, matching 0.50 white-on-black's ~5.28:1 role. */
+  --app-text-primary: #0a0a0a;
+  --app-text-secondary: rgba(10, 10, 10, 0.72);
+  --app-text-tertiary: rgba(10, 10, 10, 0.58);
+  --app-text-rest: rgba(10, 10, 10, 0.48);
+  --app-line: rgba(10, 10, 10, 0.12);
+  --app-line-soft: rgba(10, 10, 10, 0.07);
   color-scheme: light;
 }
 
@@ -79,6 +90,14 @@
   --text-secondary: #9095a6;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --inset-sheen: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+  /* Original Consumer-app values, unchanged — this is the app's permanent
+     look today, now just reachable as the dark half of a real toggle. */
+  --app-text-primary: #ffffff;
+  --app-text-secondary: rgba(255, 255, 255, 0.7);
+  --app-text-tertiary: rgba(255, 255, 255, 0.6);
+  --app-text-rest: rgba(255, 255, 255, 0.5);
+  --app-line: rgba(255, 255, 255, 0.1);
+  --app-line-soft: rgba(255, 255, 255, 0.06);
   color-scheme: dark;
 }
 

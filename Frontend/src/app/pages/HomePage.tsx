@@ -82,14 +82,14 @@ export function HomePage() {
       <Reveal i={5}>
         <button
           onClick={() => navigate('/app/scan')}
-          className="group relative mb-4 flex w-full items-center gap-6 rounded-2xl border p-7 text-left transition-all duration-700 hover:bg-white/[0.03] sm:p-9"
+          className="group relative mb-4 flex w-full items-center gap-6 rounded-2xl border p-7 text-left transition-all duration-700 hover:bg-[color:var(--app-line-soft)] sm:p-9"
           style={{ borderColor: LINE, transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)' }}
         >
-          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-black transition-transform duration-700 group-hover:scale-[1.04]">
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[color:var(--app-text-primary)] text-[color:var(--bg-app)] transition-transform duration-700 group-hover:scale-[1.04]">
             <BarcodeGlyph size={26} />
           </span>
           <span className="min-w-0">
-            <span className="block text-[19px] font-bold tracking-tight text-white">
+            <span className="block text-[19px] font-bold tracking-tight text-[color:var(--app-text-primary)]">
               Сканировать штрихкод
             </span>
             <span className="mt-1 block text-[13.5px]" style={{ color: TXT.rest }}>
@@ -122,14 +122,14 @@ export function HomePage() {
               inputMode="numeric"
               autoComplete="off"
               placeholder="4780016470012"
-              className="w-full border-0 bg-transparent pb-3 text-[16px] tracking-[0.04em] text-white caret-white placeholder:text-white/25"
+              className="w-full border-0 bg-transparent pb-3 text-[16px] tracking-[0.04em] text-[color:var(--app-text-primary)] caret-[color:var(--app-text-primary)] placeholder:text-[color:var(--app-text-rest)]"
               style={{ borderBottom: `1px solid ${LINE}` }}
             />
           </label>
           <button
             type="submit"
             disabled={!barcode.trim()}
-            className="shrink-0 rounded-full bg-white px-6 py-3 text-[13.5px] font-bold text-black transition-all duration-500 hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-30"
+            className="shrink-0 rounded-full bg-[color:var(--app-text-primary)] px-6 py-3 text-[13.5px] font-bold text-[color:var(--bg-app)] transition-all duration-500 hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-30"
             style={{ transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)' }}
           >
             Найти
@@ -175,11 +175,11 @@ export function HomePage() {
                   <span className="flex min-w-0 items-baseline gap-4">
                     <span
                       className="w-[18px] shrink-0 text-[10px] font-semibold tabular-nums"
-                      style={{ color: 'rgba(255,255,255,0.30)' }}
+                      style={{ color: 'var(--app-line)' }}
                     >
                       {String(i + 1).padStart(2, '0')}
                     </span>
-                    <span className="truncate text-[14.5px] font-medium text-white">
+                    <span className="truncate text-[14.5px] font-medium text-[color:var(--app-text-primary)]">
                       {p.productName}
                     </span>
                   </span>

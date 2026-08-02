@@ -85,7 +85,7 @@ export function SettingsPage() {
                   style={{ borderColor: LINE }}
                 >
                   <span className="min-w-0">
-                    <span className="block text-[14.5px] font-semibold text-white">{c.label}</span>
+                    <span className="block text-[14.5px] font-semibold text-[color:var(--app-text-primary)]">{c.label}</span>
                     <span
                       className="mt-1 block max-w-[420px] text-[12.5px] leading-relaxed"
                       style={{ color: TXT.rest }}
@@ -101,7 +101,7 @@ export function SettingsPage() {
                     onClick={() => toggle(c.type, !on)}
                     className="relative mt-1 h-[26px] w-[46px] shrink-0 rounded-full transition-colors duration-500 disabled:opacity-50"
                     style={{
-                      background: on ? '#fff' : 'rgba(255,255,255,0.14)',
+                      background: on ? TXT.primary : 'color-mix(in srgb, var(--app-text-primary) 14%, transparent)',
                       transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
                     }}
                   >
@@ -110,7 +110,7 @@ export function SettingsPage() {
                       className="absolute top-1/2 block h-[20px] w-[20px] -translate-y-1/2 rounded-full transition-all duration-500"
                       style={{
                         left: on ? 23 : 3,
-                        background: on ? '#000' : 'rgba(255,255,255,0.75)',
+                        background: on ? 'var(--bg-app)' : 'color-mix(in srgb, var(--app-text-primary) 75%, transparent)',
                         transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
                       }}
                     />
@@ -140,7 +140,7 @@ export function SettingsPage() {
                   className="flex items-baseline justify-between gap-5 border-b py-4"
                   style={{ borderColor: LINE }}
                 >
-                  <span className="text-[13.5px] text-white">
+                  <span className="text-[13.5px] text-[color:var(--app-text-primary)]">
                     {EVENT_LABEL[ev.type] ?? ev.type}
                   </span>
                   <span className="shrink-0 text-[12px] tabular-nums" style={{ color: TXT.rest }}>

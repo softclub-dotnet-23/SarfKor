@@ -82,7 +82,7 @@ export function ProfilePage() {
                 onChange={(e) => setDisplayName(e.target.value)}
                 maxLength={100}
                 placeholder="Как к вам обращаться"
-                className="border-0 bg-transparent pb-3 text-[16px] text-white caret-white placeholder:text-white/25"
+                className="border-0 bg-transparent pb-3 text-[16px] text-[color:var(--app-text-primary)] caret-[color:var(--app-text-primary)] placeholder:text-[color:var(--app-text-rest)]"
                 style={{ borderBottom: `1px solid ${LINE}` }}
               />
             </label>
@@ -97,11 +97,11 @@ export function ProfilePage() {
               <select
                 value={lang}
                 onChange={(e) => setLang(e.target.value)}
-                className="border-0 bg-transparent pb-3 text-[16px] text-white"
-                style={{ borderBottom: `1px solid ${LINE}`, colorScheme: 'dark' }}
+                className="border-0 bg-transparent pb-3 text-[16px] text-[color:var(--app-text-primary)]"
+                style={{ borderBottom: `1px solid ${LINE}` }}
               >
                 {LANGS.map((l) => (
-                  <option key={l.value} value={l.value} style={{ background: '#000' }}>
+                  <option key={l.value} value={l.value} style={{ background: 'var(--bg-app)' }}>
                     {l.label}
                   </option>
                 ))}

@@ -146,7 +146,7 @@ export function ScanPage() {
 
           {phase !== 'live' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
-              <span className="mb-6 text-white" style={{ opacity: 0.85 }}>
+              <span className="mb-6 text-[color:var(--app-text-primary)]" style={{ opacity: 0.85 }}>
                 <BarcodeGlyph size={38} />
               </span>
 
@@ -206,7 +206,7 @@ export function ScanPage() {
               inputMode="numeric"
               autoComplete="off"
               placeholder="4780016470012"
-              className="w-full border-0 bg-transparent pb-3 text-[17px] tracking-[0.05em] tabular-nums text-white caret-white placeholder:text-white/25"
+              className="w-full border-0 bg-transparent pb-3 text-[17px] tracking-[0.05em] tabular-nums text-[color:var(--app-text-primary)] caret-[color:var(--app-text-primary)] placeholder:text-[color:var(--app-text-rest)]"
               style={{ borderBottom: `1px solid ${LINE}`, transition: `border-color .5s ${EASE}` }}
             />
           </label>

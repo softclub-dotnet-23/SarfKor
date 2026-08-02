@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, type Location } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useAuth } from './AuthContext'
+import { useTheme } from '../theme/ThemeProvider'
+import { useThemeTransition } from '../theme/useThemeTransition'
+import { SunIcon, MoonIcon } from '../components/icons'
 import { Atmosphere, AtmosphereKeyframes, AuthStats } from './AuthAtmosphere'
 
 type Mode = 'login' | 'register'
@@ -10,18 +13,16 @@ type Mode = 'login' | 'register'
    shot of the same film rather than a separate template. */
 const EASE = [0.16, 1, 0.3, 1] as const
 
-/* Monochrome text scale, chosen against #000 by WCAG contrast rather than by eye:
-   0.50 is the lowest alpha that still clears AA for body text (5.28:1), so nothing
-   below it is used for anything a visitor has to read. Hierarchy is carried by the
-   four steps below, not by fading text into the background.
-     white     21.0:1   headline, input value, button label
-     white/70   9.96:1  descriptions
-     white/60   7.37:1  labels, eyebrow, links, hints
-     white/50   5.28:1  resting placeholder label (dimmest permitted) */
+/* Was a fixed monochrome scale (white at four alphas, contrast-checked against
+   a permanently black page). Login/Register now themes like the rest of the
+   admin/auth family (ForgotPasswordPage, ResetPasswordPage, AcceptInvitePage
+   already do this) — --admin-text-secondary/-tertiary already carry their own
+   per-theme AA-checked values, so the roles below just point at them instead
+   of re-deriving alphas by hand. */
 const TXT = {
-  secondary: 'rgba(255,255,255,0.70)',
-  tertiary: 'rgba(255,255,255,0.60)',
-  rest: 'rgba(255,255,255,0.50)',
+  secondary: 'var(--admin-text-secondary)',
+  tertiary: 'var(--admin-text-tertiary)',
+  rest: 'var(--admin-text-tertiary)',
 }
 
 /* Entrance cascade. `reduce` collapses it to the resting state rather than to a
@@ -67,7 +68,7 @@ function AuthStyles() {
       .auth-root :where(button, a, [tabindex]):focus-visible {
         outline: none;
         border-radius: 6px;
-        box-shadow: 0 0 0 2px #000, 0 0 0 3.5px rgba(255,255,255,0.92);
+        box-shadow: 0 0 0 2px var(--admin-content), 0 0 0 3.5px var(--admin-text);
       }
       .auth-root input:focus-visible { outline: none; }
 
@@ -89,14 +90,14 @@ function AuthStyles() {
       .auth-root input:-webkit-autofill:hover,
       .auth-root input:-webkit-autofill:focus,
       .auth-root input:-webkit-autofill:active {
-        -webkit-text-fill-color: #fff;
-        -webkit-box-shadow: 0 0 0 1000px #000 inset;
-        box-shadow: 0 0 0 1000px #000 inset;
-        caret-color: #fff;
+        -webkit-text-fill-color: var(--admin-text);
+        -webkit-box-shadow: 0 0 0 1000px var(--admin-content) inset;
+        box-shadow: 0 0 0 1000px var(--admin-content) inset;
+        caret-color: var(--admin-text);
         transition: background-color 9999s ease-out 0s;
       }
 
-      .auth-root ::selection { background: rgba(255,255,255,0.22); color: #fff; }
+      .auth-root ::selection { background: color-mix(in srgb, var(--admin-text) 22%, transparent); color: var(--admin-text); }
       .auth-scroll::-webkit-scrollbar { display: none; }
       @keyframes sk-spin { to { transform: rotate(360deg); } }
     `}</style>
@@ -135,7 +136,7 @@ function Field({
           letterSpacing: lifted ? '0.15em' : '0.01em',
           textTransform: lifted ? 'uppercase' : 'none',
           fontWeight: lifted ? 700 : 400,
-          color: focused ? '#fff' : lifted ? TXT.tertiary : TXT.rest,
+          color: focused ? 'var(--admin-text)' : lifted ? TXT.tertiary : TXT.rest,
           transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
         }}
       >
@@ -153,17 +154,16 @@ function Field({
           setFocused(false)
           input.onBlur?.(e)
         }}
-        className="w-full appearance-none border-0 bg-transparent pb-[13px] pt-[26px] text-[15px] tracking-wide text-white caret-white disabled:opacity-50"
-        style={{ colorScheme: 'dark' }}
+        className="w-full appearance-none border-0 bg-transparent pb-[13px] pt-[26px] text-[15px] tracking-wide text-[color:var(--admin-text)] caret-[color:var(--admin-text)] disabled:opacity-50"
       />
-      <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-white/[0.22]" />
+      <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-[color:var(--admin-border)]" />
       <span
         aria-hidden
         className="absolute inset-x-0 bottom-0 h-px origin-left transition-all duration-700"
         style={{
           transform: `scaleX(${focused ? 1 : 0})`,
-          background: 'linear-gradient(90deg,#fff,rgba(255,255,255,0.55))',
-          boxShadow: focused ? '0 0 18px rgba(255,255,255,0.22)' : 'none',
+          background: 'linear-gradient(90deg,var(--admin-text),color-mix(in srgb,var(--admin-text) 55%,transparent))',
+          boxShadow: focused ? '0 0 18px color-mix(in srgb,var(--admin-text) 22%,transparent)' : 'none',
           transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
         }}
       />
@@ -182,6 +182,9 @@ function AuthPage({ mode }: { mode: Mode }) {
   const location = useLocation()
   const isRegister = mode === 'register'
   const reduce = useReducedMotion()
+  const { theme, toggleTheme } = useTheme()
+  const { runThemeTransition } = useThemeTransition()
+  const isDark = theme === 'dark'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -259,7 +262,7 @@ function AuthPage({ mode }: { mode: Mode }) {
 
   return (
     <div
-      className="auth-root overflow-hidden bg-black text-white"
+      className="auth-root admin-shell overflow-hidden bg-[color:var(--admin-content)] text-[color:var(--admin-text)]"
       /* dvh, not vh: on mobile the URL bar makes 100vh taller than the visible
          area, which would push the CTA off-screen on a page that must not scroll. */
       style={{ height: '100dvh' }}
@@ -269,12 +272,12 @@ function AuthPage({ mode }: { mode: Mode }) {
 
       <div className="grid h-full lg:grid-cols-[1.05fr_1fr]">
         {/* ── STORY (preserved) ─────────────────────────────────── */}
-        <section className="relative hidden overflow-hidden border-r border-white/[0.06] lg:flex lg:flex-col lg:justify-between lg:p-14 xl:p-20">
+        <section className="relative hidden overflow-hidden border-r border-[color:var(--admin-border)] lg:flex lg:flex-col lg:justify-between lg:p-14 xl:p-20">
           <Atmosphere />
 
           <motion.div {...rise(0, reduce)} className="relative">
             <Link to="/" className="inline-flex items-center gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-[11px] bg-white text-[16px] font-extrabold tracking-tight text-black">
+              <span className="grid h-9 w-9 place-items-center rounded-[11px] bg-[color:var(--admin-text)] text-[16px] font-extrabold tracking-tight text-[color:var(--admin-content)]">
                 S
               </span>
               <span className="text-[18px] font-bold tracking-tight">Sarfkor</span>
@@ -308,14 +311,19 @@ function AuthPage({ mode }: { mode: Mode }) {
 
         {/* ── FORM ──────────────────────────────────────────────── */}
         <section ref={rightRef} className="relative flex h-full min-h-0 flex-col">
-          {/* desktop atmosphere: two parallax lights, motes, grain, vignette */}
-          <div className="pointer-events-none absolute inset-0 hidden overflow-hidden lg:block" aria-hidden>
+          {/* desktop atmosphere: two parallax lights, motes, grain, vignette.
+              currentColor-based (via the text-[--admin-text] wrapper) so the
+              same layers re-tint under either theme, same trick as Atmosphere. */}
+          <div
+            className="pointer-events-none absolute inset-0 hidden overflow-hidden text-[color:var(--admin-text)] lg:block"
+            aria-hidden
+          >
             <div
               className="absolute h-[60vmax] w-[60vmax] rounded-full opacity-[0.05]"
               style={{
                 top: '-20%',
                 right: '-15%',
-                background: 'radial-gradient(circle,#fff,transparent 65%)',
+                background: 'radial-gradient(circle,currentColor,transparent 65%)',
                 filter: 'blur(50px)',
                 transform: 'translate(var(--mx,0px),var(--my,0px))',
                 transition: 'transform .6s cubic-bezier(.16,1,.3,1)',
@@ -326,7 +334,7 @@ function AuthPage({ mode }: { mode: Mode }) {
               style={{
                 bottom: '-25%',
                 left: '-10%',
-                background: 'radial-gradient(circle,#fff,transparent 60%)',
+                background: 'radial-gradient(circle,currentColor,transparent 60%)',
                 filter: 'blur(60px)',
                 transform: 'translate(calc(var(--mx,0px)*-.6),calc(var(--my,0px)*-.6))',
                 transition: 'transform .9s cubic-bezier(.16,1,.3,1)',
@@ -335,7 +343,7 @@ function AuthPage({ mode }: { mode: Mode }) {
             {RIGHT_MOTES.map((m, i) => (
               <span
                 key={i}
-                className="absolute rounded-full bg-white"
+                className="absolute rounded-full bg-[currentColor]"
                 style={{
                   left: m.left,
                   top: m.top,
@@ -369,18 +377,28 @@ function AuthPage({ mode }: { mode: Mode }) {
           {/* top bar */}
           <div className="relative z-10 flex shrink-0 items-center justify-between px-6 py-6 sm:px-10 lg:px-14 xl:px-20">
             <Link to="/" className="flex items-center gap-2.5 lg:hidden">
-              <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-white text-[15px] font-extrabold tracking-tight text-black">
+              <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[color:var(--admin-text)] text-[15px] font-extrabold tracking-tight text-[color:var(--admin-content)]">
                 S
               </span>
               <span className="text-[17px] font-bold tracking-tight">Sarfkor</span>
             </Link>
-            <Link
-              to="/"
-              className="text-[11.5px] font-semibold uppercase tracking-[0.14em] transition-colors duration-500 hover:text-white lg:ml-auto"
-              style={{ color: TXT.tertiary }}
-            >
-              На главную
-            </Link>
+            <div className="ml-auto flex items-center gap-4">
+              <button
+                onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
+                aria-label="Переключить тему"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors duration-300 hover:bg-[color:var(--admin-hover)]"
+                style={{ color: TXT.tertiary }}
+              >
+                {isDark ? <SunIcon width={16} height={16} /> : <MoonIcon width={16} height={16} />}
+              </button>
+              <Link
+                to="/"
+                className="text-[11.5px] font-semibold uppercase tracking-[0.14em] transition-colors duration-500 hover:text-[color:var(--admin-text)]"
+                style={{ color: TXT.tertiary }}
+              >
+                На главную
+              </Link>
+            </div>
           </div>
 
           {/* Centre column. The page itself never scrolls; this is the only element
@@ -463,7 +481,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                       <button
                         type="button"
                         onClick={() => setShowPassword((v) => !v)}
-                        className="text-[10.5px] font-bold uppercase tracking-[0.1em] transition-colors duration-300 hover:text-white"
+                        className="text-[10.5px] font-bold uppercase tracking-[0.1em] transition-colors duration-300 hover:text-[color:var(--admin-text)]"
                         style={{ color: TXT.tertiary }}
                       >
                         {showPassword ? 'Скрыть' : 'Показать'}
@@ -515,7 +533,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                     >
                       {/* monochrome, per the no-accent-colour rule: the alert reads as
                           an alert through weight, a white rule and position, not hue */}
-                      <span className="block border-l-2 border-white pl-4 text-[13px] font-semibold leading-relaxed text-white">
+                      <span className="block border-l-2 border-[color:var(--admin-text)] pl-4 text-[13px] font-semibold leading-relaxed text-[color:var(--admin-text)]">
                         {error}
                       </span>
                     </motion.div>
@@ -526,7 +544,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                   <button
                     type="submit"
                     disabled={busy}
-                    className="group relative w-full overflow-hidden rounded-full bg-white text-[14.5px] font-semibold tracking-wide text-black transition-all duration-700 hover:-translate-y-0.5 hover:shadow-[0_12px_38px_rgba(255,255,255,0.14)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-90"
+                    className="group relative w-full overflow-hidden rounded-full bg-[color:var(--admin-text)] text-[14.5px] font-semibold tracking-wide text-[color:var(--admin-content)] transition-all duration-700 hover:-translate-y-0.5 hover:shadow-[0_12px_38px_color-mix(in_srgb,var(--admin-text)_14%,transparent)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-90"
                     style={{
                       paddingBlock: 'clamp(13px,2vh,17px)',
                       transitionTimingFunction: 'cubic-bezier(.16,1,.3,1)',
@@ -536,7 +554,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                       aria-hidden
                       className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                       style={{
-                        background: 'linear-gradient(180deg,rgba(255,255,255,.85) 0%,transparent 55%)',
+                        background: 'linear-gradient(180deg,color-mix(in srgb,var(--admin-content) 85%,transparent) 0%,transparent 55%)',
                         mixBlendMode: 'overlay',
                       }}
                     />
@@ -545,7 +563,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                         <>
                           <span
                             aria-hidden
-                            className="h-[15px] w-[15px] rounded-full border-2 border-black/25 border-t-black"
+                            className="h-[15px] w-[15px] rounded-full border-2 border-[color:var(--admin-content)]/25 border-t-[color:var(--admin-content)]"
                             style={{ animation: 'sk-spin .7s linear infinite' }}
                           />
                           {success ? 'Готово' : 'Подождите…'}
@@ -575,7 +593,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                 {isRegister ? 'Уже есть аккаунт? ' : 'Ещё нет аккаунта? '}
                 <Link
                   to={isRegister ? '/login' : '/register'}
-                  className="font-semibold text-white underline decoration-white/30 underline-offset-[6px] transition-all duration-500 hover:decoration-white"
+                  className="font-semibold text-[color:var(--admin-text)] underline decoration-[color:var(--admin-border)] underline-offset-[6px] transition-all duration-500 hover:decoration-[color:var(--admin-text)]"
                 >
                   {isRegister ? 'Войти' : 'Зарегистрироваться'}
                 </Link>

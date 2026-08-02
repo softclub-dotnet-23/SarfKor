@@ -62,7 +62,7 @@ export function FavoritesPage() {
                   style={{ borderColor: LINE }}
                 >
                   <span className="min-w-0">
-                    <span className="block text-[15px] font-semibold text-white">
+                    <span className="block text-[15px] font-semibold text-[color:var(--app-text-primary)]">
                       {f.type === 'Product' ? 'Товар' : 'Магазин'} #{f.entityId}
                     </span>
                     <span className="mt-0.5 block text-[12px]" style={{ color: TXT.rest }}>
@@ -72,7 +72,7 @@ export function FavoritesPage() {
                   <button
                     onClick={() => remove(f.type, f.entityId, f.favoriteId)}
                     disabled={removing === f.favoriteId}
-                    className="shrink-0 text-[12px] transition-colors duration-300 hover:text-white disabled:opacity-40"
+                    className="shrink-0 text-[12px] transition-colors duration-300 hover:text-[color:var(--app-text-primary)] disabled:opacity-40"
                     style={{ color: TXT.rest }}
                   >
                     Убрать

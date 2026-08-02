@@ -3,27 +3,29 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { ApiError } from '../lib/api'
 
 /**
- * The consumer app's visual system. It deliberately does not use the `--admin-*`
- * tokens or the light/dark ThemeProvider that the merchant app runs on: this half
- * of the product continues the landing film, which is permanently monochrome, so
- * the surface is hard-black and the hierarchy is carried by four fixed steps of
- * white rather than by a palette.
+ * The consumer app's visual system. Previously permanently monochrome-black
+ * (no theme support at all); now themes via the same `.dark`/`.light` class
+ * ThemeProvider already flips app-wide, through the `--app-*` tokens in
+ * src/index.css (`:root`/`.dark`) rather than the merchant app's `--admin-*`
+ * namespace, since this surface has its own distinct visual language.
  *
- * Contrast floor is the same one the auth pages settled on — 0.50 alpha on black
- * is 5.28:1, the dimmest value that still clears WCAG AA for body text. Nothing a
- * visitor has to read is allowed below it.
+ * TXT/LINE keep their exact former shape (same keys, same call sites) but now
+ * point at CSS custom properties instead of hardcoded hex — every existing
+ * `style={{color: TXT.rest}}` across the app re-themes for free. Each step's
+ * alpha is still chosen to clear the same WCAG AA floor in both directions
+ * (see index.css for the per-theme values).
  */
 export const EASE = [0.16, 1, 0.3, 1] as const
 
 export const TXT = {
-  primary: '#fff',
-  secondary: 'rgba(255,255,255,0.70)', //  9.96:1
-  tertiary: 'rgba(255,255,255,0.60)', //   7.37:1
-  rest: 'rgba(255,255,255,0.50)', //       5.28:1 — floor
+  primary: 'var(--app-text-primary)',
+  secondary: 'var(--app-text-secondary)',
+  tertiary: 'var(--app-text-tertiary)',
+  rest: 'var(--app-text-rest)',
 }
 
-export const LINE = 'rgba(255,255,255,0.10)'
-export const LINE_SOFT = 'rgba(255,255,255,0.06)'
+export const LINE = 'var(--app-line)'
+export const LINE_SOFT = 'var(--app-line-soft)'
 
 /** Page-level CSS that utilities cannot express. Mounted once by AppShell. */
 export function AppStyles() {
@@ -32,7 +34,7 @@ export function AppStyles() {
       .sk-app :where(input,button,a,select,textarea,[tabindex]):focus { outline: none; }
       .sk-app :where(input,button,a,select,textarea,[tabindex]):focus-visible {
         outline: none; border-radius: 8px;
-        box-shadow: 0 0 0 2px #000, 0 0 0 3.5px rgba(255,255,255,0.92);
+        box-shadow: 0 0 0 2px var(--bg-app), 0 0 0 3.5px var(--app-text-primary);
       }
       @media (forced-colors: active) {
         .sk-app :where(input,button,a,select,textarea,[tabindex]):focus-visible {
@@ -41,12 +43,12 @@ export function AppStyles() {
       }
       .sk-app input:-webkit-autofill,
       .sk-app input:-webkit-autofill:focus {
-        -webkit-text-fill-color: #fff;
-        -webkit-box-shadow: 0 0 0 1000px #000 inset;
-        caret-color: #fff;
+        -webkit-text-fill-color: var(--app-text-primary);
+        -webkit-box-shadow: 0 0 0 1000px var(--bg-app) inset;
+        caret-color: var(--app-text-primary);
         transition: background-color 9999s ease-out 0s;
       }
-      .sk-app ::selection { background: rgba(255,255,255,0.22); color: #fff; }
+      .sk-app ::selection { background: color-mix(in srgb, var(--app-text-primary) 22%, transparent); color: var(--app-text-primary); }
       .sk-scroll::-webkit-scrollbar { width: 0; height: 0; }
       @keyframes sk-shimmer { 100% { transform: translateX(100%); } }
       @keyframes sk-spin { to { transform: rotate(360deg); } }
@@ -261,13 +263,13 @@ export function Skeleton({ h = 16, w = '100%', className = '' }: { h?: number; w
       data-shimmer
       aria-hidden
       className={`relative block overflow-hidden rounded-md ${className}`}
-      style={{ height: h, width: w, background: 'rgba(255,255,255,0.055)' }}
+      style={{ height: h, width: w, background: 'color-mix(in srgb, var(--app-text-primary) 5.5%, transparent)' }}
     >
       <span
         className="absolute inset-0 -translate-x-full"
         style={{
           background:
-            'linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent)',
+            'linear-gradient(90deg,transparent,color-mix(in srgb,var(--app-text-primary) 7%,transparent),transparent)',
           animation: 'sk-shimmer 1.6s ease-in-out infinite',
         }}
       />
@@ -289,9 +291,9 @@ export function EmptyState({
       <span
         aria-hidden
         className="mb-6 block h-px w-10"
-        style={{ background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent)' }}
+        style={{ background: 'linear-gradient(90deg,transparent,color-mix(in srgb,var(--app-text-primary) 40%,transparent),transparent)' }}
       />
-      <p className="text-[16px] font-semibold tracking-tight text-white">{title}</p>
+      <p className="text-[16px] font-semibold tracking-tight text-[color:var(--app-text-primary)]">{title}</p>
       {body && (
         <p className="mt-2.5 max-w-[340px] text-[13.5px] leading-relaxed" style={{ color: TXT.rest }}>
           {body}
@@ -305,15 +307,15 @@ export function EmptyState({
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <div role="alert" className="flex flex-col items-center px-6 py-20 text-center">
-      <p className="text-[15px] font-semibold text-white">Что-то пошло не так</p>
+      <p className="text-[15px] font-semibold text-[color:var(--app-text-primary)]">Что-то пошло не так</p>
       <p className="mt-2.5 max-w-[340px] text-[13.5px] leading-relaxed" style={{ color: TXT.secondary }}>
         {message}
       </p>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-7 rounded-full border px-5 py-2.5 text-[13px] font-semibold text-white transition-colors duration-300 hover:bg-white hover:text-black"
-          style={{ borderColor: 'rgba(255,255,255,0.22)' }}
+          className="mt-7 rounded-full border px-5 py-2.5 text-[13px] font-semibold text-[color:var(--app-text-primary)] transition-colors duration-300 hover:bg-[color:var(--app-text-primary)] hover:text-[color:var(--bg-app)]"
+          style={{ borderColor: 'color-mix(in srgb, var(--app-text-primary) 22%, transparent)' }}
         >
           Попробовать снова
         </button>
@@ -322,7 +324,10 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   )
 }
 
-/** Primary action. Capsule, white on black, quiet lift — same as the landing CTA. */
+/** Primary action. Capsule, inverse-of-background, quiet lift — same as the
+ *  landing CTA. Primary genuinely inverts polarity per theme (white-on-black
+ *  in dark, black-on-white in light), not just a tint shift, so both var()
+ *  references are load-bearing here, not decorative. */
 export function Button({
   children,
   variant = 'primary',
@@ -333,15 +338,15 @@ export function Button({
     'inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-[14px] font-bold tracking-wide transition-all duration-500 disabled:opacity-45 disabled:pointer-events-none'
   const skin =
     variant === 'primary'
-      ? 'bg-white text-black hover:-translate-y-0.5 hover:shadow-[0_10px_34px_rgba(255,255,255,0.10)] active:scale-[0.98]'
-      : 'text-white hover:bg-white/[0.06] active:scale-[0.98] border'
+      ? 'bg-[color:var(--app-text-primary)] text-[color:var(--bg-app)] hover:-translate-y-0.5 hover:shadow-[0_10px_34px_color-mix(in_srgb,var(--app-text-primary)_10%,transparent)] active:scale-[0.98]'
+      : 'text-[color:var(--app-text-primary)] hover:bg-[color:var(--app-line-soft)] active:scale-[0.98] border'
   return (
     <button
       {...rest}
       className={`${base} ${skin} ${className}`}
       style={{
         transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
-        ...(variant === 'ghost' ? { borderColor: 'rgba(255,255,255,0.20)' } : null),
+        ...(variant === 'ghost' ? { borderColor: 'var(--app-line)' } : null),
         ...rest.style,
       }}
     >
@@ -350,14 +355,22 @@ export function Button({
   )
 }
 
+/**
+ * `dark` used to mean "black spinner, for use on the (always white) primary
+ * Button" — now that primary Button inverts polarity per theme, `dark` means
+ * "match the Button's own inverted surface" instead, via var(--bg-app) rather
+ * than a literal black. The two call sites (busy state inside a primary
+ * Button) stay correct in both themes without the caller doing anything.
+ */
 export function Spinner({ dark = false }: { dark?: boolean }) {
+  const fg = dark ? 'var(--bg-app)' : 'var(--app-text-primary)'
   return (
     <span
       aria-hidden
       className="inline-block h-[15px] w-[15px] shrink-0 rounded-full border-2"
       style={{
-        borderColor: dark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.25)',
-        borderTopColor: dark ? '#000' : '#fff',
+        borderColor: `color-mix(in srgb, ${fg} 22%, transparent)`,
+        borderTopColor: fg,
         animation: 'sk-spin 0.7s linear infinite',
       }}
     />

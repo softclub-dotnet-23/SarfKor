@@ -38,6 +38,28 @@
  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
  overflow-x:clip;
 }
+/* Sofi-style alternation: most chapters stay on the film's black ground, a
+   handful flip to a paper-white one at their own <section> boundary (never
+   mid-chapter, so none of the scroll-jacked animation timing is touched).
+   Custom properties inherit, so any descendant already reading var(--text-*)/
+   var(--border-*) — how-it-works, stores, testimonials, FAQ all do — re-themes
+   for free; each flipped section's own hardcoded literals are handled locally.
+   Still strictly black/white/grey: no new hue enters the palette here. */
+.sk-root [data-ground="light"]{
+ --text-primary:#0a0a0a;--text-secondary:rgba(0,0,0,.62);--text-tertiary:rgba(0,0,0,.4);
+ --border-subtle:rgba(0,0,0,.1);--border-strong:rgba(0,0,0,.18);--hairline:rgba(0,0,0,.08);
+ --bg-section:rgba(0,0,0,.035);--bg-card:rgba(0,0,0,.03);
+ --shadow-soft:0 1px 2px rgba(0,0,0,.06),0 14px 34px -12px rgba(0,0,0,.12);
+ --shadow-lift:0 10px 24px -8px rgba(0,0,0,.1),0 36px 72px -22px rgba(0,0,0,.16);
+ /* --brand* is "the highest-contrast accent" — white on the black ground,
+    so it has to invert to near-black here or every var(--brand)-colored pin/
+    button/highlight in a light section goes invisible against paper. */
+ --brand:#0a0a0a;--brand-dark:#2b2b2b;--brand-2:#404040;
+ --brand-grad:linear-gradient(135deg,#171717 0%,#2b2b2b 52%,#404040 100%);
+ --brand-grad-soft:linear-gradient(135deg,rgba(0,0,0,.08),rgba(0,0,0,.03));
+ --btn-dark-grad:linear-gradient(180deg,#0a0a0a,#262626);
+ color:var(--text-primary);
+}
 .sk-root *{box-sizing:border-box}
 .sk-root ::selection{background:var(--brand);color:#fff}
 /* Keyboard focus was invisible everywhere, and the dialog inputs set outline:none
@@ -207,16 +229,19 @@
   .sk-root [data-hero-item]:first-of-type,
   .sk-root [data-hero-item]:last-of-type{display:none !important}
 
-  /* The product: bottom-anchored and allowed to crop, not centred — centring an
-     object taller than its box makes it spill upward by half its own overflow,
-     which is what was quietly eating into the copy's clearance before this was
-     measured against the real (post-reveal, post-idle-sway) layout rather than a
-     first-paint snapshot. flex-end pins its bottom to the (deliberately
-     off-screen) stage edge instead, so all the overflow crops downward. */
+  /* The product: fully on-screen, not cropped. An earlier version bottom-
+     anchored the phone and let it crop off the bottom edge to maximise width —
+     that reads wrong once the whole device is the point. `align-items:center`
+     centres the (fixed 300x616, pre-scale) box within the stage; because CSS
+     `scale` keeps its own transform-origin (the box's centre) fixed as it grows
+     or shrinks, the rendered phone stays centred on that same point too — so
+     tuning `height`/`bottom` to match the free space below the copy, and
+     `scale` to match that space's height, is what keeps the whole device
+     inside the viewport instead of hand-tuning a crop offset. */
   .sk-root [data-hero-stage]{
-    top:auto !important;bottom:-24vh !important;
+    top:auto !important;bottom:9dvh !important;
     left:0 !important;right:0 !important;width:100% !important;
-    height:52dvh !important;align-items:flex-end !important;
+    height:48dvh !important;align-items:center !important;
   }
   /* `scale` is a separate property from `transform`, so shrinking the device here
      survives the per-frame transform writes in setupPhone(). Scoped to
@@ -224,8 +249,11 @@
      phone div *also* declares `transform-style:preserve-3d` (for its own back/front
      faces), so the old substring selector matched both wrapper and phone and
      scaled them twice (.52 x .52 = ~0.27 of the 300px box) — the device read as
-     small and lost rather than as the hero subject. One element, one multiplier. */
-  .sk-root [data-phone-wrap]{scale:1.14 !important}
+     small and lost rather than as the hero subject. One element, one multiplier.
+     Sized so the full rotated silhouette (≈2.2x taller than wide at this tilt)
+     fits the free space below the copy without cropping — verified against the
+     live, fully-settled layout, not computed on paper. */
+  .sk-root [data-phone-wrap]{scale:.84 !important}
 
   /* ---- global rhythm --------------------------------------------------- */
   /* NB: no `[style*="max-width:1200px"]` rule here either. React serialises inline
@@ -457,6 +485,15 @@
   }
 }
 
+/* Larger phones (412-430: Pixel/iPhone Pro Max class) are also taller, so the
+   free space below the copy has more headroom than the 390px base case tuned
+   below — the base scale leaves the phone under the 60% floor with slack to
+   spare. One step up uses that headroom instead of leaving it empty. */
+@media (min-width:400px) and (max-width:600px){
+  .sk-root [data-hero-stage]{bottom:11dvh !important}
+  .sk-root [data-phone-wrap]{scale:.94 !important}
+}
+
 /* Tablet portrait / large phones in landscape. Full-bleed controls are right on a
    390px phone and wrong at 768 — a 705px pill reads as a broken layout rather than
    a generous one, so the column gets a ceiling while staying centred. */
@@ -465,10 +502,13 @@
   .sk-root [data-hero-main] p{max-width:46ch !important}
   .sk-root [data-menu-panel]{max-width:520px;margin-inline:auto}
   .sk-root [data-menu-cta]{max-width:440px;margin-inline:auto}
-  /* The phone-breakpoint scale (1.14) is a fixed px size, so on a 768-820px
-     tablet canvas it reads as barely a third of the width with a huge unused
-     gap beneath the copy. One step up keeps it the dominant object here too. */
-  .sk-root [data-phone-wrap]{scale:1.6 !important}
+  /* The phone-breakpoint scale is a fixed px size, so on a 768-820px tablet
+     canvas the base value reads as a fraction of the width with a lot of
+     unused gap beneath the copy — but the device still has to fit entirely
+     below the copy the same as every phone size, just with more headroom to
+     work with. Verified against the live, fully-settled layout. */
+  .sk-root [data-hero-stage]{bottom:8dvh !important;height:60dvh !important}
+  .sk-root [data-phone-wrap]{scale:1.05 !important}
 }
 
 /* Narrow phones (320-375: this now also covers the 375-wide iPhone SE/mini
@@ -485,6 +525,7 @@
      phone's fixed 300px box does not shrink with the viewport, so the same
      scale reads as 85%+ of the width. One step down keeps it in the same
      65-75% band the wider phones land in. */
+  .sk-root [data-hero-stage]{bottom:11dvh !important}
   .sk-root [data-phone-wrap]{scale:.82 !important}
 }
 
@@ -495,16 +536,31 @@
    (allowed-to-crop) height below the fold, and tighten the copy until the two
    stop meeting. */
 @media (max-width:860px) and (max-height:700px){
-  .sk-root [data-hero-main]{padding-top:calc(52px + env(safe-area-inset-top)) !important}
-  /* `scale` centres on the element's own midpoint, so growing it also pushes the
-     visual bottom edge past whatever `bottom` alone would suggest — verified
-     against the live, fully-settled (post-reveal, post-damped-rotation) layout
-     rather than computed on paper, since the two didn't agree the first time. */
-  .sk-root [data-hero-stage]{height:30dvh !important;bottom:-56vh !important}
-  .sk-root [data-hero-h1]{font-size:26px !important}
-  .sk-root [data-hero-main] p{font-size:14px !important;line-height:1.5 !important;margin-top:10px !important}
-  .sk-root [data-hero-item]:nth-of-type(3){margin-top:14px !important;gap:8px !important}
-  .sk-root [data-hero-item]:nth-of-type(3) button{min-height:48px !important;font-size:15px !important}
+  .sk-root [data-hero-main]{padding-top:calc(40px + env(safe-area-inset-top)) !important}
+  /* Full visibility beats width on the shortest screens (SE-class, ~568-667px
+     tall): at this device's fixed rotation the phone's silhouette is ~2.24x
+     taller than wide, so there is a real ceiling on how wide it can be while
+     still fitting entirely below the copy — verified against the live,
+     fully-settled (post-reveal, post-damped-rotation) layout. Text is trimmed
+     as far as still reads comfortably first; scale is the last lever, not
+     the first. */
+  .sk-root [data-hero-stage]{height:58dvh !important;bottom:4dvh !important;align-items:center !important}
+  .sk-root [data-hero-h1]{font-size:25px !important}
+  .sk-root [data-hero-main] p{font-size:13.5px !important;line-height:1.45 !important;margin-top:8px !important}
+  .sk-root [data-hero-item]:nth-of-type(3){margin-top:10px !important;gap:8px !important}
+  .sk-root [data-hero-item]:nth-of-type(3) button{min-height:46px !important;font-size:14.5px !important}
+}
+/* Within "short," 568px (SE1) and 667px (SE2/3) are a real gap — the taller
+   one has ~100px more free space below the copy, enough to let the phone be
+   noticeably bigger while still fitting entirely on screen. Two scale tiers
+   instead of one average that under-fills the taller phones and still
+   wouldn't have fit the shortest one. */
+@media (max-width:860px) and (max-height:600px){
+  .sk-root [data-phone-wrap]{scale:.55 !important}
+}
+@media (max-width:860px) and (min-height:601px) and (max-height:700px){
+  .sk-root [data-hero-stage]{bottom:6dvh !important}
+  .sk-root [data-phone-wrap]{scale:.68 !important}
 }
 
 /* Landscape phones: the hero is 100dvh with a bottom-anchored device, which
@@ -730,24 +786,31 @@
   </section>
 
   <!-- ============ SCENE: KINETIC MANIFESTO ============ -->
-  <section ref="{{ kinRef }}" style="position:relative;height:380vh;margin-top:-14vh">
-    <div style="position:sticky;top:0;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#fff">
-      <div data-kin-glow style="position:absolute;width:60vw;height:60vh;border-radius:50%;background:radial-gradient(circle,rgba(117,117,117,.10),transparent 70%);filter:blur(60px);opacity:0"></div>
+  <!-- Ground flips to light — a breath/contrast beat between the two dark
+       chapters either side of it, same alternation logic as Stats below. -->
+  <section ref="{{ kinRef }}" data-ground="light" style="position:relative;height:380vh;margin-top:-14vh">
+    <div style="position:sticky;top:0;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#0a0a0a;background:var(--paper)">
+      <div data-kin-glow style="position:absolute;width:60vw;height:60vh;border-radius:50%;background:radial-gradient(circle,rgba(10,10,10,.06),transparent 70%);filter:blur(60px);opacity:0"></div>
       <div style="position:relative;text-align:center;padding:0 6vw;max-width:1400px">
-        <div data-kin-eyebrow style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:rgba(255,255,255,.35);margin-bottom:38px;opacity:0">акт 03 — почему это важно</div>
+        <div data-kin-eyebrow style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:rgba(0,0,0,.4);margin-bottom:38px;opacity:0">акт 03 — почему это важно</div>
         <div style="display:flex;flex-wrap:wrap;gap:0 3.2vw;justify-content:center;font-size:clamp(48px,11vw,168px);font-weight:800;letter-spacing:-.045em;line-height:.92">
           <span data-kin-word style="display:inline-block;opacity:0">цена</span>
           <span data-kin-word style="display:inline-block;opacity:0">должна</span>
           <span data-kin-word style="display:inline-block;opacity:0">быть</span>
-          <span data-kin-word style="display:inline-block;opacity:0;color:#ffffff">честной</span>
+          <span data-kin-word style="display:inline-block;opacity:0;color:#0a0a0a">честной</span>
         </div>
-        <p data-kin-tail style="margin:46px auto 0;max-width:520px;font-size:clamp(15px,1.3vw,19px);line-height:1.55;color:rgba(255,255,255,.55);opacity:0">Один штрихкод — и ты видишь всю картину: где дороже, где дешевле, сколько ты сэкономишь прямо сейчас.</p>
+        <p data-kin-tail style="margin:46px auto 0;max-width:520px;font-size:clamp(15px,1.3vw,19px);line-height:1.55;color:rgba(0,0,0,.6);opacity:0">Один штрихкод — и ты видишь всю картину: где дороже, где дешевле, сколько ты сэкономишь прямо сейчас.</p>
       </div>
     </div>
   </section>
 
-  <section id="how-it-works" ref="{{ hiwRef }}" style="position:relative;height:940vh">
-    <div style="position:sticky;top:0;height:100vh;overflow:hidden;display:flex">
+  <!-- Ground flips to light — the explanatory "4 steps" chapter reads as a
+       clean product-page beat, the Apple/Stripe convention for how-it-works
+       sections. Most of this scene already reads its colors through
+       var(--text-*)/var(--border-strong), so the [data-ground] scope above
+       re-themes it without touching each literal. -->
+  <section id="how-it-works" ref="{{ hiwRef }}" data-ground="light" style="position:relative;height:940vh">
+    <div style="position:sticky;top:0;height:100vh;overflow:hidden;display:flex;background:var(--paper)">
       <div data-ghost style="position:absolute;left:-2%;top:50%;transform:translateY(-50%);font-size:clamp(160px,32vw,420px);font-weight:800;line-height:.8;letter-spacing:-.06em;color:color-mix(in srgb,var(--text-primary) 6%,transparent);pointer-events:none;z-index:0">01</div>
       <div data-hiw-title style="position:absolute;top:clamp(72px,11vh,104px);left:0;right:0;text-align:center;pointer-events:none;z-index:21;transition:opacity .15s linear">
         <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:var(--text-tertiary);margin-bottom:14px">Как это работает</div>
@@ -831,15 +894,18 @@
   </section>
 
   <!-- ============ ACT 5 · ДОКАЗАТЕЛЬСТВО ============ -->
-  <section id="stats" style="padding:8vh 24px 14vh;margin-top:-6vh">
+  <!-- Ground flips to light here: proof/numbers read like a clean printed
+       page (Stripe/Linear convention) rather than continuing the black film —
+       the alternation is the point, not an accident. -->
+  <section id="stats" data-ground="light" style="padding:8vh 24px 14vh;margin-top:-6vh;background:var(--paper);color:var(--ink)">
     <div ref="{{ statsRef }}" style="margin:0 auto;max-width:1200px;position:relative">
-      <div data-reveal="0" style="font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:38px;text-align:center">акт 05 — а это работает?</div>
+      <div data-reveal="0" style="font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(0,0,0,.4);margin-bottom:38px;text-align:center">акт 05 — а это работает?</div>
       <div style="position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:28px" data-stats-grid>
         <sc-for list="{{ statsData }}" as="s" hint-placeholder-count="4">
           <div>
-            <div style="width:50px;height:50px;border-radius:15px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;color:#fff;margin-bottom:18px;box-shadow:0 1px 0 rgba(255,255,255,.12) inset">{{ s.icon }}</div>
-            <div data-stat data-target="{{ s.value }}" data-decimals="{{ s.decimals }}" data-suffix="{{ s.suffix }}" style="font-size:clamp(40px,5vw,72px);font-weight:800;letter-spacing:-.04em;color:#fff;font-variant-numeric:tabular-nums">0{{ s.suffix }}</div>
-            <div style="font-size:15px;color:rgba(255,255,255,.5);margin-top:6px;font-weight:500">{{ s.label }}</div>
+            <div style="width:50px;height:50px;border-radius:15px;background:rgba(0,0,0,.045);border:1px solid rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center;color:#0a0a0a;margin-bottom:18px;box-shadow:0 1px 0 rgba(255,255,255,.6) inset">{{ s.icon }}</div>
+            <div data-stat data-target="{{ s.value }}" data-decimals="{{ s.decimals }}" data-suffix="{{ s.suffix }}" style="font-size:clamp(40px,5vw,72px);font-weight:800;letter-spacing:-.04em;color:#0a0a0a;font-variant-numeric:tabular-nums">0{{ s.suffix }}</div>
+            <div style="font-size:15px;color:rgba(0,0,0,.55);margin-top:6px;font-weight:500">{{ s.label }}</div>
           </div>
         </sc-for>
       </div>
@@ -886,10 +952,14 @@
   </section>
 
   <!-- ============ STORES MAP ============ -->
-  <section id="stores" style="padding:10vh 24px;margin-top:-8vh">
+  <!-- Ground flips to light — map + address cards read the way Apple Maps'
+       marketing shots do, and most of this section already runs on
+       var(--text-*)/var(--bg-*)/var(--border-subtle), so it re-themes almost
+       for free from the [data-ground] scope. -->
+  <section id="stores" data-ground="light" style="padding:10vh 24px;margin-top:-8vh;background:var(--paper)">
     <div style="margin:0 auto;max-width:1200px;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center" data-stores-grid>
       <div>
-        <div data-reveal="0" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:rgba(255,255,255,.35);margin-bottom:16px">акт 07 — где именно?</div>
+        <div data-reveal="0" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:rgba(0,0,0,.4);margin-bottom:16px">акт 07 — где именно?</div>
         <h2 style="font-size:clamp(38px,5vw,80px);font-weight:800;letter-spacing:-.04em;line-height:.98;margin:0 0 26px;color:var(--text-primary);overflow:hidden"><span data-reveal="120" style="display:block;transform:translateY(108%);opacity:0">Тысячи магазинов<br>по всему Таджикистану</span></h2>
         <p data-reveal="260" style="font-size:18px;line-height:1.6;color:var(--text-secondary);max-width:440px;text-wrap:pretty;transform:translateY(28px);opacity:0">Находи товары по лучшей цене поблизости и строй маршрут в один тап. Карта показывает актуальные предложения в реальном времени.</p>
       </div>
@@ -911,7 +981,7 @@
           <div style="font-size:16px;font-weight:700;letter-spacing:-.01em">{{ popup.name }}</div>
           <div style="font-size:13px;color:var(--text-secondary);margin:3px 0 12px">{{ popup.address }}</div>
           <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:600"><span style="color:#dcdcdc">★</span>{{ popup.rating }}</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:14px;font-weight:600"><span style="color:#8a8a8a">★</span>{{ popup.rating }}</span>
             <span style="font-size:14px;font-weight:700;color:var(--brand)">{{ popup.distance }}</span>
           </div>
         </div>
@@ -944,10 +1014,12 @@
   </section>
 
   <!-- ============ TESTIMONIALS ============ -->
-  <section id="testimonials" style="padding:10vh 24px;margin-top:-8vh">
+  <!-- Ground flips to light — social proof reads as editorial, on-paper
+       content (Stripe/Sofi convention); already mostly var(--*)-driven. -->
+  <section id="testimonials" data-ground="light" style="padding:10vh 24px;margin-top:-8vh;background:var(--paper)">
     <div style="margin:0 auto;max-width:1200px">
       <div style="text-align:center;margin-bottom:52px">
-        <div data-reveal="0" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:rgba(255,255,255,.35);margin-bottom:16px">акт 08 — а кто уже проверил?</div>
+        <div data-reveal="0" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:rgba(0,0,0,.4);margin-bottom:16px">акт 08 — а кто уже проверил?</div>
         <h2 style="font-size:clamp(38px,5vw,80px);font-weight:800;letter-spacing:-.04em;line-height:.98;margin:0;color:var(--text-primary);overflow:hidden"><span data-reveal="120" style="display:block;transform:translateY(108%);opacity:0">Реальные отзывы<br>реальных людей</span></h2>
       </div>
       <div onMouseEnter="{{ pauseCarousel }}" onMouseLeave="{{ resumeCarousel }}" style="position:relative">
@@ -962,7 +1034,7 @@
                     <span style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,{{ t.color }},{{ t.color2 }});display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;box-shadow:0 1px 0 rgba(255,255,255,.3) inset">{{ t.initial }}</span>
                     <div>
                       <div style="font-size:15px;font-weight:700">{{ t.name }}</div>
-                      <div style="color:#dcdcdc;font-size:13px;letter-spacing:2px">★★★★★</div>
+                      <div style="color:#8a8a8a;font-size:13px;letter-spacing:2px">★★★★★</div>
                     </div>
                   </div>
                   <p style="font-size:15px;line-height:1.6;color:var(--text-secondary);margin:0;text-wrap:pretty">{{ t.text }}</p>
@@ -981,10 +1053,12 @@
   </section>
 
   <!-- ============ FAQ ============ -->
-  <section id="faq" style="padding:10vh 24px 16vh;margin-top:-8vh">
+  <!-- Ground flips to light — continues straight from testimonials (no dark
+       beat between them), readability-first content; already var(--*)-driven. -->
+  <section id="faq" data-ground="light" style="padding:10vh 24px 16vh;margin-top:-8vh;background:var(--paper)">
     <div style="margin:0 auto;max-width:1200px;display:grid;grid-template-columns:.85fr 1.15fr;gap:56px;align-items:start" data-faq-grid>
       <div>
-        <div data-reveal="0" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:rgba(255,255,255,.35);margin-bottom:16px">акт 09 — остались вопросы?</div>
+        <div data-reveal="0" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:rgba(0,0,0,.4);margin-bottom:16px">акт 09 — остались вопросы?</div>
         <h2 style="font-size:clamp(38px,5vw,80px);font-weight:800;letter-spacing:-.04em;line-height:.98;margin:0 0 40px;color:var(--text-primary);overflow:hidden"><span data-reveal="120" style="display:block;transform:translateY(108%);opacity:0">Ответы на<br>вопросы</span></h2>
         <div style="position:relative;height:200px" data-faq-deco>
           <div style="--r:-8deg;position:absolute;top:10px;left:10px;width:120px;height:120px;border-radius:28px;background:var(--brand-grad);box-shadow:var(--shadow-lift);display:flex;align-items:center;justify-content:center;color:#0a0a0a;font-size:64px;font-weight:800;letter-spacing:-.03em;animation:sk-float 6s ease-in-out infinite">S</div>
@@ -1108,13 +1182,18 @@ class Component extends DCLogic {
     {id:'dehot',name:'Дехот',address:'ул. Бухоро, 8',rating:4.3,distance:'1.2 км',top:'30%',left:'80%'},
     {id:'somon',name:'Сомон',address:'ул. Фирдавси, 61',rating:4.7,distance:'1.4 км',top:'78%',left:'55%'},
   ];
+  /* Avatar colors were light greys with white initials — legible on the old
+     black ground, unreadable on testimonials' now-permanent light one. The
+     chip is dark UI chrome regardless of page ground (same idea as keeping
+     the how-it-works phone's screen dark) rather than tracking the section's
+     text-color scope. */
   TESTS=[
-    {name:'Мария Т.',color:'#cfcfcf',text:'Отличное приложение! Экономлю каждый день на покупках для семьи. Очень удобно и быстро.'},
-    {name:'Сурдоб Х.',color:'#c7c7c7',text:'Теперь точно знаю где дешевле. Sarfkor стал моим помощником №1 в походах за продуктами.'},
-    {name:'Зарнигор А.',color:'#c0c0c0',text:'Функция сравнения чека просто супер! Уже несколько раз ловила расхождение с ценником.'},
-    {name:'Феруз М.',color:'#c9c9c9',text:'Экономит и деньги, и время. Рекомендую всем, кто хочет покупать умнее каждый день.'},
-    {name:'Далер Н.',color:'#d8d8d8',text:'Использую перед каждым походом в магазин — экономия ощутима уже через месяц.'},
-    {name:'Нигина С.',color:'#c3c3c3',text:'Простой и понятный интерфейс, супер быстро находит товар по штрихкоду.'},
+    {name:'Мария Т.',color:'#404040',text:'Отличное приложение! Экономлю каждый день на покупках для семьи. Очень удобно и быстро.'},
+    {name:'Сурдоб Х.',color:'#383838',text:'Теперь точно знаю где дешевле. Sarfkor стал моим помощником №1 в походах за продуктами.'},
+    {name:'Зарнигор А.',color:'#333333',text:'Функция сравнения чека просто супер! Уже несколько раз ловила расхождение с ценником.'},
+    {name:'Феруз М.',color:'#3a3a3a',text:'Экономит и деньги, и время. Рекомендую всем, кто хочет покупать умнее каждый день.'},
+    {name:'Далер Н.',color:'#474747',text:'Использую перед каждым походом в магазин — экономия ощутима уже через месяц.'},
+    {name:'Нигина С.',color:'#353535',text:'Простой и понятный интерфейс, супер быстро находит товар по штрихкоду.'},
   ];
   FAQS=[
     {question:'Как работает сканирование?',answer:'Наведите камеру телефона на штрихкод товара — приложение мгновенно распознает его и покажет цены во всех ближайших магазинах.'},
@@ -1122,11 +1201,16 @@ class Component extends DCLogic {
     {question:'Как часто обновляются цены?',answer:'Цены обновляются в реальном времени: их вносят сами магазины-партнёры и подтверждают пользователи через систему репутации, поэтому данные остаются свежими каждый день.'},
     {question:'Можно ли добавить свой магазин?',answer:'Конечно. Откройте партнёрский кабинет, добавьте магазин и загрузите цены — уже через несколько минут его увидят покупатели поблизости.'},
   ];
+  /* Accents were near-white (#fff/#d4d4d4/#bcbcbc/#e0e0e0) — legible text/icon
+     color on the chapter's old black ground, invisible on the light ground
+     this chapter now uses. Inverted to a matching dark-gray progression;
+     tagBg (a 13% mix of this color) stays subtle on paper the same way it
+     was subtle on black. */
   STEPS=[
-    {tag:'Шаг 01',title:'Сканируй штрихкод',description:'Наведи камеру на товар — Sarfkor мгновенно распознаёт штрихкод и находит товар в базе.',feats:['Работает даже при плохом свете','Распознавание за 0,3 секунды'],accent:'#ffffff'},
-    {tag:'Шаг 02',title:'Получи информацию',description:'Мы находим товар в базе и показываем полную карточку: состав, объём и цену за единицу.',feats:['Честная цена за 1л / 100г','История изменения цены'],accent:'#d4d4d4'},
-    {tag:'Шаг 03',title:'Сравни цены',description:'Список всех магазинов рядом с ценами — от самой выгодной до самой дорогой.',feats:['Сортировка по расстоянию','Отметка «лучшая цена»'],accent:'#bcbcbc'},
-    {tag:'Шаг 04',title:'Экономь деньги',description:'Выбирай лучшее предложение и строй маршрут до магазина в один тап.',feats:['Маршрут в один тап','Учёт сэкономленного за месяц'],accent:'#e0e0e0'},
+    {tag:'Шаг 01',title:'Сканируй штрихкод',description:'Наведи камеру на товар — Sarfkor мгновенно распознаёт штрихкод и находит товар в базе.',feats:['Работает даже при плохом свете','Распознавание за 0,3 секунды'],accent:'#0a0a0a'},
+    {tag:'Шаг 02',title:'Получи информацию',description:'Мы находим товар в базе и показываем полную карточку: состав, объём и цену за единицу.',feats:['Честная цена за 1л / 100г','История изменения цены'],accent:'#2b2b2b'},
+    {tag:'Шаг 03',title:'Сравни цены',description:'Список всех магазинов рядом с ценами — от самой выгодной до самой дорогой.',feats:['Сортировка по расстоянию','Отметка «лучшая цена»'],accent:'#404040'},
+    {tag:'Шаг 04',title:'Экономь деньги',description:'Выбирай лучшее предложение и строй маршрут до магазина в один тап.',feats:['Маршрут в один тап','Учёт сэкономленного за месяц'],accent:'#1a1a1a'},
   ];
 
   componentDidMount(){
@@ -2267,7 +2351,10 @@ class Component extends DCLogic {
       const activeI=Math.max(0,Math.min(N-1,Math.round(seg)));
       dots.forEach((dd,i)=>{const on=i===activeI;
         dd.style.width=on?'54px':'44px';
-        dd.style.background=on?'#fff':'var(--border-strong)';
+        // This chapter's ground is permanently light (see [data-ground="light"]
+        // on #how-it-works), so the active dot is the section's own dark ink,
+        // not the film's usual white.
+        dd.style.background=on?'#0a0a0a':'var(--border-strong)';
         dd.style.opacity=on?'1':'.45';});
       this._raf2=requestAnimationFrame(loop);
     };
@@ -2347,7 +2434,7 @@ class Component extends DCLogic {
     const pins=this.PINS.map((p,i)=>{const act=p.id===s.activeStore;return{...p,i,z:act?10:5,size:act?'34px':'28px',color:act?'var(--brand)':'var(--text-tertiary)',ringDisplay:act?'block':'none'};});
     const ap=this.PINS.find(p=>p.id===s.activeStore);
     const popup=ap?{name:ap.name,address:ap.address,rating:ap.rating,distance:ap.distance,top:`calc(${ap.top} - 8px)`,left:`min(${ap.left},62%)`,opacity:1,scale:'1',pe:'auto'}:{name:'',address:'',rating:'',distance:'',top:'0',left:'0',opacity:0,scale:'.9',pe:'none'};
-    const tColors={'#cfcfcf':'#a9a9a9','#c7c7c7':'#a2a2a2','#c0c0c0':'#9c9c9c','#c9c9c9':'#a6a6a6','#d8d8d8':'#bfbfbf','#c3c3c3':'#9e9e9e'};
+    const tColors={'#404040':'#1a1a1a','#383838':'#141414','#333333':'#0f0f0f','#3a3a3a':'#161616','#474747':'#1f1f1f','#353535':'#101010'};
     const testimonials=this.TESTS.map(t=>({...t,color2:tColors[t.color]||t.color,initial:t.name[0]}));
     const testDots=Array.from({length:this.pages()},(_, i)=>({i,w:i===s.tIndex?'26px':'8px',bg:i===s.tIndex?'var(--brand)':'var(--border-strong)'}));
     const faqs=this.FAQS.map((q,i)=>{const open=i===s.faqOpen;return{...q,i,open,border:i<this.FAQS.length-1?'1px solid var(--border-subtle)':'none',weight:open?'700':'600',rows:open?'1fr':'0fr',rotate:open?'180deg':'0deg',chevBg:open?'var(--brand)':'var(--bg-section)',chevColor:open?'#fff':'var(--text-secondary)',chevShadow:open?'0 4px 10px -2px rgba(106,106,106,.5)':'none'};});

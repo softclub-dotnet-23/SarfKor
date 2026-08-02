@@ -36,14 +36,24 @@ const MOTES = Array.from({ length: 16 }, (_, i) => ({
   delay: -(i * 4.3) % 30,
 }))
 
+/**
+ * Every layer here reads `currentColor` instead of a literal white, so the
+ * whole atmosphere re-tints correctly under either theme from one `color`
+ * declaration on the wrapper — the alternative (a parallel dark-mode value
+ * for each of six decorative layers) would be six places to get wrong twice.
+ */
 export function Atmosphere() {
   return (
-    <div data-atmos aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+    <div
+      data-atmos
+      aria-hidden
+      className="pointer-events-none absolute inset-0 overflow-hidden text-[color:var(--admin-text)]"
+    >
       {/* two counter-drifting key lights */}
       <div
         className="absolute -left-[20%] -top-[25%] h-[85vmax] w-[85vmax] rounded-full"
         style={{
-          background: 'radial-gradient(circle,rgba(255,255,255,.10),transparent 62%)',
+          background: 'radial-gradient(circle,color-mix(in srgb,currentColor 10%,transparent),transparent 62%)',
           filter: 'blur(60px)',
           animation: 'sk-drift-a 58s cubic-bezier(.4,0,.6,1) infinite',
         }}
@@ -51,7 +61,7 @@ export function Atmosphere() {
       <div
         className="absolute -bottom-[30%] -right-[15%] h-[70vmax] w-[70vmax] rounded-full"
         style={{
-          background: 'radial-gradient(circle,rgba(255,255,255,.06),transparent 60%)',
+          background: 'radial-gradient(circle,color-mix(in srgb,currentColor 6%,transparent),transparent 60%)',
           filter: 'blur(70px)',
           animation: 'sk-drift-b 71s cubic-bezier(.4,0,.6,1) infinite',
         }}
@@ -60,7 +70,8 @@ export function Atmosphere() {
       <div
         className="absolute inset-0"
         style={{
-          background: 'linear-gradient(115deg,transparent 30%,rgba(255,255,255,.5) 50%,transparent 70%)',
+          background:
+            'linear-gradient(115deg,transparent 30%,color-mix(in srgb,currentColor 50%,transparent) 50%,transparent 70%)',
           mixBlendMode: 'overlay',
           animation: 'sk-sheen 44s ease-in-out infinite',
         }}
@@ -69,7 +80,7 @@ export function Atmosphere() {
       {MOTES.map((m, i) => (
         <span
           key={i}
-          className="absolute rounded-full bg-white"
+          className="absolute rounded-full bg-[currentColor]"
           style={{
             left: m.left,
             top: m.top,
@@ -88,7 +99,10 @@ export function Atmosphere() {
             "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E\")",
         }}
       />
-      {/* vignette */}
+      {/* vignette — darkens the panel edges under either theme (a light-mode
+          vignette that brightened the edges instead would fight the sheen/
+          key-light layers above, which are authored to be the brightest
+          points near centre) */}
       <div
         className="absolute inset-0"
         style={{ background: 'radial-gradient(120% 90% at 50% 45%,transparent 40%,rgba(0,0,0,.72) 100%)' }}
@@ -139,20 +153,18 @@ function Stat({ to, decimals, suffix, label }: { to: number; decimals: number; s
   const value = useCountUp(to, decimals)
   return (
     <div>
-      <div className="text-[clamp(20px,2vw,26px)] font-extrabold tracking-[-0.03em] text-white tabular-nums">
+      <div className="text-[clamp(20px,2vw,26px)] font-extrabold tracking-[-0.03em] text-[color:var(--admin-text)] tabular-nums">
         {value}
         {suffix}
       </div>
-      {/* white/60 = 7.37:1 on black. Anything below 0.50 fails AA here, and the
-          previous 0.40 (3.66:1) was one of the unreadable elements reported. */}
-      <div className="mt-1 text-[12px] leading-snug text-white/60">{label}</div>
+      <div className="mt-1 text-[12px] leading-snug text-[color:var(--admin-text-secondary)]">{label}</div>
     </div>
   )
 }
 
 export function AuthStats() {
   return (
-    <div className="grid grid-cols-3 gap-6 border-t border-white/10 pt-8">
+    <div className="grid grid-cols-3 gap-6 border-t border-[color:var(--admin-border)] pt-8">
       <Stat to={2500} decimals={0} suffix="+" label="магазинов рядом" />
       <Stat to={18.4} decimals={1} suffix="M" label="сомони сэкономлено" />
       <Stat to={1.2} decimals={1} suffix="M+" label="товаров сравнено" />

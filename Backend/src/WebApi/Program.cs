@@ -213,6 +213,14 @@ using (var scope = app.Services.CreateScope())
         if (adminUser is not null && !await userManager.IsInRoleAsync(adminUser, "Admin"))
             await userManager.AddToRoleAsync(adminUser, "Admin");
     }
+
+    // Fixed dev accounts (admin@, partner@, user@ sarfkor.tj) — idempotent, Development only.
+    if (app.Environment.IsDevelopment())
+    {
+        var devLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        var devUserManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        await DatabaseSeeder.SeedDevAccountsAsync(devUserManager, devLogger);
+    }
 }
 
 if (app.Environment.IsDevelopment())

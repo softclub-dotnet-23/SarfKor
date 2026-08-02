@@ -140,102 +140,95 @@ button {
 html.theme-wipe::view-transition-group(root) {
   animation-duration: 0.85s;
 }
-/* Admin panel — separate token set (dark-first product UI, distinct from the
-   light-first marketing site) but driven by the exact same .dark class the
-   public site's ThemeToggle already flips, so both surfaces stay in sync. */
+/* ─────────────────────────────────────────────────────────────────────────────
+   AUTHENTICATED SURFACES — film-dark monochrome identity
+   Inherits the landing's black/white/glass vocabulary: no brand hue, no blue.
+   Two token sets share the same --admin-* namespace (StorePartner cabinet +
+   Admin moderation) so a single <CabinetShell> class drives both.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Light mode — a proper warm-neutral light, not a generic gray template */
 .admin-shell {
-  --admin-sidebar: #f7f8fa;
-  --admin-content: #f1f2f5;
-  --admin-card: #ffffff;
-  --admin-border: rgba(15, 23, 42, 0.08);
-  --admin-text: #0f1115;
-  --admin-text-secondary: rgba(15, 17, 21, 0.58);
-  --admin-text-tertiary: rgba(15, 17, 21, 0.4);
-  --admin-hover: rgba(15, 23, 42, 0.045);
-  --admin-accent: #0284c7;
-  --admin-accent-soft: rgba(2, 132, 199, 0.1);
-  --admin-success: #34d399;
-  --admin-success-dim: rgba(52, 211, 153, 0.13);
-  --admin-danger: #f87171;
-  --admin-danger-dim: rgba(248, 113, 113, 0.13);
-  --admin-warning: #fbbf24;
-  --admin-warning-dim: rgba(251, 191, 36, 0.13);
-  --admin-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 16px 32px -16px rgba(15, 23, 42, 0.12);
-  --admin-shadow-lift: 0 4px 8px rgba(15, 23, 42, 0.06), 0 32px 64px -20px rgba(15, 23, 42, 0.18);
+  --admin-sidebar: #f6f6f8;
+  --admin-content: #eeeef1;
+  --admin-card: rgba(255, 255, 255, 0.82);
+  --admin-border: rgba(0, 0, 0, 0.08);
+  --admin-border-strong: rgba(0, 0, 0, 0.14);
+  --admin-text: #0a0a0a;
+  --admin-text-secondary: rgba(0, 0, 0, 0.56);
+  --admin-text-tertiary: rgba(0, 0, 0, 0.36);
+  --admin-hover: rgba(0, 0, 0, 0.04);
+  /* Accent = inverted (near-black on light bg) */
+  --admin-accent: #0a0a0a;
+  --admin-accent-fg: #ffffff;       /* text that sits ON the accent button */
+  --admin-accent-soft: rgba(0, 0, 0, 0.07);
+  --admin-success: #16a34a;
+  --admin-success-dim: rgba(22, 163, 74, 0.10);
+  --admin-danger: #dc2626;
+  --admin-danger-dim: rgba(220, 38, 38, 0.10);
+  --admin-warning: #d97706;
+  --admin-warning-dim: rgba(217, 119, 6, 0.10);
+  --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 20px -8px rgba(0, 0, 0, 0.08);
+  --admin-shadow-lift: 0 4px 12px rgba(0, 0, 0, 0.07), 0 36px 60px -20px rgba(0, 0, 0, 0.14);
   color-scheme: light;
 }
 
+/* Dark mode — the film's native exposure: pure black ground, glass panels,
+   white-on-black accent. This is the primary design state (landing-matched). */
 .dark .admin-shell {
-  --admin-sidebar: #0d0d0d;
-  --admin-content: #111111;
-  --admin-card: #1a1a1a;
-  --admin-border: rgba(255, 255, 255, 0.06);
-  --admin-text: #ffffff;
-  --admin-text-secondary: rgba(255, 255, 255, 0.5);
-  --admin-text-tertiary: rgba(255, 255, 255, 0.35);
-  --admin-hover: rgba(255, 255, 255, 0.05);
-  --admin-accent: #38bdf8;
-  --admin-accent-soft: rgba(56, 189, 248, 0.12);
-  --admin-success: #34d399;
-  --admin-success-dim: rgba(52, 211, 153, 0.16);
+  --admin-sidebar: #000000;
+  --admin-content: #020202;
+  --admin-card: rgba(255, 255, 255, 0.045);
+  --admin-border: rgba(255, 255, 255, 0.09);
+  --admin-border-strong: rgba(255, 255, 255, 0.18);
+  --admin-text: #f8f8f8;
+  --admin-text-secondary: rgba(255, 255, 255, 0.58);
+  --admin-text-tertiary: rgba(255, 255, 255, 0.36);
+  --admin-hover: rgba(255, 255, 255, 0.06);
+  /* Accent = near-white (inverted from black bg) */
+  --admin-accent: #f0f0f0;
+  --admin-accent-fg: #000000;       /* text that sits ON the accent button */
+  --admin-accent-soft: rgba(255, 255, 255, 0.10);
+  /* Status — muted to feel editorial rather than dashboard */
+  --admin-success: #4ade80;
+  --admin-success-dim: rgba(74, 222, 128, 0.12);
   --admin-danger: #f87171;
-  --admin-danger-dim: rgba(248, 113, 113, 0.16);
+  --admin-danger-dim: rgba(248, 113, 113, 0.12);
   --admin-warning: #fbbf24;
-  --admin-warning-dim: rgba(251, 191, 36, 0.16);
-  --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 20px 40px -20px rgba(0, 0, 0, 0.5);
-  --admin-shadow-lift: 0 4px 8px rgba(0, 0, 0, 0.3), 0 40px 80px -24px rgba(0, 0, 0, 0.6);
+  --admin-warning-dim: rgba(251, 191, 36, 0.12);
+  /* Three-layer shadow — same recipe as the landing's --shadow-lift */
+  --admin-shadow: 0 1px 3px rgba(0, 0, 0, 0.7), 0 8px 24px -8px rgba(0, 0, 0, 0.8);
+  --admin-shadow-lift: 0 4px 16px rgba(0, 0, 0, 0.7), 0 48px 80px -24px rgba(0, 0, 0, 0.95);
   color-scheme: dark;
 }
 
-/* Moderation panel (Admin role) — its own token set (near-black panels in
-   dark mode) but shares .admin-shell's blue accent so the Admin surface reads
-   as the same product as the StorePartner cabinet. Same .dark class drives
-   both so the site-wide theme toggle stays in sync everywhere. */
+/* Moderation panel — inherits admin-shell tokens; the page itself handles
+   its own visual hierarchy so no separate mod-* namespace is needed. */
 .mod-shell {
-  --mod-bg: #f5f5f6;
-  --mod-panel: #ffffff;
-  --mod-panel2: #efeff1;
-  --mod-elev: #ffffff;
-  --mod-border: rgba(0, 0, 0, 0.09);
-  --mod-border2: rgba(0, 0, 0, 0.15);
-  --mod-text: #0c0c0e;
-  --mod-muted: #6a6a72;
-  --mod-faint: #9a9aa2;
-  --mod-accent: #0284c7;
-  --mod-accent2: #0284c7;
-  --mod-accent-dim: rgba(2, 132, 199, 0.12);
-  --mod-ok: #0284c7;
-  --mod-ok-dim: rgba(2, 132, 199, 0.12);
-  --mod-warn: #6a6a72;
-  --mod-warn-dim: rgba(106, 106, 114, 0.12);
-  --mod-danger: #dc2626;
-  --mod-danger-dim: rgba(220, 38, 38, 0.12);
-  --mod-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-  --mod-shadow-lift: 0 4px 10px rgba(0, 0, 0, 0.08), 0 32px 64px -20px rgba(0, 0, 0, 0.2);
+  --mod-bg: var(--admin-content);
+  --mod-panel: var(--admin-card);
+  --mod-panel2: var(--admin-hover);
+  --mod-elev: var(--admin-card);
+  --mod-border: var(--admin-border);
+  --mod-border2: var(--admin-border-strong);
+  --mod-text: var(--admin-text);
+  --mod-muted: var(--admin-text-secondary);
+  --mod-faint: var(--admin-text-tertiary);
+  --mod-accent: var(--admin-accent);
+  --mod-accent2: var(--admin-accent);
+  --mod-accent-dim: var(--admin-accent-soft);
+  --mod-ok: var(--admin-success);
+  --mod-ok-dim: var(--admin-success-dim);
+  --mod-warn: var(--admin-warning);
+  --mod-warn-dim: var(--admin-warning-dim);
+  --mod-danger: var(--admin-danger);
+  --mod-danger-dim: var(--admin-danger-dim);
+  --mod-shadow: var(--admin-shadow);
+  --mod-shadow-lift: var(--admin-shadow-lift);
   color-scheme: light;
 }
 
 .dark .mod-shell {
-  --mod-bg: #000000;
-  --mod-panel: #0b0b0d;
-  --mod-panel2: #151517;
-  --mod-elev: #1c1c20;
-  --mod-border: rgba(255, 255, 255, 0.09);
-  --mod-border2: rgba(255, 255, 255, 0.16);
-  --mod-text: #f4f4f6;
-  --mod-muted: #8c8c96;
-  --mod-faint: #5a5a63;
-  --mod-accent: #38bdf8;
-  --mod-accent2: #7dd3fc;
-  --mod-accent-dim: rgba(56, 189, 248, 0.16);
-  --mod-ok: #38bdf8;
-  --mod-ok-dim: rgba(56, 189, 248, 0.16);
-  --mod-warn: #8c8c96;
-  --mod-warn-dim: rgba(140, 140, 150, 0.16);
-  --mod-danger: #f87171;
-  --mod-danger-dim: rgba(248, 113, 113, 0.14);
-  --mod-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-  --mod-shadow-lift: 0 4px 10px rgba(0, 0, 0, 0.35), 0 40px 80px -24px rgba(0, 0, 0, 0.7);
   color-scheme: dark;
 }
 
@@ -286,10 +279,10 @@ html.theme-wipe::view-transition-group(root) {
 @keyframes admin-pulse-glow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
   }
   50% {
-    box-shadow: 0 0 20px 4px rgba(56, 189, 248, 0.25);
+    box-shadow: 0 0 20px 4px rgba(255, 255, 255, 0.12);
   }
 }
 @keyframes admin-slide-in {

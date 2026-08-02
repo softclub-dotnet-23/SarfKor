@@ -2,11 +2,8 @@ import type { CSSProperties, ReactNode } from 'react'
 import clsx from 'clsx'
 
 /**
- * New surface primitive for the cabinet redesign. Deliberately not `Card`:
- * no ring border, no flat single shadow — a soft top hairline (light catching
- * the upper edge) plus an ambient shadow, 28px radius matching the landing's
- * own card scale. This is the one surface every cabinet composition below
- * builds on.
+ * Film-dark surface primitive. Glass panel on dark, frosted on light.
+ * 28px radius, subtle inset top-edge highlight, cinematic shadow.
  */
 export function Panel({
   children,
@@ -23,7 +20,8 @@ export function Panel({
     <div
       className={clsx('relative rounded-[28px] bg-[color:var(--admin-card)]', padded && 'p-6', className)}
       style={{
-        boxShadow: '0 1px 0 0 color-mix(in srgb, var(--admin-text) 6%, transparent) inset, var(--admin-shadow)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), var(--admin-shadow)',
+        border: '1px solid var(--admin-border)',
         ...style,
       }}
     >
@@ -32,9 +30,7 @@ export function Panel({
   )
 }
 
-/** Eyebrow + title + optional trailing action — the header every panel
- *  section below opens with, instead of ad hoc `text-[16px] font-bold` runs
- *  repeated per page. */
+/** Eyebrow (tracking-widest uppercase) + title + optional trailing action. */
 export function SectionHeader({
   eyebrow,
   title,
@@ -48,7 +44,7 @@ export function SectionHeader({
     <div className="mb-5 flex items-start justify-between gap-4">
       <div>
         {eyebrow && (
-          <div className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[color:var(--admin-text-tertiary)]">
+          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--admin-text-tertiary)]">
             {eyebrow}
           </div>
         )}
@@ -60,16 +56,15 @@ export function SectionHeader({
 }
 
 /**
- * KPI presentation, replacing the boxed-icon `KpiCard`: number leads at full
- * weight, label sits above it as an eyebrow, and a thin left rule carries the
- * accent colour instead of a tinted icon badge — the number itself is the
- * hero, not an icon next to it.
+ * KPI stat: number leads at full weight, label is a small eyebrow above it.
+ * A 3px left rule in the accent color is the only visual affordance — the
+ * number itself is the hero.
  */
 export function Stat({
   label,
   value,
   suffix,
-  accent = 'var(--admin-accent)',
+  accent = 'var(--admin-text-tertiary)',
 }: {
   label: string
   value: string | number
@@ -78,22 +73,21 @@ export function Stat({
 }) {
   return (
     <div className="relative pl-4">
-      <span className="absolute inset-y-0.5 left-0 w-[3px] rounded-full" style={{ background: accent }} aria-hidden />
-      <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[color:var(--admin-text-tertiary)]">
+      <span className="absolute inset-y-1 left-0 w-[2px] rounded-full" style={{ background: accent }} aria-hidden />
+      <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--admin-text-tertiary)]">
         {label}
       </div>
-      <div className="mt-2 whitespace-nowrap text-[30px] font-extrabold leading-none tracking-tight text-[color:var(--admin-text)]">
+      <div className="mt-2 whitespace-nowrap text-[32px] font-black leading-none tracking-tighter text-[color:var(--admin-text)]">
         {value}
-        {suffix ? <span className="ml-1.5 text-[15px] font-semibold text-[color:var(--admin-text-tertiary)]">{suffix}</span> : null}
+        {suffix ? (
+          <span className="ml-2 text-[14px] font-semibold text-[color:var(--admin-text-tertiary)]">{suffix}</span>
+        ) : null}
       </div>
     </div>
   )
 }
 
-/** A single line in a list of records (shift, alert, order…) — borderless,
- *  separated by hairlines from its siblings rather than boxed individually,
- *  so a list of these reads as one continuous panel instead of stacked
- *  cards-within-a-card. */
+/** Single record row inside a Panel list — no card border of its own. */
 export function Row({
   icon,
   iconTone = 'neutral',
@@ -107,34 +101,108 @@ export function Row({
   subtitle?: ReactNode
   trailing?: ReactNode
 }) {
-  const toneVar = {
+  const toneColor = {
     neutral: 'var(--admin-text-tertiary)',
     accent: 'var(--admin-accent)',
     warning: 'var(--admin-warning)',
     danger: 'var(--admin-danger)',
   }[iconTone]
+
   return (
     <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
       {icon && (
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ color: toneVar, background: `color-mix(in srgb, ${toneVar} 14%, transparent)` }}>
+        <span
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+          style={{
+            color: toneColor,
+            background: `color-mix(in srgb, ${toneColor} 13%, transparent)`,
+          }}
+        >
           {icon}
         </span>
       )}
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px] font-semibold text-[color:var(--admin-text)]">{title}</div>
-        {subtitle && <div className="mt-0.5 truncate text-[11.5px] text-[color:var(--admin-text-tertiary)]">{subtitle}</div>}
+        {subtitle && (
+          <div className="mt-0.5 truncate text-[11.5px] text-[color:var(--admin-text-tertiary)]">{subtitle}</div>
+        )}
       </div>
-      {trailing && <div className="shrink-0 text-[13px] font-bold text-[color:var(--admin-text)]">{trailing}</div>}
+      {trailing && (
+        <div className="shrink-0 text-[13px] font-bold tabular-nums text-[color:var(--admin-text)]">{trailing}</div>
+      )}
     </div>
   )
 }
 
-/** Divider between `Row`s inside a `Panel` list — a single hairline shared
- *  by the list rather than a border baked into each row. */
 export function RowDivider() {
   return <div className="h-px bg-[color:var(--admin-border)]" />
 }
 
 export function EmptyRow({ children }: { children: ReactNode }) {
-  return <p className="py-3 text-[12.5px] text-[color:var(--admin-text-tertiary)]">{children}</p>
+  return <p className="py-3 text-[13px] text-[color:var(--admin-text-tertiary)]">{children}</p>
+}
+
+/** Primary CTA button — uses accent as background, accent-fg as text so both
+ *  dark (white button, black text) and light (black button, white text) modes
+ *  read correctly without hardcoding a color in the component. */
+export function PrimaryButton({
+  children,
+  onClick,
+  type = 'button',
+  disabled,
+  className,
+}: {
+  children: ReactNode
+  onClick?: () => void
+  type?: 'button' | 'submit'
+  disabled?: boolean
+  className?: string
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={clsx(
+        'rounded-2xl px-5 py-2.5 text-[13.5px] font-bold transition-all duration-200',
+        'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
+        'hover:opacity-90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40',
+        className,
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+/** Ghost button — transparent with a subtle border. */
+export function GhostButton({
+  children,
+  onClick,
+  type = 'button',
+  disabled,
+  className,
+}: {
+  children: ReactNode
+  onClick?: () => void
+  type?: 'button' | 'submit'
+  disabled?: boolean
+  className?: string
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={clsx(
+        'rounded-2xl border border-[color:var(--admin-border)] px-5 py-2.5 text-[13.5px] font-semibold',
+        'text-[color:var(--admin-text-secondary)] transition-all duration-200',
+        'hover:border-[color:var(--admin-border-strong)] hover:text-[color:var(--admin-text)]',
+        'active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40',
+        className,
+      )}
+    >
+      {children}
+    </button>
+  )
 }

@@ -140,7 +140,7 @@ export function ResetPasswordPage() {
                 </p>
                 <Link
                   to="/forgot-password"
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98]"
                 >
                   Запросить новую ссылку
                 </Link>
@@ -155,7 +155,7 @@ export function ResetPasswordPage() {
                 </p>
                 <Link
                   to="/login"
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98]"
                 >
                   Войти
                 </Link>
@@ -209,7 +209,7 @@ export function ResetPasswordPage() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-60"
+                    className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-60"
                   >
                     {loading ? 'Сохраняем…' : 'Сохранить новый пароль'}
                   </button>

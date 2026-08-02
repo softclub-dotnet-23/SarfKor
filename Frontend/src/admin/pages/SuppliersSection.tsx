@@ -185,7 +185,7 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
         <button
           onClick={handleCreate}
           disabled={busyId === 'new' || !newName.trim()}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-white disabled:opacity-50"
+          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] disabled:opacity-50"
         >
           <PlusIcon width={13} height={13} />
           Добавить

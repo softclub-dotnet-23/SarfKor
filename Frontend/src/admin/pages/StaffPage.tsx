@@ -139,7 +139,7 @@ function EmployeesSection() {
         <button
           type="submit"
           disabled={busy || !employeeEmail.trim()}
-          className="flex items-center justify-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+          className="flex items-center justify-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90 disabled:opacity-50"
         >
           <PlusIcon width={14} height={14} />
           {busy ? 'Добавляем…' : 'Добавить'}

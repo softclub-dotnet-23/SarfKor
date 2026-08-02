@@ -24,7 +24,7 @@ public sealed class StoresController : ControllerBase
     [Authorize]
     [EnableRateLimiting("contributions")]
     public async Task<IActionResult> CreateStore(
-        CreateStoreRequest request,
+        [FromBody] CreateStoreRequest request,
         [FromServices] ICommandHandler<CreateStoreCommand, CreateStoreResult> handler,
         [FromServices] IValidator<CreateStoreCommand> validator,
         CancellationToken cancellationToken)

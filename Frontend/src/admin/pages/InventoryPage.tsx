@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Card } from '../components/Card'
+import { Panel } from '../cabinet/components/primitives'
 import { AdminModal } from '../components/AdminModal'
 import { Select } from '../components/Select'
 import { Badge } from '../components/Badge'
@@ -361,20 +361,20 @@ export function InventoryPage() {
 
   if (error) {
     return (
-      <Card>
+      <Panel>
         <ErrorState message={error} onRetry={load} />
-      </Card>
+      </Panel>
     )
   }
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
       <Reveal className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="p-5">
+        <Panel className="p-5">
           <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Позиций на складе</div>
           <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-text)]">{stock?.length ?? 0}</div>
-        </Card>
-        <Card className="p-5">
+        </Panel>
+        <Panel className="p-5">
           <div className="flex items-start justify-between gap-2">
             <div>
               <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Требуют пополнения</div>
@@ -390,15 +390,15 @@ export function InventoryPage() {
               + Правило пополнения
             </button>
           </div>
-        </Card>
-        <Card className="p-5">
+        </Panel>
+        <Panel className="p-5">
           <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Всего единиц</div>
           <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-text)]">{fmt(totalUnits)}</div>
-        </Card>
+        </Panel>
       </Reveal>
 
       <Reveal i={1}>
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <SearchIcon width={16} height={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[color:var(--admin-text-tertiary)]" />
@@ -414,7 +414,7 @@ export function InventoryPage() {
               setScanOpen(true)
               setScanError('')
             }}
-            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-semibold text-white hover:opacity-90"
+            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
           >
             <BarcodeIcon width={15} height={15} />
             Приход по штрихкоду
@@ -504,7 +504,7 @@ export function InventoryPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </Panel>
       </Reveal>
 
       {/* Scan-to-identify, for a first-ever receipt of a product not yet in stock */}
@@ -534,7 +534,7 @@ export function InventoryPage() {
           <button
             type="submit"
             disabled={scanBusy}
-            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
           >
             {scanBusy ? 'Ищем…' : 'Найти'}
           </button>
@@ -579,7 +579,7 @@ export function InventoryPage() {
                     type="button"
                     onClick={handleCreateCategory}
                     disabled={newCategoryBusy || !newCategoryName.trim()}
-                    className="shrink-0 rounded-xl bg-[color:var(--admin-accent)] px-3 py-2.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
+                    className="shrink-0 rounded-xl bg-[color:var(--admin-accent)] px-3 py-2.5 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] disabled:opacity-50"
                   >
                     {newCategoryBusy ? '…' : 'OK'}
                   </button>
@@ -616,7 +616,7 @@ export function InventoryPage() {
                     type="button"
                     onClick={handleCreateBrand}
                     disabled={newBrandBusy || !newBrandName.trim()}
-                    className="shrink-0 rounded-xl bg-[color:var(--admin-accent)] px-3 py-2.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
+                    className="shrink-0 rounded-xl bg-[color:var(--admin-accent)] px-3 py-2.5 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] disabled:opacity-50"
                   >
                     {newBrandBusy ? '…' : 'OK'}
                   </button>
@@ -644,7 +644,7 @@ export function InventoryPage() {
           <button
             onClick={confirmSubmitNewProduct}
             disabled={submitBusy || !submitName.trim() || !submitCategoryId || !submitBrandId || !submitCountry.trim()}
-            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
           >
             {submitDone ? 'Добавлено ✓' : submitBusy ? 'Добавляем…' : 'Добавить товар'}
           </button>
@@ -696,7 +696,7 @@ export function InventoryPage() {
             <button
               onClick={confirmReceipt}
               disabled={receiptBusy}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
             >
               <PlusIcon width={16} height={16} />
               {receiptBusy ? 'Оприходуем…' : 'Оприходовать'}
@@ -729,7 +729,7 @@ export function InventoryPage() {
             <button
               onClick={confirmCostPrice}
               disabled={costBusy || !costAmount}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
             >
               {costDone ? 'Сохранено ✓' : costBusy ? 'Сохраняем…' : 'Сохранить'}
             </button>
@@ -763,7 +763,7 @@ export function InventoryPage() {
             <button
               onClick={confirmSetPrice}
               disabled={priceBusy || !priceAmount}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
             >
               {priceDone ? 'Сохранено ✓' : priceBusy ? 'Сохраняем…' : 'Сохранить'}
             </button>
@@ -829,7 +829,7 @@ export function InventoryPage() {
           <button
             onClick={confirmCreateRule}
             disabled={ruleBusy || !ruleProductId}
-            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
           >
             <PlusIcon width={16} height={16} />
             {ruleBusy ? 'Создаём…' : 'Создать правило'}

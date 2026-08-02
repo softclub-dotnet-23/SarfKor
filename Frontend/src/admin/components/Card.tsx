@@ -1,13 +1,16 @@
 import type { CSSProperties, ReactNode } from 'react'
 import clsx from 'clsx'
 
+// Radius matches the landing's own card scale (24-28px range, not the tighter
+// 8-12px an admin template reaches for by default) — one of the more legible
+// "same product" signals when a screenshot sits next to the landing's.
 const SCHEMES = {
   admin: {
-    surface: 'rounded-[18px] bg-[color:var(--admin-card)] ring-1 ring-[color:var(--admin-border)] [box-shadow:var(--admin-shadow)]',
+    surface: 'rounded-[22px] bg-[color:var(--admin-card)] ring-1 ring-[color:var(--admin-border)] [box-shadow:var(--admin-shadow)]',
     lift: 'hover:[box-shadow:var(--admin-shadow-lift)]',
   },
   mod: {
-    surface: 'rounded-2xl bg-[color:var(--mod-panel)] ring-1 ring-[color:var(--mod-border)] [box-shadow:var(--mod-shadow)]',
+    surface: 'rounded-[22px] bg-[color:var(--mod-panel)] ring-1 ring-[color:var(--mod-border)] [box-shadow:var(--mod-shadow)]',
     lift: 'hover:[box-shadow:var(--mod-shadow-lift)]',
   },
 } as const

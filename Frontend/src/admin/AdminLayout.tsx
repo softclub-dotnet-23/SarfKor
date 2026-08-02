@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import clsx from 'clsx'
@@ -87,9 +87,9 @@ function ShiftCard() {
   }
 
   return (
-    <div className="mt-3 rounded-2xl bg-[color:var(--admin-hover)] p-4">
+    <div className="mt-4 rounded-2xl bg-[color:var(--admin-hover)] p-4">
       <div className="mb-2.5 flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
+        <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-[color:var(--admin-text-tertiary)]">
           Смена
         </span>
         <button
@@ -109,14 +109,14 @@ function ShiftCard() {
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
         placeholder={myOpenShift ? 'Сумма в кассе' : 'Начальная сумма'}
-        className="mb-2 w-full rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-2.5 py-1.5 text-[12px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+        className="mb-2 w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-3 py-2 text-[12px] text-[color:var(--admin-text)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[color:var(--admin-accent)] focus:shadow-[0_0_0_3px_var(--admin-accent-soft)]"
       />
       {error && <div className="mb-2 text-[11px] font-medium text-[color:var(--admin-danger)]">{error}</div>}
       <button
         onClick={handleToggleShift}
         disabled={busy || !storeId}
         className={clsx(
-          'w-full rounded-lg py-1.5 text-[12px] font-semibold text-white transition-opacity disabled:opacity-50',
+          'w-full rounded-xl py-2 text-[12px] font-semibold text-white transition-opacity disabled:opacity-50',
           myOpenShift ? 'bg-[color:var(--admin-danger)]' : 'bg-[color:var(--admin-accent)]',
         )}
       >
@@ -146,6 +146,67 @@ function PageTransition({ pathKey, children }: { pathKey: string; children: Reac
   )
 }
 
+/**
+ * The nav item shape is deliberately the same device the landing and consumer
+ * app use — a tabular-nums index next to the label, a sliding indicator
+ * driven by `layoutId` rather than a static active-state fill — so the
+ * cabinet reads as the next room of the same product instead of a generic
+ * icon-rail admin template. Denser than the consumer rail (icons stay,
+ * business tools need at-a-glance scan targets a 5-item marketing nav
+ * doesn't), but the underlying grammar — number, sliding mark, weight change
+ * on active — is the same one.
+ */
+function NavItem({
+  to,
+  label,
+  icon: Icon,
+  end,
+  index,
+  layoutId,
+  onNavigate,
+}: {
+  to: string
+  label: string
+  icon: (props: { width: number; height: number }) => ReactNode
+  end?: boolean
+  index: number
+  layoutId: string
+  onNavigate?: () => void
+}) {
+  return (
+    <NavLink to={to} end={end} onClick={onNavigate} className="group relative block">
+      {({ isActive }) => (
+        <span className="relative flex items-center gap-3.5 rounded-2xl px-4 py-3">
+          {isActive && (
+            <motion.span
+              layoutId={layoutId}
+              className="absolute inset-0 rounded-2xl bg-[color:var(--admin-accent-soft)]"
+              transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+            />
+          )}
+          <span
+            className="relative w-[16px] shrink-0 text-[9.5px] font-bold tabular-nums tracking-[0.08em] transition-colors duration-300"
+            style={{ color: isActive ? 'var(--admin-accent)' : 'var(--admin-text-tertiary)' }}
+          >
+            {String(index + 1).padStart(2, '0')}
+          </span>
+          <Icon width={17} height={17} />
+          <span
+            className={clsx(
+              'relative text-[14px] tracking-tight transition-all duration-300',
+              isActive
+                ? 'font-semibold text-[color:var(--admin-accent)]'
+                : 'font-medium text-[color:var(--admin-text-secondary)] group-hover:text-[color:var(--admin-text)]',
+            )}
+          >
+            {label}
+          </span>
+        </span>
+      )}
+    </NavLink>
+  )
+}
+
 export function AdminLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const { theme, toggleTheme } = useTheme()
@@ -156,6 +217,7 @@ export function AdminLayout() {
   const page = PAGE_TITLES[location.pathname] ?? PAGE_TITLES['/admin']
   const initial = user?.email?.charAt(0).toUpperCase() ?? '?'
   const visibleNavItems = NAV_ITEMS.filter((item) => currentStoreRole !== 'Cashier' || !item.ownerOnly)
+  const navLayoutId = useId()
 
   // RequireAuth (the parent route) redirects to /login the moment `user`
   // goes null, so logging out doesn't need its own navigate() — a manual one
@@ -166,37 +228,30 @@ export function AdminLayout() {
 
   return (
     <div className="admin-shell flex h-screen w-full overflow-hidden bg-[color:var(--admin-content)] text-[color:var(--admin-text)]">
-      {/* Sidebar */}
+      {/* Sidebar — 264px, matching the consumer app's rail width exactly. */}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-40 flex w-[240px] shrink-0 flex-col border-r border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-4 pb-5 pt-6 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] [box-shadow:var(--admin-shadow)] lg:static lg:shadow-none lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-[264px] shrink-0 flex-col border-r border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-5 pb-6 pt-8 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] [box-shadow:var(--admin-shadow)] lg:static lg:shadow-none lg:translate-x-0',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <Link to="/" className="mb-8 flex items-center gap-2.5 px-2">
-          <LogoMark size={28} />
+        <Link to="/" className="mb-10 flex items-center gap-3 px-2">
+          <LogoMark size={30} />
           <span className="text-[19px] font-extrabold tracking-tight text-[color:var(--admin-text)]">Sarfkor</span>
         </Link>
 
         <nav className="flex flex-1 flex-col gap-1">
-          {visibleNavItems.map((item) => (
-            <NavLink
+          {visibleNavItems.map((item, i) => (
+            <NavItem
               key={item.to}
               to={item.to}
+              label={item.label}
+              icon={item.icon}
               end={item.end}
-              onClick={() => setMobileNavOpen(false)}
-              className={({ isActive }) =>
-                clsx(
-                  'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[14px] font-medium transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
-                  isActive
-                    ? 'bg-[color:var(--admin-accent-soft)] font-semibold text-[color:var(--admin-accent)]'
-                    : 'text-[color:var(--admin-text-secondary)] hover:translate-x-0.5 hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]',
-                )
-              }
-            >
-              <item.icon width={18} height={18} />
-              {item.label}
-            </NavLink>
+              index={i}
+              layoutId={navLayoutId}
+              onNavigate={() => setMobileNavOpen(false)}
+            />
           ))}
         </nav>
 
@@ -204,9 +259,9 @@ export function AdminLayout() {
 
         <button
           onClick={handleLogout}
-          className="mt-2 flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-[14px] font-medium text-[color:var(--admin-text-tertiary)] transition-colors hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]"
+          className="mt-3 flex items-center gap-3.5 rounded-2xl px-4 py-3 text-left text-[14px] font-medium text-[color:var(--admin-text-tertiary)] transition-colors hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]"
         >
-          <LogOutIcon width={18} height={18} />
+          <LogOutIcon width={17} height={17} />
           Выйти
         </button>
       </aside>
@@ -227,7 +282,13 @@ export function AdminLayout() {
 
       {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="relative z-10 flex shrink-0 items-center gap-4 border-b border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-6 py-4 [box-shadow:0_1px_0_var(--admin-border),0_4px_16px_-8px_rgba(0,0,0,0.12)]">
+        {/* Topbar: glass, floats over content rather than a flat solid bar —
+            the same material the landing's glass slabs and testimonial cards
+            use (translucent surface + blur + hairline), just applied to chrome. */}
+        <header
+          className="relative z-10 flex shrink-0 items-center gap-4 border-b border-[color:var(--admin-border)] px-7 py-5 backdrop-blur-xl"
+          style={{ background: 'color-mix(in srgb, var(--admin-sidebar) 82%, transparent)' }}
+        >
           <button
             onClick={() => setMobileNavOpen(true)}
             aria-label="Меню"
@@ -241,7 +302,7 @@ export function AdminLayout() {
           </button>
 
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[17px] font-extrabold tracking-tight text-[color:var(--admin-text)]">
+            <h1 className="truncate text-[19px] font-extrabold tracking-tight text-[color:var(--admin-text)]">
               {page.title}
             </h1>
             <p className="truncate text-[13px] text-[color:var(--admin-text-tertiary)]">{page.subtitle}</p>
@@ -251,26 +312,26 @@ export function AdminLayout() {
             <SearchIcon
               width={16}
               height={16}
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[color:var(--admin-text-tertiary)]"
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--admin-text-tertiary)]"
             />
             <input
               type="text"
               placeholder="Поиск..."
-              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2 pl-9 pr-3 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
+              className="w-full rounded-full border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2.5 pl-10 pr-4 text-[13px] text-[color:var(--admin-text)] outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)] focus:shadow-[0_0_0_3px_var(--admin-accent-soft)]"
             />
           </div>
 
           <button
             onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
             aria-label="Переключить тему"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[color:var(--admin-text-secondary)] transition-colors duration-300 hover:bg-[color:var(--admin-hover)]"
           >
             {isDark ? <SunIcon width={17} height={17} /> : <MoonIcon width={17} height={17} />}
           </button>
 
-          <div className="hidden shrink-0 items-center gap-2.5 border-l border-[color:var(--admin-border)] pl-4 sm:flex">
+          <div className="hidden shrink-0 items-center gap-3 border-l border-[color:var(--admin-border)] pl-4 sm:flex">
             <div
-              className="grid h-9 w-9 place-items-center rounded-xl text-[15px] font-bold text-white [box-shadow:var(--admin-shadow)]"
+              className="grid h-9 w-9 place-items-center rounded-full text-[14px] font-bold text-white [box-shadow:var(--admin-shadow)]"
               style={{
                 background:
                   'linear-gradient(135deg, var(--admin-accent), color-mix(in srgb, var(--admin-accent) 65%, black))',
@@ -289,7 +350,7 @@ export function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto px-7 py-8">
           <PageTransition pathKey={location.pathname}>
             <Outlet />
           </PageTransition>

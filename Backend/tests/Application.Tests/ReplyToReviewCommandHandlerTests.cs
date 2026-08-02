@@ -14,13 +14,13 @@ public class ReplyToReviewCommandHandlerTests
 
     private readonly Mock<IReviewRepository> _reviewRepository = new();
     private readonly Mock<IReviewReplyRepository> _reviewReplyRepository = new();
-    private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
     private ReplyToReviewCommandHandler CreateHandler() => new(
         _reviewRepository.Object,
         _reviewReplyRepository.Object,
-        _storeRepository.Object,
+        _storeAccessAuthorizer.Object,
         _unitOfWork.Object);
 
     [Fact]
@@ -53,9 +53,7 @@ public class ReplyToReviewCommandHandlerTests
         _reviewRepository
             .Setup(r => r.GetByIdAsync(ReviewId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Review { UserId = "user-1", ProductId = 1, StoreId = 2, Rating = 5, Comment = "Great", CreatedAt = DateTimeOffset.UtcNow });
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(2, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(2, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new ReplyToReviewCommand(ReviewId, "someone-else", "Thanks!"), CancellationToken.None);
@@ -69,9 +67,7 @@ public class ReplyToReviewCommandHandlerTests
         _reviewRepository
             .Setup(r => r.GetByIdAsync(ReviewId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Review { UserId = "user-1", ProductId = 1, StoreId = 2, Rating = 5, Comment = "Great", CreatedAt = DateTimeOffset.UtcNow });
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(2, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(2, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _reviewReplyRepository.Setup(r => r.Add(It.IsAny<ReviewReply>())).Callback<ReviewReply>(x => x.Id = 4);
 
         var handler = CreateHandler();

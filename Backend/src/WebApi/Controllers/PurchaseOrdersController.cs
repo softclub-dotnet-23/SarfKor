@@ -7,6 +7,7 @@ using Application.Inventory.Queries.GetPurchaseOrders;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
@@ -16,6 +17,7 @@ namespace WebApi.Controllers;
 public sealed class PurchaseOrdersController : ControllerBase
 {
     [HttpPost("purchase-orders")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> Create(
         CreatePurchaseOrderRequest request,
         [FromServices] ICommandHandler<CreatePurchaseOrderCommand, CreatePurchaseOrderResult> handler,
@@ -43,6 +45,7 @@ public sealed class PurchaseOrdersController : ControllerBase
     }
 
     [HttpPost("purchase-orders/{purchaseOrderId:int}/submit")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> Submit(
         int purchaseOrderId,
         [FromServices] ICommandHandler<SubmitPurchaseOrderCommand, SubmitPurchaseOrderResult> handler,
@@ -71,6 +74,7 @@ public sealed class PurchaseOrdersController : ControllerBase
     }
 
     [HttpPost("purchase-orders/{purchaseOrderId:int}/receive")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> Receive(
         int purchaseOrderId,
         [FromServices] ICommandHandler<ReceivePurchaseOrderCommand, ReceivePurchaseOrderResult> handler,

@@ -6,6 +6,6 @@ public sealed class GetCustomerByPhoneQueryValidator : AbstractValidator<GetCust
 {
     public GetCustomerByPhoneQueryValidator()
     {
-        RuleFor(x => x.PhoneNumber).NotEmpty();
+        RuleFor(x => x.PhoneNumber).NotEmpty().MaximumLength(30);
     }
 }

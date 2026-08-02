@@ -9,6 +9,7 @@ using Application.Loyalty.Queries.GetLoyaltyProgram;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
@@ -18,6 +19,7 @@ namespace WebApi.Controllers;
 public sealed class LoyaltyController : ControllerBase
 {
     [HttpPost("loyalty-programs")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> CreateProgram(
         CreateLoyaltyProgramRequest request,
         [FromServices] ICommandHandler<CreateLoyaltyProgramCommand, CreateLoyaltyProgramResult> handler,
@@ -62,6 +64,7 @@ public sealed class LoyaltyController : ControllerBase
     }
 
     [HttpPost("loyalty-accounts/enroll")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> Enroll(
         EnrollCustomerInLoyaltyRequest request,
         [FromServices] ICommandHandler<EnrollCustomerInLoyaltyCommand, EnrollCustomerInLoyaltyResult> handler,
@@ -91,6 +94,7 @@ public sealed class LoyaltyController : ControllerBase
     }
 
     [HttpPost("loyalty-accounts/{loyaltyAccountId:int}/earn")]
+    [EnableRateLimiting("money-write")]
     public async Task<IActionResult> Earn(
         int loyaltyAccountId,
         EarnLoyaltyPointsRequest request,
@@ -119,6 +123,7 @@ public sealed class LoyaltyController : ControllerBase
     }
 
     [HttpPost("loyalty-accounts/{loyaltyAccountId:int}/redeem")]
+    [EnableRateLimiting("money-write")]
     public async Task<IActionResult> Redeem(
         int loyaltyAccountId,
         RedeemLoyaltyPointsRequest request,
@@ -155,11 +160,22 @@ public sealed class LoyaltyController : ControllerBase
         [FromServices] IValidator<GetLoyaltyAccountQuery> validator,
         CancellationToken cancellationToken)
     {
-        var query = new GetLoyaltyAccountQuery(customerId, loyaltyProgramId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var query = new GetLoyaltyAccountQuery(customerId, loyaltyProgramId, userId);
         var validationResult = await validator.ValidateAsync(query, cancellationToken);
         if (!validationResult.IsValid)
             return this.ToValidationProblem(validationResult);
 
-        return Ok(await handler.Handle(query, cancellationToken));
+        var result = await handler.Handle(query, cancellationToken);
+        return result.Outcome switch
+        {
+            GetLoyaltyAccountOutcome.Found => Ok(result),
+            GetLoyaltyAccountOutcome.NotFound => NotFound(),
+            GetLoyaltyAccountOutcome.Forbidden => Forbid(),
+            _ => Problem()
+        };
     }
 }

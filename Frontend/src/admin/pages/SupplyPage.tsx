@@ -157,11 +157,13 @@ const primaryButtonClass =
 /* ---------- Suppliers ---------- */
 
 function SuppliersSection({
+  storeId,
   suppliers,
   loading,
   error,
   load,
 }: {
+  storeId: number
   suppliers: Supplier[]
   loading: boolean
   error: string
@@ -179,7 +181,7 @@ function SuppliersSection({
     setSubmitting(true)
     setFormError('')
     try {
-      await createSupplier(name.trim(), phone.trim() || undefined, email.trim() || undefined)
+      await createSupplier(storeId, name.trim(), phone.trim() || undefined, email.trim() || undefined)
       setName('')
       setPhone('')
       setEmail('')
@@ -782,16 +784,17 @@ export function SupplyPage() {
   const [suppliersError, setSuppliersError] = useState('')
 
   const loadSuppliers = useCallback(async () => {
+    if (!storeId) return
     setSuppliersError('')
     try {
-      const res = await getSuppliers()
+      const res = await getSuppliers(storeId)
       setSuppliers(res.suppliers ?? [])
     } catch (err) {
       setSuppliersError(err instanceof ApiError ? err.message : 'Не удалось загрузить поставщиков')
     } finally {
       setSuppliersLoading(false)
     }
-  }, [])
+  }, [storeId])
 
   useEffect(() => {
     loadSuppliers()
@@ -833,7 +836,7 @@ export function SupplyPage() {
       </Card>
 
       {tab === 'suppliers' && (
-        <SuppliersSection suppliers={suppliers} loading={suppliersLoading} error={suppliersError} load={loadSuppliers} />
+        <SuppliersSection storeId={storeId} suppliers={suppliers} loading={suppliersLoading} error={suppliersError} load={loadSuppliers} />
       )}
       {tab === 'orders' && <OrdersSection storeId={storeId} suppliers={suppliers} />}
       {tab === 'transfers' && <TransfersSection storeId={storeId} />}

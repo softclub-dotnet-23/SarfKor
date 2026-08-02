@@ -15,6 +15,7 @@ public sealed class OffersController : ControllerBase
 {
     [HttpPost]
     [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> Publish(
         PublishExpiringOfferRequest request,
         [FromServices] ICommandHandler<PublishExpiringOfferCommand, PublishExpiringOfferResult> handler,

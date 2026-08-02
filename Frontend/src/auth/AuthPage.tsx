@@ -177,7 +177,7 @@ function Field({
 }
 
 function AuthPage({ mode }: { mode: Mode }) {
-  const { login, register } = useAuth()
+  const { login, register, confirmEmail } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const isRegister = mode === 'register'
@@ -186,14 +186,20 @@ function AuthPage({ mode }: { mode: Mode }) {
   const { runThemeTransition } = useThemeTransition()
   const isDark = theme === 'dark'
 
+  // 'confirm' is reached two ways: registering (always needs the code) or logging into an account
+  // that registered but never confirmed (login returns requiresEmailConfirmation instead of 401).
+  const [stage, setStage] = useState<'credentials' | 'confirm'>('credentials')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [code, setCode] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [resent, setResent] = useState(false)
   const emailRef = useRef<HTMLInputElement>(null)
+  const codeRef = useRef<HTMLInputElement>(null)
   const rightRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -202,7 +208,11 @@ function AuthPage({ mode }: { mode: Mode }) {
   useEffect(() => {
     setError('')
     setConfirmPassword('')
+    setStage('credentials')
   }, [mode])
+  useEffect(() => {
+    if (stage === 'confirm') codeRef.current?.focus()
+  }, [stage])
 
   // Pointer parallax, capped at 5px. One listener writing two custom properties;
   // every consumer below is a compositor-only transform reading them.
@@ -221,7 +231,24 @@ function AuthPage({ mode }: { mode: Mode }) {
     return () => window.removeEventListener('mousemove', handler)
   }, [])
 
-  /* ---- auth: unchanged ---- */
+  function routeAfterAuth(roles: string[]) {
+    // A returning visit to a protected page goes back there; a fresh sign-in
+    // routes by role. A plain User with no StorePartner/Admin role: a brand-new
+    // registration has nothing to do yet but create their store, so send them
+    // straight into onboarding — an existing account logging in goes to the
+    // consumer app (must not change for old accounts that deliberately have no
+    // store; before /app existed that destination was the landing page).
+    const from = (location.state as { from?: Location })?.from?.pathname
+    const fallback = roles.includes('Admin')
+      ? '/admin/moderation'
+      : roles.includes('StorePartner')
+        ? '/admin'
+        : isRegister
+          ? '/admin/onboarding'
+          : '/app'
+    navigate(from ?? fallback, { replace: true })
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
@@ -232,28 +259,59 @@ function AuthPage({ mode }: { mode: Mode }) {
     }
 
     setLoading(true)
-    const result = isRegister ? await register(email, password) : await login(email, password)
+    if (isRegister) {
+      const result = await register(email, password)
+      setLoading(false)
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      // Register never logs in directly anymore — always needs the emailed code confirmed first.
+      setStage('confirm')
+      return
+    }
+
+    const result = await login(email, password)
+    setLoading(false)
+    if (!result.ok) {
+      setError(result.error)
+      // A correct password but an unconfirmed account lands here with a fresh code already
+      // sent (see LoginAsync) — same next screen as a brand-new registration.
+      if (result.requiresEmailConfirmation) {
+        setEmail(result.email ?? email)
+        setStage('confirm')
+      }
+      return
+    }
+    setSuccess(true)
+    routeAfterAuth(result.roles)
+  }
+
+  async function handleConfirmSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    const result = await confirmEmail(email, code)
     setLoading(false)
     if (!result.ok) {
       setError(result.error)
       return
     }
     setSuccess(true)
-    // A returning visit to a protected page goes back there; a fresh sign-in
-    // routes by role. A plain User with no StorePartner/Admin role: a brand-new
-    // registration has nothing to do yet but create their store, so send them
-    // straight into onboarding — an existing account logging in goes to the
-    // consumer app (must not change for old accounts that deliberately have no
-    // store; before /app existed that destination was the landing page).
-    const from = (location.state as { from?: Location })?.from?.pathname
-    const fallback = result.roles.includes('Admin')
-      ? '/admin/moderation'
-      : result.roles.includes('StorePartner')
-        ? '/admin'
-        : isRegister
-          ? '/admin/onboarding'
-          : '/app'
-    navigate(from ?? fallback, { replace: true })
+    routeAfterAuth(result.roles)
+  }
+
+  async function handleResend() {
+    setError('')
+    setLoading(true)
+    const result = await register(email, password)
+    setLoading(false)
+    if (!result.ok) {
+      setError(result.error)
+      return
+    }
+    setResent(true)
+    setTimeout(() => setResent(false), 4000)
   }
   /* ---- /auth ---- */
 
@@ -419,14 +477,14 @@ function AuthPage({ mode }: { mode: Mode }) {
                 className="text-[10.5px] font-bold uppercase tracking-[0.28em]"
                 style={{ color: TXT.tertiary, marginBottom: 'clamp(14px,2.4vh,28px)' }}
               >
-                {isRegister ? 'Регистрация' : 'Вход'}
+                {stage === 'confirm' ? 'Подтверждение' : isRegister ? 'Регистрация' : 'Вход'}
               </motion.p>
 
               {/* headline, one word at a time — the second line follows the first up */}
               <div style={{ marginBottom: 'clamp(10px,1.8vh,20px)' }}>
-                {headlineWords.map((word, i) => (
+                {(stage === 'confirm' ? ['Проверьте', 'почту'] : headlineWords).map((word, i) => (
                   <motion.span
-                    key={`${mode}-${word}`}
+                    key={`${mode}-${stage}-${word}`}
                     initial={reduce ? false : { opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={
@@ -450,9 +508,16 @@ function AuthPage({ mode }: { mode: Mode }) {
                 className="max-w-[330px] text-[14.5px] leading-[1.65]"
                 style={{ color: TXT.secondary, marginBottom: 'clamp(22px,4.6vh,54px)' }}
               >
-                {isRegister
-                  ? 'Несколько секунд — и вы сможете подключить магазин к Sarfkor.'
-                  : 'Войдите, чтобы вернуться к своему магазину и отчётам.'}
+                {stage === 'confirm' ? (
+                  <>
+                    Мы отправили код на <strong className="font-semibold text-white">{email}</strong>. Введите его ниже,
+                    чтобы подтвердить email и войти.
+                  </>
+                ) : isRegister ? (
+                  'Несколько секунд — и вы сможете подключить магазин к Sarfkor.'
+                ) : (
+                  'Войдите, чтобы вернуться к своему магазину и отчётам.'
+                )}
               </motion.p>
 
               <form
@@ -483,53 +548,64 @@ function AuthPage({ mode }: { mode: Mode }) {
                         onClick={() => setShowPassword((v) => !v)}
                         className="text-[10.5px] font-bold uppercase tracking-[0.1em] transition-colors duration-300 hover:text-[color:var(--admin-text)]"
                         style={{ color: TXT.tertiary }}
+              {stage === 'confirm' ? (
+                <form onSubmit={handleConfirmSubmit} className="flex flex-col" style={{ gap: 'clamp(18px,3.2vh,34px)' }}>
+                  <motion.div {...rise(4, reduce)}>
+                    <Field
+                      label="Код из письма"
+                      inputRef={codeRef}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      required
+                      disabled={busy}
+                      autoComplete="one-time-code"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    />
+                  </motion.div>
+
+                  <AnimatePresence initial={false}>
+                    {error && (
+                      <motion.div
+                        role="alert"
+                        key={error}
+                        initial={{ opacity: 0, y: -6, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.4, ease: EASE }}
+                        style={{ overflow: 'hidden' }}
                       >
-                        {showPassword ? 'Скрыть' : 'Показать'}
-                      </button>
-                    }
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    minLength={8}
-                    disabled={busy}
-                    autoComplete={isRegister ? 'new-password' : 'current-password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </motion.div>
+                        <span className="block border-l-2 border-white pl-4 text-[13px] font-semibold leading-relaxed text-white">
+                          {error}
+                        </span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                <AnimatePresence initial={false}>
-                  {isRegister && (
-                    <motion.div
-                      key="confirm"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.6, ease: EASE }}
-                      style={{ overflow: 'hidden' }}
-                    >
-                      <Field
-                        label="Повторите пароль"
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        disabled={busy}
-                        autoComplete="new-password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                  <AnimatePresence initial={false}>
+                    {resent && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.4, ease: EASE }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        <span className="block text-[13px] font-medium" style={{ color: TXT.secondary }}>
+                          Новый код отправлен
+                        </span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                <AnimatePresence initial={false}>
-                  {error && (
-                    <motion.div
-                      role="alert"
-                      key={error}
-                      initial={{ opacity: 0, y: -6, height: 0 }}
-                      animate={{ opacity: 1, y: 0, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.4, ease: EASE }}
-                      style={{ overflow: 'hidden' }}
+                  <motion.div {...rise(6, reduce)} style={{ paddingTop: 'clamp(2px,1.2vh,10px)' }}>
+                    <button
+                      type="submit"
+                      disabled={busy || code.length !== 6}
+                      className="group relative w-full overflow-hidden rounded-full bg-white text-[14.5px] font-semibold tracking-wide text-black transition-all duration-700 hover:-translate-y-0.5 hover:shadow-[0_12px_38px_rgba(255,255,255,0.14)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-90"
+                      style={{ paddingBlock: 'clamp(13px,2vh,17px)', transitionTimingFunction: 'cubic-bezier(.16,1,.3,1)' }}
                     >
                       {/* monochrome, per the no-accent-colour rule: the alert reads as
                           an alert through weight, a white rule and position, not hue */}
@@ -584,6 +660,159 @@ function AuthPage({ mode }: { mode: Mode }) {
                   </button>
                 </motion.div>
               </form>
+                      <span className="relative flex items-center justify-center gap-2.5">
+                        {busy ? (
+                          <>
+                            <span
+                              aria-hidden
+                              className="h-[15px] w-[15px] rounded-full border-2 border-black/25 border-t-black"
+                              style={{ animation: 'sk-spin .7s linear infinite' }}
+                            />
+                            {success ? 'Готово' : 'Подождите…'}
+                          </>
+                        ) : (
+                          <>
+                            Подтвердить
+                            <span aria-hidden className="transition-transform duration-700 group-hover:translate-x-1.5">
+                              →
+                            </span>
+                          </>
+                        )}
+                      </span>
+                    </button>
+                  </motion.div>
+                </form>
+              ) : (
+                <form
+                  onSubmit={handleSubmit}
+                  className="flex flex-col"
+                  style={{ gap: 'clamp(18px,3.2vh,34px)' }}
+                >
+                  <motion.div {...rise(4, reduce)}>
+                    <Field
+                      label="Email"
+                      inputRef={emailRef}
+                      type="email"
+                      required
+                      disabled={busy}
+                      autoComplete="username"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </motion.div>
+
+                  <motion.div {...rise(5, reduce)}>
+                    <Field
+                      label="Пароль"
+                      hint={isRegister ? 'Минимум 8 символов, заглавная и строчная буквы, цифра и спецсимвол' : undefined}
+                      action={
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((v) => !v)}
+                          className="text-[10.5px] font-bold uppercase tracking-[0.1em] transition-colors duration-300 hover:text-white"
+                          style={{ color: TXT.tertiary }}
+                        >
+                          {showPassword ? 'Скрыть' : 'Показать'}
+                        </button>
+                      }
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      minLength={8}
+                      disabled={busy}
+                      autoComplete={isRegister ? 'new-password' : 'current-password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </motion.div>
+
+                  <AnimatePresence initial={false}>
+                    {isRegister && (
+                      <motion.div
+                        key="confirm"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.6, ease: EASE }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        <Field
+                          label="Повторите пароль"
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          disabled={busy}
+                          autoComplete="new-password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence initial={false}>
+                    {error && (
+                      <motion.div
+                        role="alert"
+                        key={error}
+                        initial={{ opacity: 0, y: -6, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.4, ease: EASE }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        {/* monochrome, per the no-accent-colour rule: the alert reads as
+                            an alert through weight, a white rule and position, not hue */}
+                        <span className="block border-l-2 border-white pl-4 text-[13px] font-semibold leading-relaxed text-white">
+                          {error}
+                        </span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <motion.div {...rise(6, reduce)} style={{ paddingTop: 'clamp(2px,1.2vh,10px)' }}>
+                    <button
+                      type="submit"
+                      disabled={busy}
+                      className="group relative w-full overflow-hidden rounded-full bg-white text-[14.5px] font-semibold tracking-wide text-black transition-all duration-700 hover:-translate-y-0.5 hover:shadow-[0_12px_38px_rgba(255,255,255,0.14)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-90"
+                      style={{
+                        paddingBlock: 'clamp(13px,2vh,17px)',
+                        transitionTimingFunction: 'cubic-bezier(.16,1,.3,1)',
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                        style={{
+                          background: 'linear-gradient(180deg,rgba(255,255,255,.85) 0%,transparent 55%)',
+                          mixBlendMode: 'overlay',
+                        }}
+                      />
+                      <span className="relative flex items-center justify-center gap-2.5">
+                        {busy ? (
+                          <>
+                            <span
+                              aria-hidden
+                              className="h-[15px] w-[15px] rounded-full border-2 border-black/25 border-t-black"
+                              style={{ animation: 'sk-spin .7s linear infinite' }}
+                            />
+                            {success ? 'Готово' : 'Подождите…'}
+                          </>
+                        ) : (
+                          <>
+                            {isRegister ? 'Создать аккаунт' : 'Войти'}
+                            <span
+                              aria-hidden
+                              className="transition-transform duration-700 group-hover:translate-x-1.5"
+                              style={{ transitionTimingFunction: 'cubic-bezier(.16,1,.3,1)' }}
+                            >
+                              →
+                            </span>
+                          </>
+                        )}
+                      </span>
+                    </button>
+                  </motion.div>
+                </form>
+              )}
 
               <motion.p
                 {...rise(7, reduce)}

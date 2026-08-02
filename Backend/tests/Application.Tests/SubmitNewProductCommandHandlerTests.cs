@@ -1,5 +1,6 @@
 using Application.Abstractions;
 using Application.Products.Commands.SubmitNewProduct;
+using Domain.Auditing;
 using Domain.Products;
 using Domain.ValueObjects;
 using Moq;
@@ -15,6 +16,7 @@ public class SubmitNewProductCommandHandlerTests
     private readonly Mock<IProductSubmissionRepository> _productSubmissionRepository = new();
     private readonly Mock<ICategoryRepository> _categoryRepository = new();
     private readonly Mock<IBrandRepository> _brandRepository = new();
+    private readonly Mock<IAuditLogRepository> _auditLogRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
     private SubmitNewProductCommandHandler CreateHandler() => new(
@@ -22,9 +24,11 @@ public class SubmitNewProductCommandHandlerTests
         _productSubmissionRepository.Object,
         _categoryRepository.Object,
         _brandRepository.Object,
+        _auditLogRepository.Object,
         _unitOfWork.Object);
 
-    private static SubmitNewProductCommand CreateCommand() => new(Barcode, "Test product", 1, 1, "TJ", UserId);
+    private static SubmitNewProductCommand CreateCommand(bool createDirectly = false) =>
+        new(Barcode, "Test product", 1, 1, "TJ", UserId, createDirectly);
 
     private void SetupHappyPath()
     {
@@ -118,5 +122,40 @@ public class SubmitNewProductCommandHandlerTests
                 s.Barcode.Value == Barcode && s.Status == ProductSubmissionStatus.Pending && s.SubmittedByUserId == UserId)),
             Times.Once);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_CreateDirectlyByStorePartner_CreatesProductImmediatelyWithNoSubmission()
+    {
+        _productRepository.Setup(r => r.GetByBarcodeAsync(Barcode, It.IsAny<CancellationToken>())).ReturnsAsync((Product?)null);
+        _categoryRepository.Setup(r => r.ExistsAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _brandRepository.Setup(r => r.ExistsAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _productRepository.Setup(r => r.Add(It.IsAny<Product>())).Callback<Product>(p => p.Id = 7);
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(CreateCommand(createDirectly: true), CancellationToken.None);
+
+        Assert.Equal(SubmitNewProductOutcome.Created, result.Outcome);
+        Assert.Equal(7, result.ProductId);
+        Assert.Null(result.ProductSubmissionId);
+        _productRepository.Verify(r => r.Add(It.Is<Product>(p => p.Barcode.Value == Barcode)), Times.Once);
+        _productSubmissionRepository.Verify(r => r.Add(It.IsAny<ProductSubmission>()), Times.Never);
+        _auditLogRepository.Verify(r => r.Add(It.Is<AuditLog>(a => a.Action == "Product.CreatedByPartner")), Times.Once);
+        // Never checked — a partner must not be blocked by an unrelated consumer's pending submission.
+        _productSubmissionRepository.Verify(r => r.GetPendingByBarcodeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_CreateDirectlyNotBlockedByExistingPendingSubmission()
+    {
+        _productRepository.Setup(r => r.GetByBarcodeAsync(Barcode, It.IsAny<CancellationToken>())).ReturnsAsync((Product?)null);
+        _categoryRepository.Setup(r => r.ExistsAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _brandRepository.Setup(r => r.ExistsAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        // Deliberately no GetPendingByBarcodeAsync setup — the direct path must never call it.
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(CreateCommand(createDirectly: true), CancellationToken.None);
+
+        Assert.Equal(SubmitNewProductOutcome.Created, result.Outcome);
     }
 }

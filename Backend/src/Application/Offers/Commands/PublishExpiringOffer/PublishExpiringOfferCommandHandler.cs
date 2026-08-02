@@ -7,17 +7,17 @@ namespace Application.Offers.Commands.PublishExpiringOffer;
 
 public sealed class PublishExpiringOfferCommandHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IProductRepository productRepository,
     IExpiringOfferRepository expiringOfferRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<PublishExpiringOfferCommand, PublishExpiringOfferResult>
 {
     public async Task<PublishExpiringOfferResult> Handle(PublishExpiringOfferCommand command, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(command.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(command.StoreId, cancellationToken))
             return new PublishExpiringOfferResult(PublishExpiringOfferOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != command.PerformedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new PublishExpiringOfferResult(PublishExpiringOfferOutcome.Forbidden, null);
 
         if (!await productRepository.ExistsAsync(command.ProductId, cancellationToken))

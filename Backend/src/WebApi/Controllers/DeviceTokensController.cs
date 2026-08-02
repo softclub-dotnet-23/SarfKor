@@ -4,12 +4,14 @@ using Application.Notifications.Commands.RegisterDeviceToken;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
 [ApiController]
 [Route("api/device-tokens")]
 [Authorize]
+[EnableRateLimiting("contributions")]
 public sealed class DeviceTokensController : ControllerBase
 {
     [HttpPost]

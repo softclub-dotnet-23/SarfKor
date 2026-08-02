@@ -1,4 +1,5 @@
 using Domain.Common;
+using Domain.ValueObjects;
 
 namespace Domain.Stores;
 
@@ -8,4 +9,7 @@ public class StoreEmployee : Entity
     public required string UserId { get; set; }
     public StoreEmployeeRole Role { get; set; }
     public DateTimeOffset AddedAt { get; set; }
+    public Money? MonthlySalary { get; set; }
+    public TimeOnly? ScheduleStart { get; set; }
+    public TimeOnly? ScheduleEnd { get; set; }
 }

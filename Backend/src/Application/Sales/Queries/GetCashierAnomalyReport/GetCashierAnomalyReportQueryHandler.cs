@@ -12,6 +12,7 @@ namespace Application.Sales.Queries.GetCashierAnomalyReport;
 /// </summary>
 public sealed class GetCashierAnomalyReportQueryHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     ISaleTransactionRepository saleTransactionRepository) : IQueryHandler<GetCashierAnomalyReportQuery, GetCashierAnomalyReportResult>
 {
     private const double VoidRateThreshold = 0.2;
@@ -19,11 +20,10 @@ public sealed class GetCashierAnomalyReportQueryHandler(
 
     public async Task<GetCashierAnomalyReportResult> Handle(GetCashierAnomalyReportQuery query, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(query.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(query.StoreId, cancellationToken))
             return new GetCashierAnomalyReportResult(GetCashierAnomalyReportOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != query.RequestedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
             return new GetCashierAnomalyReportResult(GetCashierAnomalyReportOutcome.Forbidden, null);
 
         var from = new DateTimeOffset(query.FromDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);

@@ -7,6 +7,7 @@ namespace Application.Stores.Commands.AddStoreEmployee;
 
 public sealed class AddStoreEmployeeCommandHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IStoreEmployeeRepository storeEmployeeRepository,
     IStoreEmployeeInvitationRepository invitationRepository,
     IAuthService authService,
@@ -23,7 +24,7 @@ public sealed class AddStoreEmployeeCommandHandler(
         if (store is null)
             return new AddStoreEmployeeResult(AddStoreEmployeeOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != command.PerformedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new AddStoreEmployeeResult(AddStoreEmployeeOutcome.Forbidden, null);
 
         // The owner only knows the cashier's email (there is no user directory to browse) — resolve

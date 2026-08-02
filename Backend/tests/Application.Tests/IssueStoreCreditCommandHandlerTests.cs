@@ -15,27 +15,30 @@ public class IssueStoreCreditCommandHandlerTests
     private const int CustomerId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<ICustomerRepository> _customerRepository = new();
     private readonly Mock<IStoreCreditRepository> _storeCreditRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
     private IssueStoreCreditCommandHandler CreateHandler() => new(
         _storeRepository.Object,
+        _storeAccessAuthorizer.Object,
         _customerRepository.Object,
         _storeCreditRepository.Object,
         _unitOfWork.Object);
 
     private static IssueStoreCreditCommand ValidCommand() => new(StoreId, CustomerId, 20, "TJS", OwnerId);
 
-    private void SetupOwnedStore() =>
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+    private void SetupOwnedStore()
+    {
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+    }
 
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync((Store?)null);
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand(), CancellationToken.None);

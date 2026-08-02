@@ -2,12 +2,13 @@ using Application.Abstractions;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MimeKit;
 using MimeKit.Text;
 
 namespace Infrastructure.Email;
 
-public sealed class SmtpEmailSender(IConfiguration configuration) : IEmailSender
+public sealed class SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEmailSender> logger) : IEmailSender
 {
     public Task SendPasswordResetEmailAsync(string toEmail, string resetToken, CancellationToken cancellationToken)
     {
@@ -41,6 +42,33 @@ public sealed class SmtpEmailSender(IConfiguration configuration) : IEmailSender
             cancellationToken);
     }
 
+    public Task SendStoreOwnerInvitationEmailAsync(string toEmail, string storeName, string code, CancellationToken cancellationToken)
+    {
+        var baseUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        var confirmLink = $"{baseUrl}/confirm-store-owner?email={Uri.EscapeDataString(toEmail)}";
+
+        return SendAsync(
+            toEmail,
+            "Подтверждение владельца магазина — Sarfkor",
+            $"""
+            <p>Администратор Sarfkor добавил вас как владельца магазина «{storeName}».</p>
+            <p>Код подтверждения: <strong>{code}</strong></p>
+            <p><a href="{confirmLink}">Перейдите сюда</a>, введите код и задайте пароль, чтобы начать работу.</p>
+            <p>Код действителен в течение 20 минут. Если вы не ожидали этого письма, просто проигнорируйте его.</p>
+            """,
+            cancellationToken);
+    }
+
+    public Task SendEmailConfirmationCodeAsync(string toEmail, string code, CancellationToken cancellationToken) =>
+        SendAsync(
+            toEmail,
+            "Подтверждение email — Sarfkor",
+            $"""
+            <p>Код подтверждения для регистрации в Sarfkor: <strong>{code}</strong></p>
+            <p>Код действителен в течение 15 минут. Если вы не регистрировались в Sarfkor, просто проигнорируйте это письмо.</p>
+            """,
+            cancellationToken);
+
     private async Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken cancellationToken)
     {
         var fromName = configuration["Smtp:FromName"] ?? "Sarfkor";
@@ -49,11 +77,16 @@ public sealed class SmtpEmailSender(IConfiguration configuration) : IEmailSender
         var host = configuration["Smtp:Host"] ?? "smtp.gmail.com";
         var port = int.Parse(configuration["Smtp:Port"] ?? "587");
 
-        // A clear, specific failure here matters: callers catch and log this (not rethrow it), so a
-        // missing credential must not surface as some opaque MimeKit ArgumentNullException in the
-        // logs — that's much harder to root-cause on a fresh deploy.
+        // No SMTP configured (e.g. local dev with no mail account set up) — log the email instead
+        // of failing outright, so OTP-gated flows (registration, store-owner invite) stay testable
+        // without real mail infrastructure. Callers still get a clean success either way.
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-            throw new InvalidOperationException("Smtp:Username / Smtp:Password are not configured — set them via User Secrets (dev) or Smtp__Username / Smtp__Password environment variables (prod).");
+        {
+            logger.LogWarning(
+                "Smtp:Username/Smtp:Password not configured — logging email instead of sending it.\nTo: {ToEmail}\nSubject: {Subject}\nBody: {Body}",
+                toEmail, subject, htmlBody);
+            return;
+        }
 
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(fromName, username));

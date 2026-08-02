@@ -6,6 +6,7 @@ using Application.Payments.Queries.GetStoreCreditBalance;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
@@ -15,6 +16,7 @@ namespace WebApi.Controllers;
 public sealed class StoreCreditController : ControllerBase
 {
     [HttpPost("issue")]
+    [EnableRateLimiting("money-write")]
     public async Task<IActionResult> Issue(
         IssueStoreCreditRequest request,
         [FromServices] ICommandHandler<IssueStoreCreditCommand, IssueStoreCreditResult> handler,
@@ -38,11 +40,13 @@ public sealed class StoreCreditController : ControllerBase
             IssueStoreCreditOutcome.StoreNotFound => NotFound("Store not found."),
             IssueStoreCreditOutcome.CustomerNotFound => NotFound("Customer not found."),
             IssueStoreCreditOutcome.Forbidden => Forbid(),
+            IssueStoreCreditOutcome.CurrencyMismatch => Conflict("This customer's existing store credit is in a different currency."),
             _ => Problem()
         };
     }
 
     [HttpPost("redeem")]
+    [EnableRateLimiting("money-write")]
     public async Task<IActionResult> Redeem(
         RedeemStoreCreditRequest request,
         [FromServices] ICommandHandler<RedeemStoreCreditCommand, RedeemStoreCreditResult> handler,
@@ -53,7 +57,7 @@ public sealed class StoreCreditController : ControllerBase
         if (userId is null)
             return Unauthorized();
 
-        var command = new RedeemStoreCreditCommand(request.StoreId, request.CustomerId, request.Amount, userId);
+        var command = new RedeemStoreCreditCommand(request.StoreId, request.CustomerId, request.Amount, request.Currency, userId);
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -67,6 +71,7 @@ public sealed class StoreCreditController : ControllerBase
             RedeemStoreCreditOutcome.Forbidden => Forbid(),
             RedeemStoreCreditOutcome.NoCreditOnFile => NotFound("No store credit on file for this customer."),
             RedeemStoreCreditOutcome.InsufficientBalance => Conflict("Insufficient store credit balance."),
+            RedeemStoreCreditOutcome.CurrencyMismatch => Conflict("This customer's store credit is in a different currency."),
             _ => Problem()
         };
     }

@@ -4,7 +4,9 @@ public enum CreateReorderRuleOutcome
 {
     Created,
     StoreNotFound,
-    Forbidden
+    Forbidden,
+    ProductNotFound,
+    SupplierNotFound
 }
 
 public sealed record CreateReorderRuleResult(CreateReorderRuleOutcome Outcome, int? ReorderRuleId);

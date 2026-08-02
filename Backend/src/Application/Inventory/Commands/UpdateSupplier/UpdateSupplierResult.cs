@@ -3,7 +3,8 @@ namespace Application.Inventory.Commands.UpdateSupplier;
 public enum UpdateSupplierOutcome
 {
     Updated,
-    NotFound
+    NotFound,
+    Forbidden
 }
 
 public sealed record UpdateSupplierResult(UpdateSupplierOutcome Outcome);

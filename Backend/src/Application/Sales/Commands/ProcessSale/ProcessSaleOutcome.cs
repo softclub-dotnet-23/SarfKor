@@ -10,6 +10,8 @@ public enum ProcessSaleOutcome
     InsufficientStock,
     GiftCardNotFound,
     GiftCardNotUsable,
+    GiftCardInsufficientBalance,
+    StoreCreditInsufficientBalance,
     CustomerNotFound,
     BundleNotFound
 }

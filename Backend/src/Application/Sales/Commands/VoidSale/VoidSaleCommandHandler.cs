@@ -8,9 +8,11 @@ namespace Application.Sales.Commands.VoidSale;
 public sealed class VoidSaleCommandHandler(
     ISaleTransactionRepository saleTransactionRepository,
     IStoreRepository storeRepository,
-    IStoreEmployeeRepository storeEmployeeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IStockLevelRepository stockLevelRepository,
     IStockMovementRepository stockMovementRepository,
+    IGiftCardRepository giftCardRepository,
+    IStoreCreditRepository storeCreditRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<VoidSaleCommand, VoidSaleResult>
 {
     public async Task<VoidSaleResult> Handle(VoidSaleCommand command, CancellationToken cancellationToken)
@@ -23,8 +25,7 @@ public sealed class VoidSaleCommandHandler(
         if (store is null)
             return new VoidSaleResult(VoidSaleOutcome.Forbidden, null);
 
-        if (store.OwnerUserId != command.VoidedByUserId
-            && !await storeEmployeeRepository.IsEmployeeAsync(store.Id, command.VoidedByUserId, cancellationToken))
+        if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(saleTransaction.StoreId, command.VoidedByUserId, cancellationToken))
             return new VoidSaleResult(VoidSaleOutcome.Forbidden, null);
 
         if (saleTransaction.Status == SaleStatus.Voided)
@@ -54,6 +55,20 @@ public sealed class VoidSaleCommandHandler(
                     PerformedByUserId = command.VoidedByUserId,
                     OccurredAt = voidedAt
                 });
+            }
+
+            // Refund whatever gift-card/store-credit value was applied to the original sale —
+            // without this, voiding a sale paid partly by gift card or store credit permanently
+            // and silently lost that value: the store kept the money, the product came back into
+            // stock, and the customer's balance was never restored.
+            if (saleTransaction.GiftCardId is not null && saleTransaction.GiftCardAmountApplied is > 0)
+                await giftCardRepository.CreditAsync(saleTransaction.GiftCardId.Value, saleTransaction.GiftCardAmountApplied.Value, ct);
+
+            if (saleTransaction.CustomerId is not null && saleTransaction.StoreCreditAmountApplied is > 0)
+            {
+                var storeCredit = await storeCreditRepository.GetByStoreAndCustomerAsync(saleTransaction.StoreId, saleTransaction.CustomerId.Value, ct);
+                if (storeCredit is not null)
+                    await storeCreditRepository.CreditAsync(storeCredit.Id, saleTransaction.StoreCreditAmountApplied.Value, ct);
             }
 
             await unitOfWork.SaveChangesAsync(ct);

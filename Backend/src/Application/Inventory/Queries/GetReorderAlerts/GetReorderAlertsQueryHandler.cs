@@ -5,16 +5,16 @@ namespace Application.Inventory.Queries.GetReorderAlerts;
 
 public sealed class GetReorderAlertsQueryHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IReorderRuleRepository reorderRuleRepository,
     IStockLevelRepository stockLevelRepository) : IQueryHandler<GetReorderAlertsQuery, GetReorderAlertsResult>
 {
     public async Task<GetReorderAlertsResult> Handle(GetReorderAlertsQuery query, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(query.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(query.StoreId, cancellationToken))
             return new GetReorderAlertsResult(GetReorderAlertsOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != query.RequestedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
             return new GetReorderAlertsResult(GetReorderAlertsOutcome.Forbidden, null);
 
         var rules = await reorderRuleRepository.GetActiveByStoreIdAsync(query.StoreId, cancellationToken);

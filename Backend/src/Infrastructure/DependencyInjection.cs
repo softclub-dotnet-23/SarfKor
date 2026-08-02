@@ -21,7 +21,14 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"),
                 npgsql => npgsql.EnableRetryOnFailure(maxRetryCount: 3)));
 
-        services.AddIdentityCore<ApplicationUser>()
+        services.AddIdentityCore<ApplicationUser>(options =>
+            {
+                // Explicit, not relying on library defaults — caps password-guessing per account
+                // regardless of source IP, on top of (not instead of) the "login" rate-limit policy.
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+            })
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
@@ -59,6 +66,7 @@ public static class DependencyInjection
         services.AddScoped<ILoyaltyAccountRepository, LoyaltyAccountRepository>();
         services.AddScoped<ILoyaltyTransactionRepository, LoyaltyTransactionRepository>();
         services.AddScoped<IGiftCardRepository, GiftCardRepository>();
+        services.AddScoped<IGiftCardRedemptionRepository, GiftCardRedemptionRepository>();
         services.AddScoped<IStoreCreditRepository, StoreCreditRepository>();
         services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
         services.AddScoped<IStockTransferRepository, StockTransferRepository>();
@@ -73,6 +81,7 @@ public static class DependencyInjection
         services.AddScoped<IUserConsentRepository, UserConsentRepository>();
         services.AddScoped<IStoreEmployeeRepository, StoreEmployeeRepository>();
         services.AddScoped<IStoreEmployeeInvitationRepository, StoreEmployeeInvitationRepository>();
+        services.AddScoped<IStoreOwnerInvitationRepository, StoreOwnerInvitationRepository>();
         services.AddScoped<IScanRepository, ScanRepository>();
         services.AddScoped<IPromotionRepository, PromotionRepository>();
         services.AddScoped<ICommissionRepository, CommissionRepository>();

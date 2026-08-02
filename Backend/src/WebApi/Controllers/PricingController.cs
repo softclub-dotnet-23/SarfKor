@@ -44,6 +44,7 @@ public sealed class PricingController : ControllerBase
     }
 
     [HttpPost("price-entries/{priceEntryId:int}/dispute")]
+    [EnableRateLimiting("contributions")]
     public async Task<IActionResult> RaiseDispute(
         int priceEntryId,
         RaiseDisputeRequest request,
@@ -66,6 +67,7 @@ public sealed class PricingController : ControllerBase
         {
             RaisePriceEntryDisputeOutcome.Raised => Ok(result),
             RaisePriceEntryDisputeOutcome.PriceEntryNotFound => NotFound(),
+            RaisePriceEntryDisputeOutcome.AlreadyDisputed => Conflict("This price entry already has a pending dispute."),
             _ => Problem()
         };
     }

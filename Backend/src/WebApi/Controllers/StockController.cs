@@ -6,6 +6,7 @@ using Application.Inventory.Queries.GetStockLevel;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
@@ -15,6 +16,7 @@ namespace WebApi.Controllers;
 public sealed class StockController : ControllerBase
 {
     [HttpPost("receipts")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> RecordReceipt(
         RecordStockReceiptRequest request,
         [FromServices] ICommandHandler<RecordStockReceiptCommand, RecordStockReceiptResult> handler,
@@ -43,6 +45,7 @@ public sealed class StockController : ControllerBase
     }
 
     [HttpPost("cost-price")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> SetCostPrice(
         SetCostPriceRequest request,
         [FromServices] ICommandHandler<SetCostPriceCommand, SetCostPriceResult> handler,

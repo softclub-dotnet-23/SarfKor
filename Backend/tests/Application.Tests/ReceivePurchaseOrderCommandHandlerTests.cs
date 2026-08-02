@@ -14,7 +14,7 @@ public class ReceivePurchaseOrderCommandHandlerTests
     private const int OrderId = 1;
 
     private readonly Mock<IPurchaseOrderRepository> _purchaseOrderRepository = new();
-    private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IStockLevelRepository> _stockLevelRepository = new();
     private readonly Mock<IStockMovementRepository> _stockMovementRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -24,14 +24,14 @@ public class ReceivePurchaseOrderCommandHandlerTests
         _unitOfWork
             .Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<CancellationToken, Task>>(), It.IsAny<CancellationToken>()))
             .Returns<Func<CancellationToken, Task>, CancellationToken>((action, ct) => action(ct));
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer
+            .Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
     }
 
     private ReceivePurchaseOrderCommandHandler CreateHandler() => new(
         _purchaseOrderRepository.Object,
-        _storeRepository.Object,
+        _storeAccessAuthorizer.Object,
         _stockLevelRepository.Object,
         _stockMovementRepository.Object,
         _unitOfWork.Object);

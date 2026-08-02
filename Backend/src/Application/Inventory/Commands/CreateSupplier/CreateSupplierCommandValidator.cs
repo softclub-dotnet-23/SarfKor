@@ -6,6 +6,8 @@ public sealed class CreateSupplierCommandValidator : AbstractValidator<CreateSup
 {
     public CreateSupplierCommandValidator()
     {
+        RuleFor(x => x.StoreId).GreaterThan(0);
+        RuleFor(x => x.PerformedByUserId).NotEmpty();
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.ContactPhone).MaximumLength(30);
         RuleFor(x => x.ContactEmail).EmailAddress().When(x => !string.IsNullOrEmpty(x.ContactEmail));

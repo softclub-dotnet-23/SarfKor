@@ -1,3 +1,4 @@
+using Application.Common;
 using FluentValidation;
 
 namespace Application.Payments.Commands.RedeemStoreCredit;
@@ -9,6 +10,7 @@ public sealed class RedeemStoreCreditCommandValidator : AbstractValidator<Redeem
         RuleFor(x => x.StoreId).GreaterThan(0);
         RuleFor(x => x.CustomerId).GreaterThan(0);
         RuleFor(x => x.Amount).GreaterThan(0);
+        RuleFor(x => x.Currency).NotEmpty().Must(SupportedCurrencies.IsSupported).WithMessage("Unsupported currency.");
         RuleFor(x => x.PerformedByUserId).NotEmpty();
     }
 }

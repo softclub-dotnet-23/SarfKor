@@ -6,6 +6,7 @@ namespace Application.Products.Commands.RecordScan;
 
 public sealed class RecordScanCommandHandler(
     IProductRepository productRepository,
+    IStoreRepository storeRepository,
     IScanRepository scanRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<RecordScanCommand, RecordScanResult>
 {
@@ -13,6 +14,9 @@ public sealed class RecordScanCommandHandler(
     {
         if (!await productRepository.ExistsAsync(command.ProductId, cancellationToken))
             return new RecordScanResult(RecordScanOutcome.ProductNotFound, null);
+
+        if (command.StoreId.HasValue && !await storeRepository.ExistsAsync(command.StoreId.Value, cancellationToken))
+            return new RecordScanResult(RecordScanOutcome.StoreNotFound, null);
 
         var scan = new Scan
         {

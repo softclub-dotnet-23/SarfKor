@@ -94,10 +94,19 @@ export function StaticLanding() {
         return
       }
 
-      const result = action === 'login' ? await a.login(email, password) : await a.register(email, password)
+      // Register no longer logs in directly — it always needs the emailed code confirmed first
+      // (see AuthPage's 'confirm' stage). The landing doesn't have that second step built yet, so
+      // it just gets told a code was sent; it doesn't get a session out of this call.
+      if (action === 'register') {
+        const result = await a.register(email, password)
+        reply(result.ok ? { ok: true, requiresEmailConfirmation: true, email: result.email } : { ok: false, error: result.error })
+        return
+      }
+
+      const result = await a.login(email, password)
 
       if (!result.ok) {
-        reply({ ok: false, error: result.error })
+        reply({ ok: false, error: result.error, requiresEmailConfirmation: result.requiresEmailConfirmation })
         return
       }
 

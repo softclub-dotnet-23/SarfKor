@@ -4,7 +4,8 @@ public enum DeleteSupplierOutcome
 {
     Deleted,
     NotFound,
-    InUse
+    InUse,
+    Forbidden
 }
 
 public sealed record DeleteSupplierResult(DeleteSupplierOutcome Outcome);

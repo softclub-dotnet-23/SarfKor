@@ -9,17 +9,11 @@ public sealed class ScanRepository(AppDbContext dbContext) : IScanRepository
 {
     public void Add(Scan scan) => dbContext.Scans.Add(scan);
 
-    public async Task<IReadOnlyList<ProductScanSummary>> GetMostScannedAsync(int limit, CancellationToken cancellationToken)
-    {
-        // Materialize first, group in memory — the same "GroupBy after a query doesn't translate
-        // reliably" lesson from GetTopSellingProductsAsync (2026-07-22) applies here too.
-        var productIds = await dbContext.Scans.Select(s => s.ProductId).ToListAsync(cancellationToken);
-
-        return productIds
-            .GroupBy(id => id)
+    public async Task<IReadOnlyList<ProductScanSummary>> GetMostScannedAsync(int limit, CancellationToken cancellationToken) =>
+        await dbContext.Scans
+            .GroupBy(s => s.ProductId)
             .Select(g => new ProductScanSummary(g.Key, g.Count()))
             .OrderByDescending(x => x.TotalScans)
             .Take(limit)
-            .ToList();
-    }
+            .ToListAsync(cancellationToken);
 }

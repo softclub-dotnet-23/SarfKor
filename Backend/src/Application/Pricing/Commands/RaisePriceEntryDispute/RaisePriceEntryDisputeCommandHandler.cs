@@ -14,6 +14,9 @@ public sealed class RaisePriceEntryDisputeCommandHandler(
         if (await priceEntryRepository.GetByIdAsync(command.PriceEntryId, cancellationToken) is null)
             return new RaisePriceEntryDisputeResult(RaisePriceEntryDisputeOutcome.PriceEntryNotFound, null);
 
+        if (await priceEntryDisputeRepository.HasPendingDisputeAsync(command.PriceEntryId, cancellationToken))
+            return new RaisePriceEntryDisputeResult(RaisePriceEntryDisputeOutcome.AlreadyDisputed, null);
+
         var dispute = new PriceEntryDispute
         {
             PriceEntryId = command.PriceEntryId,

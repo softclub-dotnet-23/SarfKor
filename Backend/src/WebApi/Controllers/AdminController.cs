@@ -9,15 +9,20 @@ using Application.Pricing.Commands.ResolvePriceEntryDispute;
 using Application.Pricing.Queries.GetPendingPriceEntryDisputes;
 using Application.Products.Commands.ModerateNewProduct;
 using Application.Products.Queries.GetPendingProductSubmissions;
+using Application.Stores.Commands.AdminCreateStorePartner;
+using Application.Stores.Commands.ApproveStore;
+using Application.Stores.Queries.GetAllStores;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
 [ApiController]
 [Route("api/admin")]
 [Authorize("Admin")]
+[EnableRateLimiting("partner-write")]
 public sealed class AdminController : ControllerBase
 {
     [HttpPost("price-entry-disputes/{disputeId:int}/resolve")]
@@ -160,6 +165,76 @@ public sealed class AdminController : ControllerBase
             ModerateReportOutcome.AlreadyModerated => Conflict("This report has already been moderated."),
             _ => Problem()
         };
+    }
+
+    [HttpPost("store-partners")]
+    public async Task<IActionResult> AdminCreateStorePartner(
+        AdminCreateStorePartnerRequest request,
+        [FromServices] ICommandHandler<AdminCreateStorePartnerCommand, AdminCreateStorePartnerResult> handler,
+        [FromServices] IValidator<AdminCreateStorePartnerCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new AdminCreateStorePartnerCommand(userId, request.Email, request.StoreName, request.Address, request.Latitude, request.Longitude);
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            AdminCreateStorePartnerOutcome.Invited => Ok(result),
+            AdminCreateStorePartnerOutcome.EmailAlreadyRegistered => Conflict("This email already has an account — use the existing account instead."),
+            _ => Problem()
+        };
+    }
+
+    [HttpPost("stores/{storeId:int}/approve")]
+    public async Task<IActionResult> ApproveStore(
+        int storeId,
+        [FromServices] ICommandHandler<ApproveStoreCommand, ApproveStoreResult> handler,
+        [FromServices] IValidator<ApproveStoreCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new ApproveStoreCommand(storeId, userId);
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            ApproveStoreOutcome.Approved => Ok(result),
+            ApproveStoreOutcome.NotFound => NotFound(),
+            ApproveStoreOutcome.AlreadyApproved => Conflict("This store has already been approved."),
+            _ => Problem()
+        };
+    }
+
+    [HttpGet("stores")]
+    public async Task<IActionResult> GetAllStores(
+        int? skip,
+        int? take,
+        [FromServices] IQueryHandler<GetAllStoresQuery, GetAllStoresResult> handler,
+        [FromServices] IValidator<GetAllStoresQuery> validator,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetAllStoresQuery(skip ?? 0, take ?? 50);
+
+        var validationResult = await validator.ValidateAsync(query, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        return Ok(await handler.Handle(query, cancellationToken));
     }
 
     [HttpGet("audit-logs/recent")]

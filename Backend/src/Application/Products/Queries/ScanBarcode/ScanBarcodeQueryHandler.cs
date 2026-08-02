@@ -15,7 +15,7 @@ public sealed class ScanBarcodeQueryHandler(
             return null;
 
         var priceEntries = await priceEntryRepository.GetLatestPerStoreAsync(product.Id, cancellationToken);
-        var stores = await storeRepository.GetByIdsAsync(priceEntries.Select(p => p.StoreId).ToList(), cancellationToken);
+        var stores = await storeRepository.GetApprovedByIdsAsync(priceEntries.Select(p => p.StoreId).ToList(), cancellationToken);
         var storesById = stores.ToDictionary(s => s.Id);
 
         var results = priceEntries

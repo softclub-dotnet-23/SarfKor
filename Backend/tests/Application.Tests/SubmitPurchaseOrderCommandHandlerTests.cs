@@ -14,10 +14,10 @@ public class SubmitPurchaseOrderCommandHandlerTests
     private const int OrderId = 1;
 
     private readonly Mock<IPurchaseOrderRepository> _purchaseOrderRepository = new();
-    private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    private SubmitPurchaseOrderCommandHandler CreateHandler() => new(_purchaseOrderRepository.Object, _storeRepository.Object, _unitOfWork.Object);
+    private SubmitPurchaseOrderCommandHandler CreateHandler() => new(_purchaseOrderRepository.Object, _storeAccessAuthorizer.Object, _unitOfWork.Object);
 
     private static PurchaseOrder CreateOrder(PurchaseOrderStatus status) => new()
     {
@@ -43,9 +43,7 @@ public class SubmitPurchaseOrderCommandHandlerTests
     public async Task Handle_NotOwner_ReturnsForbidden()
     {
         _purchaseOrderRepository.Setup(r => r.GetByIdAsync(OrderId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateOrder(PurchaseOrderStatus.Draft));
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new SubmitPurchaseOrderCommand(OrderId, "someone-else"), CancellationToken.None);
@@ -57,9 +55,7 @@ public class SubmitPurchaseOrderCommandHandlerTests
     public async Task Handle_NotDraft_ReturnsNotDraft()
     {
         _purchaseOrderRepository.Setup(r => r.GetByIdAsync(OrderId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateOrder(PurchaseOrderStatus.Submitted));
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new SubmitPurchaseOrderCommand(OrderId, OwnerId), CancellationToken.None);
@@ -72,9 +68,7 @@ public class SubmitPurchaseOrderCommandHandlerTests
     {
         var order = CreateOrder(PurchaseOrderStatus.Draft);
         _purchaseOrderRepository.Setup(r => r.GetByIdAsync(OrderId, It.IsAny<CancellationToken>())).ReturnsAsync(order);
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new SubmitPurchaseOrderCommand(OrderId, OwnerId), CancellationToken.None);

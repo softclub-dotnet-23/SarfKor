@@ -16,9 +16,9 @@ public sealed class CategoryRepository(AppDbContext dbContext) : ICategoryReposi
     public Task<bool> ExistsAsync(int categoryId, CancellationToken cancellationToken) =>
         dbContext.Categories.AnyAsync(c => c.Id == categoryId, cancellationToken);
 
-    // Category is weakly referenced (plain int columns, no DB-level FK) by Product.CategoryId,
-    // TaxRate.CategoryId, and other Category rows via ParentCategoryId — deleting one out from
-    // under any of those would silently orphan them, so callers must check this first.
+    // Product.CategoryId and TaxRate.CategoryId have no cascade/restrict FK behavior configured,
+    // and self-referencing ParentCategoryId only sets null on delete — callers must check this
+    // first to avoid orphaning references or unintentionally detaching a subcategory tree.
     public async Task<bool> IsInUseAsync(int categoryId, CancellationToken cancellationToken)
     {
         if (await dbContext.Products.AnyAsync(p => p.CategoryId == categoryId, cancellationToken))

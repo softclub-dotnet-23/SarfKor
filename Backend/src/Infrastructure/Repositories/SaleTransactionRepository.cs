@@ -39,18 +39,15 @@ public sealed class SaleTransactionRepository(AppDbContext dbContext) : ISaleTra
         if (storeId.HasValue)
             salesQuery = salesQuery.Where(s => s.StoreId == storeId.Value);
 
-        var lineData = await (
+        // Aggregated in SQL — previously materialized every matching SaleLineItem platform-wide
+        // (unbounded when storeId is null) before grouping in memory.
+        return await (
             from line in dbContext.SaleLineItems
             join sale in salesQuery on line.SaleTransactionId equals sale.Id
-            select new { line.ProductId, line.Quantity }
-        ).ToListAsync(cancellationToken);
-
-        return lineData
-            .GroupBy(x => x.ProductId)
-            .Select(g => new ProductSalesSummary(g.Key, g.Sum(x => x.Quantity)))
-            .OrderByDescending(x => x.TotalQuantity)
-            .Take(limit)
-            .ToList();
+            group line by line.ProductId into g
+            orderby g.Sum(x => x.Quantity) descending
+            select new ProductSalesSummary(g.Key, g.Sum(x => x.Quantity))
+        ).Take(limit).ToListAsync(cancellationToken);
     }
 
     public void Add(SaleTransaction saleTransaction) => dbContext.SaleTransactions.Add(saleTransaction);

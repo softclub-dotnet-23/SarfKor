@@ -6,6 +6,7 @@ using Application.Sales.Queries.GetProfitReport;
 using Application.Stores.Commands.AddStoreEmployee;
 using Application.Stores.Commands.CreateStore;
 using Application.Stores.Commands.RemoveStoreEmployee;
+using Application.Stores.Commands.UpdateStoreEmployee;
 using Application.Stores.Queries.GetStoreDashboard;
 using Application.Stores.Queries.GetStoreEmployees;
 using FluentValidation;
@@ -44,6 +45,7 @@ public sealed class StoresController : ControllerBase
 
     [HttpPost("stores/{storeId:int}/employees")]
     [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> AddEmployee(
         int storeId,
         AddStoreEmployeeRequest request,
@@ -75,6 +77,7 @@ public sealed class StoresController : ControllerBase
 
     [HttpDelete("store-employees/{storeEmployeeId:int}")]
     [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> RemoveEmployee(
         int storeEmployeeId,
         [FromServices] ICommandHandler<RemoveStoreEmployeeCommand, RemoveStoreEmployeeResult> handler,
@@ -97,6 +100,37 @@ public sealed class StoresController : ControllerBase
             RemoveStoreEmployeeOutcome.Removed => Ok(result),
             RemoveStoreEmployeeOutcome.NotFound => NotFound(),
             RemoveStoreEmployeeOutcome.Forbidden => Forbid(),
+            _ => Problem()
+        };
+    }
+
+    [HttpPatch("store-employees/{storeEmployeeId:int}")]
+    [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
+    public async Task<IActionResult> UpdateStoreEmployee(
+        int storeEmployeeId,
+        UpdateStoreEmployeeRequest request,
+        [FromServices] ICommandHandler<UpdateStoreEmployeeCommand, UpdateStoreEmployeeResult> handler,
+        [FromServices] IValidator<UpdateStoreEmployeeCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new UpdateStoreEmployeeCommand(
+            storeEmployeeId, request.MonthlySalaryAmount, request.MonthlySalaryCurrency, request.ScheduleStart, request.ScheduleEnd, userId);
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            UpdateStoreEmployeeOutcome.Updated => Ok(result),
+            UpdateStoreEmployeeOutcome.NotFound => NotFound(),
+            UpdateStoreEmployeeOutcome.Forbidden => Forbid(),
             _ => Problem()
         };
     }

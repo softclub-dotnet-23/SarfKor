@@ -6,7 +6,8 @@ public enum RedeemStoreCreditOutcome
     StoreNotFound,
     Forbidden,
     NoCreditOnFile,
-    InsufficientBalance
+    InsufficientBalance,
+    CurrencyMismatch
 }
 
 public sealed record RedeemStoreCreditResult(RedeemStoreCreditOutcome Outcome, decimal? NewBalance);

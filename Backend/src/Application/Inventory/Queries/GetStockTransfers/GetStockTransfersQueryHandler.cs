@@ -5,15 +5,15 @@ namespace Application.Inventory.Queries.GetStockTransfers;
 
 public sealed class GetStockTransfersQueryHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IStockTransferRepository stockTransferRepository) : IQueryHandler<GetStockTransfersQuery, GetStockTransfersResult>
 {
     public async Task<GetStockTransfersResult> Handle(GetStockTransfersQuery query, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(query.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(query.StoreId, cancellationToken))
             return new GetStockTransfersResult(GetStockTransfersOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != query.RequestedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
             return new GetStockTransfersResult(GetStockTransfersOutcome.Forbidden, null);
 
         var transfers = await stockTransferRepository.GetByStoreIdAsync(query.StoreId, cancellationToken);

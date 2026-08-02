@@ -3,7 +3,8 @@ namespace Application.Pricing.Commands.RaisePriceEntryDispute;
 public enum RaisePriceEntryDisputeOutcome
 {
     Raised,
-    PriceEntryNotFound
+    PriceEntryNotFound,
+    AlreadyDisputed
 }
 
 public sealed record RaisePriceEntryDisputeResult(RaisePriceEntryDisputeOutcome Outcome, int? DisputeId);

@@ -13,22 +13,17 @@ public class OpenCashierShiftCommandHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
-    private readonly Mock<IStoreEmployeeRepository> _storeEmployeeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<ICashierShiftRepository> _cashierShiftRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    public OpenCashierShiftCommandHandlerTests() =>
-        _storeEmployeeRepository
-            .Setup(r => r.IsEmployeeAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
     private OpenCashierShiftCommandHandler CreateHandler() =>
-        new(_storeRepository.Object, _storeEmployeeRepository.Object, _cashierShiftRepository.Object, _unitOfWork.Object);
+        new(_storeRepository.Object, _storeAccessAuthorizer.Object, _cashierShiftRepository.Object, _unitOfWork.Object);
 
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync((Store?)null);
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new OpenCashierShiftCommand(StoreId, 100, "TJS", OwnerId), CancellationToken.None);
@@ -39,9 +34,7 @@ public class OpenCashierShiftCommandHandlerTests
     [Fact]
     public async Task Handle_NotOwner_ReturnsForbidden()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new OpenCashierShiftCommand(StoreId, 100, "TJS", "someone-else"), CancellationToken.None);
@@ -52,9 +45,8 @@ public class OpenCashierShiftCommandHandlerTests
     [Fact]
     public async Task Handle_ValidCommand_OpensShiftWithOpeningCash()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         CashierShift? added = null;
         _cashierShiftRepository.Setup(r => r.Add(It.IsAny<CashierShift>())).Callback<CashierShift>(s =>
         {

@@ -13,16 +13,17 @@ public class GetDailySalesReportQueryHandlerTests
     private const int StoreId = 1;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<ISaleTransactionRepository> _saleTransactionRepository = new();
 
-    private GetDailySalesReportQueryHandler CreateHandler() => new(_storeRepository.Object, _saleTransactionRepository.Object);
+    private GetDailySalesReportQueryHandler CreateHandler() => new(_storeRepository.Object, _storeAccessAuthorizer.Object, _saleTransactionRepository.Object);
 
     private static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.UtcNow);
 
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync((Store?)null);
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new GetDailySalesReportQuery(StoreId, Today, OwnerId), CancellationToken.None);
@@ -33,9 +34,7 @@ public class GetDailySalesReportQueryHandlerTests
     [Fact]
     public async Task Handle_NotOwner_ReturnsForbidden()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new GetDailySalesReportQuery(StoreId, Today, "someone-else"), CancellationToken.None);
@@ -46,9 +45,8 @@ public class GetDailySalesReportQueryHandlerTests
     [Fact]
     public async Task Handle_Owner_ComputesCountAndRevenueFromCompletedSalesOnly()
     {
-        _storeRepository
-            .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Store { OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var sale = new SaleTransaction
         {

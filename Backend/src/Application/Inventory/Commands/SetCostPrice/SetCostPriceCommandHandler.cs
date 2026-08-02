@@ -7,17 +7,17 @@ namespace Application.Inventory.Commands.SetCostPrice;
 
 public sealed class SetCostPriceCommandHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IProductRepository productRepository,
     ICostPriceRepository costPriceRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<SetCostPriceCommand, SetCostPriceResult>
 {
     public async Task<SetCostPriceResult> Handle(SetCostPriceCommand command, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(command.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(command.StoreId, cancellationToken))
             return new SetCostPriceResult(SetCostPriceOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != command.PerformedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new SetCostPriceResult(SetCostPriceOutcome.Forbidden, null);
 
         if (!await productRepository.ExistsAsync(command.ProductId, cancellationToken))

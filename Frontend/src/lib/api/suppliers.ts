@@ -7,16 +7,16 @@ export interface Supplier {
   contactEmail?: string
 }
 
-// Suppliers are global (not scoped to a store) — confirmed against the
-// backend source, which has no storeId on either endpoint below.
-export function getSuppliers() {
-  return apiFetch<{ suppliers: Supplier[] }>('/api/suppliers')
+// Suppliers are scoped to the store that created them — the backend checks the caller is that
+// store's owner/employee on every action.
+export function getSuppliers(storeId: number) {
+  return apiFetch<{ suppliers: Supplier[] }>('/api/suppliers', { query: { storeId } })
 }
 
-export function createSupplier(name: string, contactPhone?: string, contactEmail?: string) {
+export function createSupplier(storeId: number, name: string, contactPhone?: string, contactEmail?: string) {
   return apiFetch<{ supplierId: number }>('/api/suppliers', {
     method: 'POST',
-    body: { name, contactPhone, contactEmail },
+    body: { storeId, name, contactPhone, contactEmail },
   })
 }
 

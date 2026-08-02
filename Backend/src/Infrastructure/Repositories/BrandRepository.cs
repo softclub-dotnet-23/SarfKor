@@ -16,6 +16,9 @@ public sealed class BrandRepository(AppDbContext dbContext) : IBrandRepository
     public Task<bool> ExistsAsync(int brandId, CancellationToken cancellationToken) =>
         dbContext.Brands.AnyAsync(b => b.Id == brandId, cancellationToken);
 
+    public Task<bool> ExistsByNameAsync(string name, CancellationToken cancellationToken) =>
+        dbContext.Brands.AnyAsync(b => b.Name.ToLower() == name.ToLower(), cancellationToken);
+
     public Task<bool> IsInUseAsync(int brandId, CancellationToken cancellationToken) =>
         dbContext.Products.AnyAsync(p => p.BrandId == brandId, cancellationToken);
 

@@ -7,16 +7,16 @@ namespace Application.Inventory.Commands.CreatePurchaseOrder;
 
 public sealed class CreatePurchaseOrderCommandHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IPurchaseOrderRepository purchaseOrderRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<CreatePurchaseOrderCommand, CreatePurchaseOrderResult>
 {
     public async Task<CreatePurchaseOrderResult> Handle(CreatePurchaseOrderCommand command, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(command.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(command.StoreId, cancellationToken))
             return new CreatePurchaseOrderResult(CreatePurchaseOrderOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != command.PerformedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new CreatePurchaseOrderResult(CreatePurchaseOrderOutcome.Forbidden, null);
 
         var order = new PurchaseOrder

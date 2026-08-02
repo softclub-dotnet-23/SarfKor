@@ -5,19 +5,24 @@ namespace Application.Stores.Queries.GetStoreEmployees;
 
 public sealed class GetStoreEmployeesQueryHandler(
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IStoreEmployeeRepository storeEmployeeRepository) : IQueryHandler<GetStoreEmployeesQuery, GetStoreEmployeesResult>
 {
     public async Task<GetStoreEmployeesResult> Handle(GetStoreEmployeesQuery query, CancellationToken cancellationToken)
     {
-        var store = await storeRepository.GetByIdAsync(query.StoreId, cancellationToken);
-        if (store is null)
+        if (!await storeRepository.ExistsAsync(query.StoreId, cancellationToken))
             return new GetStoreEmployeesResult(GetStoreEmployeesOutcome.StoreNotFound, null);
 
-        if (store.OwnerUserId != query.RequestedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(query.StoreId, query.RequestedByUserId, cancellationToken))
             return new GetStoreEmployeesResult(GetStoreEmployeesOutcome.Forbidden, null);
 
         var employees = await storeEmployeeRepository.GetByStoreIdAsync(query.StoreId, cancellationToken);
-        var dtos = employees.Select(e => new StoreEmployeeDto(e.Id, e.UserId, e.Role, e.AddedAt)).ToList();
+        var dtos = employees
+            .Select(e => new StoreEmployeeDto(
+                e.Id, e.UserId, e.Role, e.AddedAt,
+                e.MonthlySalary?.Amount, e.MonthlySalary?.Currency,
+                e.ScheduleStart, e.ScheduleEnd))
+            .ToList();
 
         return new GetStoreEmployeesResult(GetStoreEmployeesOutcome.Found, dtos);
     }

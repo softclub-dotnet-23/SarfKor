@@ -12,8 +12,7 @@ namespace Application.Sales.Commands.CloseCashierShift;
 /// </summary>
 public sealed class CloseCashierShiftCommandHandler(
     ICashierShiftRepository cashierShiftRepository,
-    IStoreRepository storeRepository,
-    IStoreEmployeeRepository storeEmployeeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     ISaleTransactionRepository saleTransactionRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<CloseCashierShiftCommand, CloseCashierShiftResult>
 {
@@ -23,12 +22,7 @@ public sealed class CloseCashierShiftCommandHandler(
         if (shift is null)
             return new CloseCashierShiftResult(CloseCashierShiftOutcome.NotFound, null, null, null);
 
-        var store = await storeRepository.GetByIdAsync(shift.StoreId, cancellationToken);
-        if (store is null)
-            return new CloseCashierShiftResult(CloseCashierShiftOutcome.Forbidden, null, null, null);
-
-        if (store.OwnerUserId != command.PerformedByUserId
-            && !await storeEmployeeRepository.IsEmployeeAsync(store.Id, command.PerformedByUserId, cancellationToken))
+        if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(shift.StoreId, command.PerformedByUserId, cancellationToken))
             return new CloseCashierShiftResult(CloseCashierShiftOutcome.Forbidden, null, null, null);
 
         if (shift.EndedAt is not null)

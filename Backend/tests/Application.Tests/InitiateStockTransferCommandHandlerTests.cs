@@ -1,8 +1,6 @@
 using Application.Abstractions;
 using Application.Inventory.Commands.InitiateStockTransfer;
 using Domain.Inventory;
-using Domain.Stores;
-using Domain.ValueObjects;
 using Moq;
 
 namespace Application.Tests;
@@ -14,6 +12,7 @@ public class InitiateStockTransferCommandHandlerTests
     private const int ToStoreId = 2;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
+    private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IStockLevelRepository> _stockLevelRepository = new();
     private readonly Mock<IStockMovementRepository> _stockMovementRepository = new();
     private readonly Mock<IStockTransferRepository> _stockTransferRepository = new();
@@ -28,6 +27,7 @@ public class InitiateStockTransferCommandHandlerTests
 
     private InitiateStockTransferCommandHandler CreateHandler() => new(
         _storeRepository.Object,
+        _storeAccessAuthorizer.Object,
         _stockLevelRepository.Object,
         _stockMovementRepository.Object,
         _stockTransferRepository.Object,
@@ -35,12 +35,16 @@ public class InitiateStockTransferCommandHandlerTests
 
     private static InitiateStockTransferCommand ValidCommand() => new(1, FromStoreId, ToStoreId, 5, OwnerId);
 
-    private static Store OwnedStore(string ownerId) => new() { OwnerUserId = ownerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) };
+    private void SetupBothStoresExist()
+    {
+        _storeRepository.Setup(r => r.ExistsAsync(FromStoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeRepository.Setup(r => r.ExistsAsync(ToStoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+    }
 
     [Fact]
     public async Task Handle_FromStoreNotFound_ReturnsFromStoreNotFound()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(FromStoreId, It.IsAny<CancellationToken>())).ReturnsAsync((Store?)null);
+        _storeRepository.Setup(r => r.ExistsAsync(FromStoreId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand(), CancellationToken.None);
@@ -51,8 +55,9 @@ public class InitiateStockTransferCommandHandlerTests
     [Fact]
     public async Task Handle_ToStoreOwnedBySomeoneElse_ReturnsForbidden()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(FromStoreId, It.IsAny<CancellationToken>())).ReturnsAsync(OwnedStore(OwnerId));
-        _storeRepository.Setup(r => r.GetByIdAsync(ToStoreId, It.IsAny<CancellationToken>())).ReturnsAsync(OwnedStore("someone-else"));
+        SetupBothStoresExist();
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(FromStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(ToStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand(), CancellationToken.None);
@@ -64,8 +69,9 @@ public class InitiateStockTransferCommandHandlerTests
     [Fact]
     public async Task Handle_InsufficientStockAtSource_ReturnsInsufficientStockAndDoesNotCreateTransfer()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(FromStoreId, It.IsAny<CancellationToken>())).ReturnsAsync(OwnedStore(OwnerId));
-        _storeRepository.Setup(r => r.GetByIdAsync(ToStoreId, It.IsAny<CancellationToken>())).ReturnsAsync(OwnedStore(OwnerId));
+        SetupBothStoresExist();
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(FromStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(ToStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _stockLevelRepository
             .Setup(r => r.TryDecrementAsync(1, FromStoreId, 5, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -80,8 +86,9 @@ public class InitiateStockTransferCommandHandlerTests
     [Fact]
     public async Task Handle_ValidCommand_DecrementsSourceAndCreatesInTransitTransfer()
     {
-        _storeRepository.Setup(r => r.GetByIdAsync(FromStoreId, It.IsAny<CancellationToken>())).ReturnsAsync(OwnedStore(OwnerId));
-        _storeRepository.Setup(r => r.GetByIdAsync(ToStoreId, It.IsAny<CancellationToken>())).ReturnsAsync(OwnedStore(OwnerId));
+        SetupBothStoresExist();
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(FromStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(ToStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _stockLevelRepository
             .Setup(r => r.TryDecrementAsync(1, FromStoreId, 5, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);

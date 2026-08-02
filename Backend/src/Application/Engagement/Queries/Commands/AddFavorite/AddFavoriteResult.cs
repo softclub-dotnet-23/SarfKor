@@ -1,3 +1,9 @@
 namespace Application.Engagement.Commands.AddFavorite;
 
-public sealed record AddFavoriteResult(int FavoriteId);
+public enum AddFavoriteOutcome
+{
+    Added,
+    EntityNotFound
+}
+
+public sealed record AddFavoriteResult(AddFavoriteOutcome Outcome, int? FavoriteId);

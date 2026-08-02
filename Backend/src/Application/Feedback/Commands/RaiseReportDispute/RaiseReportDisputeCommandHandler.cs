@@ -6,7 +6,7 @@ namespace Application.Feedback.Commands.RaiseReportDispute;
 
 public sealed class RaiseReportDisputeCommandHandler(
     IReportRepository reportRepository,
-    IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IReportDisputeRepository reportDisputeRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<RaiseReportDisputeCommand, RaiseReportDisputeResult>
 {
@@ -18,11 +18,7 @@ public sealed class RaiseReportDisputeCommandHandler(
 
         // Only the owner of the store a report is about can dispute it — a report with no store
         // (e.g. about the product listing generally) has no legitimate disputant.
-        if (report.StoreId is null)
-            return new RaiseReportDisputeResult(RaiseReportDisputeOutcome.Forbidden, null);
-
-        var store = await storeRepository.GetByIdAsync(report.StoreId.Value, cancellationToken);
-        if (store is null || store.OwnerUserId != command.DisputedByUserId)
+        if (report.StoreId is null || !await storeAccessAuthorizer.IsOwnerAsync(report.StoreId.Value, command.DisputedByUserId, cancellationToken))
             return new RaiseReportDisputeResult(RaiseReportDisputeOutcome.Forbidden, null);
 
         var dispute = new ReportDispute

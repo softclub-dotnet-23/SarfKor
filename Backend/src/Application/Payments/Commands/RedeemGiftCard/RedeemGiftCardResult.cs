@@ -6,7 +6,9 @@ public enum RedeemGiftCardOutcome
     NotFound,
     Inactive,
     Expired,
-    InsufficientBalance
+    InsufficientBalance,
+    CurrencyMismatch,
+    Forbidden
 }
 
 public sealed record RedeemGiftCardResult(RedeemGiftCardOutcome Outcome, decimal? RemainingBalance);

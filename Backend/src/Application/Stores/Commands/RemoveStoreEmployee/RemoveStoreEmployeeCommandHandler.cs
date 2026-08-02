@@ -6,6 +6,7 @@ namespace Application.Stores.Commands.RemoveStoreEmployee;
 public sealed class RemoveStoreEmployeeCommandHandler(
     IStoreEmployeeRepository storeEmployeeRepository,
     IStoreRepository storeRepository,
+    IStoreAccessAuthorizer storeAccessAuthorizer,
     IAuthService authService,
     IUnitOfWork unitOfWork) : ICommandHandler<RemoveStoreEmployeeCommand, RemoveStoreEmployeeResult>
 {
@@ -17,8 +18,7 @@ public sealed class RemoveStoreEmployeeCommandHandler(
         if (employee is null)
             return new RemoveStoreEmployeeResult(RemoveStoreEmployeeOutcome.NotFound);
 
-        var store = await storeRepository.GetByIdAsync(employee.StoreId, cancellationToken);
-        if (store is null || store.OwnerUserId != command.PerformedByUserId)
+        if (!await storeAccessAuthorizer.IsOwnerAsync(employee.StoreId, command.PerformedByUserId, cancellationToken))
             return new RemoveStoreEmployeeResult(RemoveStoreEmployeeOutcome.Forbidden);
 
         var removedUserId = employee.UserId;

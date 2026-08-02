@@ -1,3 +1,4 @@
+using Application.Common;
 using FluentValidation;
 
 namespace Application.Notifications.Commands.CreatePriceAlert;
@@ -9,6 +10,6 @@ public sealed class CreatePriceAlertCommandValidator : AbstractValidator<CreateP
         RuleFor(x => x.UserId).NotEmpty();
         RuleFor(x => x.ProductId).GreaterThan(0);
         RuleFor(x => x.TargetPrice).GreaterThan(0);
-        RuleFor(x => x.Currency).NotEmpty().Length(3);
+        RuleFor(x => x.Currency).NotEmpty().Must(SupportedCurrencies.IsSupported).WithMessage("Unsupported currency.");
     }
 }

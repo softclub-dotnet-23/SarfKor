@@ -6,6 +6,7 @@ using Application.Inventory.Queries.GetStockTransfers;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
@@ -16,6 +17,7 @@ namespace WebApi.Controllers;
 public sealed class StockTransfersController : ControllerBase
 {
     [HttpPost("stock-transfers")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> Initiate(
         InitiateStockTransferRequest request,
         [FromServices] ICommandHandler<InitiateStockTransferCommand, InitiateStockTransferResult> handler,
@@ -45,6 +47,7 @@ public sealed class StockTransfersController : ControllerBase
     }
 
     [HttpPost("stock-transfers/{stockTransferId:int}/complete")]
+    [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> Complete(
         int stockTransferId,
         [FromServices] ICommandHandler<CompleteStockTransferCommand, CompleteStockTransferResult> handler,

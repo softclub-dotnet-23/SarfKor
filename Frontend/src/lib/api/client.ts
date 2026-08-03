@@ -89,7 +89,7 @@ export async function refreshTokens(): Promise<AuthTokens | null> {
 }
 
 interface ApiFetchOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
   query?: Record<string, string | number | boolean | undefined | null | (string | number)[]>
   auth?: boolean // defaults to true — set false for anonymous endpoints

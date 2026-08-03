@@ -109,7 +109,7 @@ function useOutsideDismiss(open: boolean, onDismiss: () => void) {
   return ref
 }
 
-function AppNotificationBell() {
+function AppNotificationBell({ direction = 'up' }: { direction?: 'up' | 'down' }) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<Notification[]>([])
   const ref = useOutsideDismiss(open, useCallback(() => setOpen(false), []))
@@ -158,11 +158,13 @@ function AppNotificationBell() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+            initial={{ opacity: 0, y: direction === 'down' ? -6 : 6, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.18, ease: EASE }}
-            className="absolute bottom-full left-0 z-50 mb-2 w-[280px] overflow-hidden rounded-2xl border"
+            className={`absolute z-50 w-[280px] overflow-hidden rounded-2xl border ${
+              direction === 'down' ? 'top-full left-0 mt-2' : 'bottom-full left-0 mb-2'
+            }`}
             style={{
               borderColor: LINE,
               background: 'var(--bg-app)',
@@ -321,7 +323,7 @@ export function AppShell() {
               <span className="text-[15px] font-bold tracking-tight">Sarfkor</span>
             </NavLink>
             <div className="flex items-center gap-1.5">
-              <AppNotificationBell />
+              <AppNotificationBell direction="down" />
               <button
                 onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
                 aria-label="Переключить тему"

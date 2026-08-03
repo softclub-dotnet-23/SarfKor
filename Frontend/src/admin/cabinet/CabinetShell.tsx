@@ -18,7 +18,6 @@ import {
   LogOutIcon,
   TruckIcon,
   TagIcon,
-  ChevronDownIcon,
 } from '../components/icons'
 import { CommandPalette } from '../components/CommandPalette'
 import { NotificationBell } from '../components/NotificationBell'

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Panel, SectionHeader } from '../cabinet/components/primitives'
 import { useTheme } from '../../theme/ThemeProvider'
@@ -144,7 +144,7 @@ const inputCls = 'rounded-xl border border-[color:var(--admin-border)] bg-[color
 function StoreSection({ storeId }: { storeId: number | null }) {
   const { myStores, refreshRoles } = useAuth()
   const navigate = useNavigate()
-  const currentStore = myStores.find((s) => s.storeId === storeId)
+  const currentStore = (myStores ?? []).find((s) => s.storeId === storeId)
 
   const [name, setName] = useState(currentStore?.name ?? '')
   const [address, setAddress] = useState('')
@@ -420,7 +420,6 @@ export function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const { runThemeTransition } = useThemeTransition()
   const { storeId, user, logout } = useAuth()
-  const navigate = useNavigate()
 
   const [dailyGoal, setDailyGoal] = useState(() => Number(localStorage.getItem(DAILY_GOAL_KEY)) || 150)
   const [goalSaved, setGoalSaved] = useState(false)

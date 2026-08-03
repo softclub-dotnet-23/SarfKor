@@ -6,6 +6,7 @@ import { useTheme } from '../theme/ThemeProvider'
 import { useThemeTransition } from '../theme/useThemeTransition'
 import { SunIcon, MoonIcon } from '../components/icons'
 import { Atmosphere, AtmosphereKeyframes, AuthStats } from './AuthAtmosphere'
+import { resolvePostAuthRoute } from './postAuthRoute'
 
 type Mode = 'login' | 'register'
 
@@ -232,21 +233,17 @@ function AuthPage({ mode }: { mode: Mode }) {
   }, [])
 
   function routeAfterAuth(roles: string[]) {
-    // A returning visit to a protected page goes back there; a fresh sign-in
-    // routes by role. A plain User with no StorePartner/Admin role: a brand-new
-    // registration has nothing to do yet but create their store, so send them
-    // straight into onboarding — an existing account logging in goes to the
-    // consumer app (must not change for old accounts that deliberately have no
-    // store; before /app existed that destination was the landing page).
+    // A returning visit to a protected page goes back there -- but only if that page
+    // is actually within this role's own section (see resolvePostAuthRoute); otherwise
+    // a stale/incidental deep-link (most commonly into /app) would override where the
+    // role actually belongs. A fresh sign-in with no honored deep-link routes by role.
+    // A plain User with no StorePartner/Admin role: a brand-new registration has
+    // nothing to do yet but create their store, so send them straight into onboarding —
+    // an existing account logging in goes to the consumer app (must not change for old
+    // accounts that deliberately have no store; before /app existed that destination
+    // was the landing page).
     const from = (location.state as { from?: Location })?.from?.pathname
-    const fallback = roles.includes('Admin')
-      ? '/admin/moderation'
-      : roles.includes('StorePartner')
-        ? '/admin'
-        : isRegister
-          ? '/admin/onboarding'
-          : '/app'
-    navigate(from ?? fallback, { replace: true })
+    navigate(resolvePostAuthRoute(roles, from, { isNewRegistration: isRegister }), { replace: true })
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -664,6 +661,15 @@ function AuthPage({ mode }: { mode: Mode }) {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                     />
+                    {!isRegister && (
+                      <Link
+                        to="/forgot-password"
+                        className="mt-2.5 block text-right text-[11.5px] font-semibold tracking-wide transition-colors duration-300 hover:text-[color:var(--admin-text)]"
+                        style={{ color: TXT.tertiary }}
+                      >
+                        Забыли пароль?
+                      </Link>
+                    )}
                   </motion.div>
 
                   <AnimatePresence initial={false}>
@@ -760,13 +766,37 @@ function AuthPage({ mode }: { mode: Mode }) {
                 className="text-[13px]"
                 style={{ color: TXT.tertiary, marginTop: 'clamp(18px,3.6vh,44px)' }}
               >
-                {isRegister ? 'Уже есть аккаунт? ' : 'Ещё нет аккаунта? '}
-                <Link
-                  to={isRegister ? '/login' : '/register'}
-                  className="font-semibold text-[color:var(--admin-text)] underline decoration-[color:var(--admin-border)] underline-offset-[6px] transition-all duration-500 hover:decoration-[color:var(--admin-text)]"
-                >
-                  {isRegister ? 'Войти' : 'Зарегистрироваться'}
-                </Link>
+                {stage === 'confirm' ? (
+                  <>
+                    Не пришёл код?{' '}
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={busy}
+                      className="font-semibold text-[color:var(--admin-text)] underline decoration-[color:var(--admin-border)] underline-offset-[6px] transition-all duration-500 hover:decoration-[color:var(--admin-text)] disabled:opacity-50"
+                    >
+                      Отправить ещё раз
+                    </button>
+                    {' · '}
+                    <button
+                      type="button"
+                      onClick={() => setStage('credentials')}
+                      className="font-semibold text-[color:var(--admin-text)] underline decoration-[color:var(--admin-border)] underline-offset-[6px] transition-all duration-500 hover:decoration-[color:var(--admin-text)]"
+                    >
+                      Назад
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {isRegister ? 'Уже есть аккаунт? ' : 'Ещё нет аккаунта? '}
+                    <Link
+                      to={isRegister ? '/login' : '/register'}
+                      className="font-semibold text-[color:var(--admin-text)] underline decoration-[color:var(--admin-border)] underline-offset-[6px] transition-all duration-500 hover:decoration-[color:var(--admin-text)]"
+                    >
+                      {isRegister ? 'Войти' : 'Зарегистрироваться'}
+                    </Link>
+                  </>
+                )}
               </motion.p>
             </div>
           </div>

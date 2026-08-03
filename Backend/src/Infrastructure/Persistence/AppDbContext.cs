@@ -1,4 +1,5 @@
 using Domain.Analytics;
+using Domain.Assistant;
 using Domain.Auditing;
 using Domain.Catalog;
 using Domain.Customers;
@@ -29,6 +30,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<Scan> Scans => Set<Scan>();
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+    public DbSet<PendingAssistantAction> PendingAssistantActions => Set<PendingAssistantAction>();
 
     public DbSet<Brand> Brands => Set<Brand>();
     public DbSet<Category> Categories => Set<Category>();

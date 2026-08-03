@@ -6,8 +6,10 @@ import { Badge } from '../components/Badge'
 import { Loading } from '../components/Loading'
 import { ErrorState } from '../components/ErrorState'
 import { Reveal } from '../components/Reveal'
-import { SearchIcon, PlusIcon, AlertIcon, TruckIcon, BarcodeIcon } from '../components/icons'
+import { BarcodeScannerView } from '../components/BarcodeScannerView'
+import { SearchIcon, PlusIcon, AlertIcon, TruckIcon, BarcodeIcon, CameraIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
+import { useBarcodeScanner } from '../../hooks/useBarcodeScanner'
 import {
   inventoryApi,
   productsApi,
@@ -59,6 +61,7 @@ export function InventoryPage() {
   const [scanBusy, setScanBusy] = useState(false)
   const [scanError, setScanError] = useState('')
   const [notFoundBarcode, setNotFoundBarcode] = useState('')
+  const [cameraOpen, setCameraOpen] = useState(false)
 
   const [categories, setCategories] = useState<Category[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
@@ -83,6 +86,10 @@ export function InventoryPage() {
 
   const [receiptFor, setReceiptFor] = useState<ReceiptTarget | null>(null)
   const [receiptQty, setReceiptQty] = useState(10)
+  // Optional: blank means "keep the current price" (the common restock case, where a price
+  // already exists) — filled in, it's set in the same step as the quantity so a brand-new
+  // product doesn't need a separate visit to become sellable.
+  const [receiptPrice, setReceiptPrice] = useState('')
   const [receiptBusy, setReceiptBusy] = useState(false)
   const [receiptError, setReceiptError] = useState('')
 
@@ -172,9 +179,16 @@ export function InventoryPage() {
     })
   }
 
-  async function handleScanSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const code = scanBarcode.trim()
+  function closeScanModal() {
+    setScanOpen(false)
+    setCameraOpen(false)
+    scanner.stop()
+  }
+
+  // Shared by the manual-entry form and the camera scanner below -- both just need
+  // to resolve a raw barcode string to "found, go record a receipt" or "not found,
+  // offer to submit it as a new product."
+  async function lookupBarcode(code: string) {
     if (!code || scanBusy) return
     setScanBusy(true)
     setScanError('')
@@ -182,10 +196,11 @@ export function InventoryPage() {
     try {
       const result = await productsApi.scanBarcode(code)
       rememberName(result.productId, result.productName)
-      setScanOpen(false)
+      closeScanModal()
       setScanBarcode('')
       setReceiptFor({ productId: result.productId, productName: result.productName })
       setReceiptQty(10)
+      setReceiptPrice('')
       setReceiptError('')
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
@@ -198,6 +213,28 @@ export function InventoryPage() {
       setScanBusy(false)
     }
   }
+
+  async function handleScanSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    await lookupBarcode(scanBarcode.trim())
+  }
+
+  // Single-shot: a warehouse receipt is one product at a time, so the camera stops
+  // itself after the first hit (continuous defaults to false) -- matches ScanPage.
+  const scanner = useBarcodeScanner({
+    onDetect: (code) => {
+      lookupBarcode(code)
+    },
+  })
+
+  useEffect(() => {
+    if (cameraOpen) {
+      scanner.start()
+    } else {
+      scanner.stop()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraOpen])
 
   function openSubmitForm() {
     setScanOpen(false)
@@ -222,13 +259,20 @@ export function InventoryPage() {
         brandId: Number(submitBrandId),
         countryOfOrigin: submitCountry.trim(),
       })
-      if (submitResult.productSubmissionId) {
+      // A StorePartner's submission (the only role that reaches this screen) is created directly
+      // by the backend — productId is already in this response, no self-approve round-trip
+      // needed. The productSubmissionId branch is only a fallback for the rare case where that
+      // isn't true (e.g. a non-StorePartner caller somehow reaching this code path).
+      let newProductId: number | undefined = submitResult.productId
+      if (!newProductId && submitResult.productSubmissionId) {
         try {
-          await productsApi.selfApproveNewProduct(submitResult.productSubmissionId)
+          const approveResult = await productsApi.selfApproveNewProduct(submitResult.productSubmissionId)
+          newProductId = approveResult.productId
         } catch {
           // The submission itself already succeeded either way — if self-approve fails for any
           // reason (e.g. a duplicate barcode caught at moderation time), it just waits in the
-          // queue for Admin to look at instead of failing this whole action.
+          // queue for Admin to look at instead of failing this whole action. newProductId stays
+          // undefined, so the receipt step below is skipped rather than opened with a bad id.
         }
       }
       setSubmitDone(true)
@@ -236,6 +280,17 @@ export function InventoryPage() {
         setSubmitOpen(false)
         setNotFoundBarcode('')
         setScanBarcode('')
+        // Creating the catalog entry doesn't put any units on the shelf — a new product added
+        // through "Приход по штрихкоду" needs its quantity recorded right away, the same as an
+        // existing product found by scanBarcode does above, or it silently stays at zero stock
+        // with no obvious next step (this was previously a dead end).
+        if (newProductId) {
+          rememberName(newProductId, submitName.trim())
+          setReceiptFor({ productId: newProductId, productName: submitName.trim() })
+          setReceiptQty(10)
+          setReceiptPrice('')
+          setReceiptError('')
+        }
       }, 1500)
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : 'Не удалось отправить заявку')
@@ -290,8 +345,22 @@ export function InventoryPage() {
     setReceiptError('')
     try {
       await inventoryApi.recordStockReceipt(storeId, receiptFor.productId, receiptQty)
+      // The receipt already succeeded at this point -- close the modal unconditionally so a
+      // retry can never re-submit the same stock. Price is optional and secondary; if it fails,
+      // warn separately instead of blocking on it.
+      const priceAmount = Number(receiptPrice)
+      if (receiptPrice.trim() && priceAmount > 0) {
+        try {
+          await pricingApi.submitPriceUpdate(receiptFor.productId, storeId, priceAmount, 'TJS')
+        } catch (err) {
+          window.alert(
+            `Партия оприходована, но цену сохранить не удалось: ${err instanceof ApiError ? err.message : 'ошибка сервера'}`,
+          )
+        }
+      }
       setReceiptFor(null)
       setReceiptQty(10)
+      setReceiptPrice('')
       await load()
     } catch (err) {
       setReceiptError(err instanceof ApiError ? err.message : 'Не удалось оприходовать поставку')
@@ -477,6 +546,7 @@ export function InventoryPage() {
                           onClick={() => {
                             setReceiptFor({ productId: s.productId, productName: name })
                             setReceiptQty(10)
+                            setReceiptPrice('')
                             setReceiptError('')
                           }}
                           className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
@@ -525,11 +595,25 @@ export function InventoryPage() {
       </Reveal>
 
       {/* Scan-to-identify, for a first-ever receipt of a product not yet in stock */}
-      <AdminModal open={scanOpen} onClose={() => setScanOpen(false)} title="Приход по штрихкоду">
+      <AdminModal open={scanOpen} onClose={closeScanModal} title="Приход по штрихкоду">
         <form onSubmit={handleScanSubmit} className="flex flex-col gap-4">
           <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">
             Отсканируйте или введите штрихкод товара, чтобы найти его и оприходовать поставку.
           </p>
+
+          <button
+            type="button"
+            onClick={() => setCameraOpen((v) => !v)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-hover)] py-2.5 text-[13px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+          >
+            <CameraIcon width={15} height={15} />
+            {cameraOpen ? 'Скрыть камеру' : 'Сканировать камерой'}
+          </button>
+
+          {cameraOpen && (
+            <BarcodeScannerView videoRef={scanner.videoRef} phase={scanner.phase} onStart={scanner.start} />
+          )}
+
           <input
             autoFocus
             value={scanBarcode}
@@ -706,6 +790,21 @@ export function InventoryPage() {
                   +10
                 </button>
               </div>
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">
+                Цена продажи, TJS <span className="font-normal text-[color:var(--admin-text-tertiary)]">(необязательно)</span>
+              </span>
+              <input
+                type="number"
+                value={receiptPrice}
+                onChange={(e) => setReceiptPrice(e.target.value)}
+                min={0}
+                step="0.01"
+                placeholder="Оставьте пустым, чтобы не менять"
+                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[15px] font-bold text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+              />
             </label>
 
             {receiptError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{receiptError}</div>}

@@ -49,11 +49,11 @@ export function forgotPassword(email: string) {
   })
 }
 
-export function resetPassword(email: string, token: string, newPassword: string) {
+export function resetPassword(email: string, code: string, newPassword: string) {
   return apiFetch<void>('/api/auth/reset-password', {
     method: 'POST',
     auth: false,
-    body: { email, token, newPassword },
+    body: { email, code, newPassword },
   })
 }
 

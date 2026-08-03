@@ -10,21 +10,15 @@ namespace Infrastructure.Email;
 
 public sealed class SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEmailSender> logger) : IEmailSender
 {
-    public Task SendPasswordResetEmailAsync(string toEmail, string resetToken, CancellationToken cancellationToken)
-    {
-        var baseUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
-        var resetLink = $"{baseUrl}/reset-password?email={Uri.EscapeDataString(toEmail)}&token={Uri.EscapeDataString(resetToken)}";
-
-        return SendAsync(
+    public Task SendPasswordResetCodeAsync(string toEmail, string code, CancellationToken cancellationToken) =>
+        SendAsync(
             toEmail,
             "Восстановление пароля — Sarfkor",
             $"""
-            <p>Вы (или кто-то другой) запросили сброс пароля для аккаунта Sarfkor.</p>
-            <p><a href="{resetLink}">Нажмите здесь, чтобы задать новый пароль</a></p>
-            <p>Ссылка действительна в течение 1 часа. Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
+            <p>Код для сброса пароля аккаунта Sarfkor: <strong>{code}</strong></p>
+            <p>Код действителен в течение 15 минут. Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
             """,
             cancellationToken);
-    }
 
     public Task SendStoreEmployeeInviteEmailAsync(string toEmail, string storeName, string inviteToken, CancellationToken cancellationToken)
     {

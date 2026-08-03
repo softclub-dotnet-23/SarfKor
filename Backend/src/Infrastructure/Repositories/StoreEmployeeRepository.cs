@@ -19,6 +19,20 @@ public sealed class StoreEmployeeRepository(AppDbContext dbContext) : IStoreEmpl
     public Task<bool> IsEmployedAnywhereAsync(string userId, CancellationToken cancellationToken) =>
         dbContext.StoreEmployees.AnyAsync(e => e.UserId == userId, cancellationToken);
 
+    // Projects only Role instead of materializing the full entity -- StoreEmployee.MonthlySalary is
+    // a nullable Money complex property, and EF's complex-type materialization throws
+    // (ArgumentException: "Currency must be a 3-letter code") when reconstructing Money from a row
+    // where MonthlySalary_Amount/_Currency are both genuinely NULL (a Cashier added without a salary
+    // set, the common case) instead of treating the whole complex property as null. Pre-existing gap
+    // in StoreEmployeeConfiguration, not something this method can fix on its own -- see WORKLOG.
+    // GetByIdAsync/GetByStoreIdAsync/GetByUserIdAsync below still materialize the full entity and
+    // remain exposed to it.
+    public Task<StoreEmployeeRole?> GetRoleAsync(int storeId, string userId, CancellationToken cancellationToken) =>
+        dbContext.StoreEmployees
+            .Where(e => e.StoreId == storeId && e.UserId == userId)
+            .Select(e => (StoreEmployeeRole?)e.Role)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task<IReadOnlyList<StoreEmployee>> GetByUserIdAsync(string userId, CancellationToken cancellationToken) =>
         await dbContext.StoreEmployees.Where(e => e.UserId == userId).ToListAsync(cancellationToken);
 

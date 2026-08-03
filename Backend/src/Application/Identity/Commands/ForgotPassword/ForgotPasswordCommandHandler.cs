@@ -11,13 +11,13 @@ public sealed class ForgotPasswordCommandHandler(
 {
     public async Task<ForgotPasswordResult> Handle(ForgotPasswordCommand command, CancellationToken cancellationToken)
     {
-        var token = await authService.GeneratePasswordResetTokenAsync(command.Email, cancellationToken);
+        var code = await authService.GeneratePasswordResetCodeAsync(command.Email, cancellationToken);
 
-        if (token is not null)
+        if (code is not null)
         {
             try
             {
-                await emailSender.SendPasswordResetEmailAsync(command.Email, token, cancellationToken);
+                await emailSender.SendPasswordResetCodeAsync(command.Email, code, cancellationToken);
             }
             catch (Exception ex)
             {

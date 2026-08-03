@@ -11,7 +11,6 @@ import { RequireAdmin } from './auth/RequireAdmin'
 import { RequireOwner } from './auth/RequireOwner'
 import { LoginPage, RegisterPage } from './auth/AuthPage'
 import { ForgotPasswordPage } from './auth/ForgotPasswordPage'
-import { ResetPasswordPage } from './auth/ResetPasswordPage'
 import { AcceptInvitePage } from './auth/AcceptInvitePage'
 import { AppShell } from './app/AppShell'
 import { CabinetShell } from './admin/cabinet/CabinetShell'
@@ -83,9 +82,10 @@ root.render(
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
+              {/* Consumer app. Reuses the existing RequireAuth guard rather than
+                  introducing a second notion of "signed in". */}
               <Route path="/app" element={<RequireAuth />}>
                 <Route element={<AppShell />}>
                   <Route index element={<HomePage />} />

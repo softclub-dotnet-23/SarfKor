@@ -21,6 +21,7 @@ import {
 } from '../components/icons'
 import { CommandPalette } from '../components/CommandPalette'
 import { NotificationBell } from '../components/NotificationBell'
+import { AssistantPanel } from '../components/AssistantPanel'
 
 // ─── collapsed-state persistence ─────────────────────────────────────────────
 const COLLAPSED_KEY = 'sarfkor-sidebar-collapsed'
@@ -528,6 +529,8 @@ export function CabinetShell() {
           </NavLink>
         ))}
       </nav>
+
+      <AssistantPanel />
     </div>
   )
 }

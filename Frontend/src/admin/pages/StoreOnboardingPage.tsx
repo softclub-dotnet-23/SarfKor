@@ -61,6 +61,9 @@ export function StoreOnboardingPage() {
       const result = await storesApi.createStore({ name: name.trim(), address: address.trim(), latitude: lat, longitude: lng })
       setStoreId(result.storeId)
       await refreshRoles()
+      // myStores must include the new store before navigating, or RequireStore sees
+      // storeId set but myStores still empty, calls that stale, and bounces back here.
+      await refreshMyStores()
       navigate('/admin', { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось создать магазин')

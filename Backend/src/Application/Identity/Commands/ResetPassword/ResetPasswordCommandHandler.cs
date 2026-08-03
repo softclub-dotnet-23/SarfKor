@@ -7,7 +7,7 @@ public sealed class ResetPasswordCommandHandler(IAuthService authService) : ICom
 {
     public async Task<ResetPasswordResult> Handle(ResetPasswordCommand command, CancellationToken cancellationToken)
     {
-        var succeeded = await authService.ResetPasswordAsync(command.Email, command.Token, command.NewPassword, cancellationToken);
+        var succeeded = await authService.ResetPasswordAsync(command.Email, command.Code, command.NewPassword, cancellationToken);
         return new ResetPasswordResult(succeeded ? ResetPasswordOutcome.Reset : ResetPasswordOutcome.Failed);
     }
 }

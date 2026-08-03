@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
-import { Card } from '../components/Card'
+import { Panel } from '../cabinet/components/primitives'
 import { Select } from '../components/Select'
 import { Badge } from '../components/Badge'
 import { Loading } from '../components/Loading'
@@ -87,7 +87,7 @@ export function MarketingPage() {
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
-      <Card className="p-2">
+      <Panel className="p-2">
         <div className="flex flex-wrap gap-1">
           {TABS.map((t) => (
             <button
@@ -95,7 +95,7 @@ export function MarketingPage() {
               onClick={() => setTab(t.key)}
               className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
                 tab === t.key
-                  ? 'bg-[color:var(--admin-accent)] text-white'
+                  ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
                   : 'text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]'
               }`}
             >
@@ -104,12 +104,12 @@ export function MarketingPage() {
             </button>
           ))}
         </div>
-      </Card>
+      </Panel>
 
       {!storeId ? (
-        <Card className="p-8 text-center">
+        <Panel className="p-8 text-center">
           <p className="text-[14px] text-[color:var(--admin-text-secondary)]">Магазин не выбран</p>
-        </Card>
+        </Panel>
       ) : (
         <>
           {tab === 'promotions' && <PromotionsSection storeId={storeId} />}
@@ -230,7 +230,7 @@ function PromotionsSection({ storeId }: { storeId: number }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <PercentIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новая акция</span>
@@ -242,7 +242,7 @@ function PromotionsSection({ storeId }: { storeId: number }) {
               onClick={() => setTargetMode('product')}
               className={`flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
                 targetMode === 'product'
-                  ? 'bg-[color:var(--admin-accent)] text-white'
+                  ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
                   : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
               }`}
             >
@@ -253,7 +253,7 @@ function PromotionsSection({ storeId }: { storeId: number }) {
               onClick={() => setTargetMode('category')}
               className={`flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
                 targetMode === 'category'
-                  ? 'bg-[color:var(--admin-accent)] text-white'
+                  ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
                   : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
               }`}
             >
@@ -340,7 +340,7 @@ function PromotionsSection({ storeId }: { storeId: number }) {
           <button
             type="submit"
             disabled={creating}
-            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
           >
             {createSuccess ? (
               <>
@@ -355,9 +355,9 @@ function PromotionsSection({ storeId }: { storeId: number }) {
             )}
           </button>
         </form>
-      </Card>
+      </Panel>
 
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Активные акции</span>
@@ -397,7 +397,7 @@ function PromotionsSection({ storeId }: { storeId: number }) {
             )}
           </div>
         )}
-      </Card>
+      </Panel>
     </div>
   )
 }
@@ -497,7 +497,7 @@ function BundlesSection({ storeId }: { storeId: number }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новый набор товаров</span>
@@ -583,7 +583,7 @@ function BundlesSection({ storeId }: { storeId: number }) {
           <button
             type="submit"
             disabled={creating}
-            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
           >
             {createSuccess ? (
               <>
@@ -598,9 +598,9 @@ function BundlesSection({ storeId }: { storeId: number }) {
             )}
           </button>
         </form>
-      </Card>
+      </Panel>
 
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Наборы товаров магазина</span>
@@ -638,7 +638,7 @@ function BundlesSection({ storeId }: { storeId: number }) {
             )}
           </div>
         )}
-      </Card>
+      </Panel>
     </div>
   )
 }
@@ -744,7 +744,7 @@ function OffersSection({ storeId }: { storeId: number }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <ClockIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Опубликовать «скоро истекает»</span>
@@ -814,7 +814,7 @@ function OffersSection({ storeId }: { storeId: number }) {
           <button
             type="submit"
             disabled={creating}
-            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
           >
             {createSuccess ? (
               <>
@@ -829,9 +829,9 @@ function OffersSection({ storeId }: { storeId: number }) {
             )}
           </button>
         </form>
-      </Card>
+      </Panel>
 
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <AlertIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Предложения этого магазина</span>
@@ -873,7 +873,7 @@ function OffersSection({ storeId }: { storeId: number }) {
             )}
           </div>
         )}
-      </Card>
+      </Panel>
     </div>
   )
 }
@@ -947,7 +947,7 @@ function RepliesSection() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <StarIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Найти отзывы по товару</span>
@@ -968,15 +968,15 @@ function RepliesSection() {
           <button
             type="submit"
             disabled={loading}
-            className="shrink-0 rounded-xl bg-[color:var(--admin-accent)] px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            className="shrink-0 rounded-xl bg-[color:var(--admin-accent)] px-5 py-2.5 text-[13px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90 disabled:opacity-50"
           >
             {loading ? 'Ищем…' : 'Показать отзывы'}
           </button>
         </form>
-      </Card>
+      </Panel>
 
       {searched && (
-        <Card className="p-5">
+        <Panel className="p-5">
           <div className="mb-4 flex items-center gap-2">
             <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Отзывы</span>
           </div>
@@ -1023,7 +1023,7 @@ function RepliesSection() {
                         <button
                           onClick={() => submitReply(r.reviewId)}
                           disabled={replyBusy || !replyText.trim()}
-                          className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                          className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90 disabled:opacity-50"
                         >
                           {replyBusy ? 'Отправляем…' : 'Отправить'}
                         </button>
@@ -1053,7 +1053,7 @@ function RepliesSection() {
               )}
             </div>
           )}
-        </Card>
+        </Panel>
       )}
     </div>
   )

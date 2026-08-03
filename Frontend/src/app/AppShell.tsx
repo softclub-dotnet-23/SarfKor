@@ -1,9 +1,11 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../auth/AuthContext'
 import { useTheme } from '../theme/ThemeProvider'
 import { useThemeTransition } from '../theme/useThemeTransition'
 import { SunIcon, MoonIcon } from '../components/icons'
+import { notificationsApi, type Notification } from '../lib/api'
 import { AppStyles, EASE, LINE, TXT } from './ui'
 
 /**
@@ -80,6 +82,131 @@ function NavItem({
   )
 }
 
+function BellIcon() {
+  return (
+    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 01-3.46 0" />
+    </svg>
+  )
+}
+
+function useOutsideDismiss(open: boolean, onDismiss: () => void) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onPtr = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onDismiss()
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onDismiss() }
+    document.addEventListener('pointerdown', onPtr)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPtr)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open, onDismiss])
+  return ref
+}
+
+function AppNotificationBell({ direction = 'up' }: { direction?: 'up' | 'down' }) {
+  const [open, setOpen] = useState(false)
+  const [items, setItems] = useState<Notification[]>([])
+  const ref = useOutsideDismiss(open, useCallback(() => setOpen(false), []))
+
+  const load = useCallback(async () => {
+    try {
+      const res = await notificationsApi.getNotifications()
+      setItems(res.notifications ?? [])
+    } catch { /* non-critical */ }
+  }, [])
+
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 60_000)
+    return () => clearInterval(t)
+  }, [load])
+
+  async function markRead(id: number) {
+    try {
+      await notificationsApi.markNotificationAsRead(id)
+      setItems((prev) => prev.map((n) => n.notificationId === id ? { ...n, isRead: true } : n))
+    } catch { /* */ }
+  }
+
+  const unread = items.filter((n) => !n.isRead).length
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label={`Уведомления${unread > 0 ? ` (${unread})` : ''}`}
+        className="relative grid h-7 w-7 place-items-center rounded-lg transition-colors duration-300"
+        style={{ color: TXT.rest }}
+      >
+        <BellIcon />
+        {unread > 0 && (
+          <span
+            className="absolute right-0.5 top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-[2px] text-[7.5px] font-bold leading-none text-white"
+            style={{ background: 'var(--app-text-primary)' }}
+          >
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: direction === 'down' ? -6 : 6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.18, ease: EASE }}
+            className={`absolute z-50 w-[280px] overflow-hidden rounded-2xl border ${
+              direction === 'down' ? 'top-full left-0 mt-2' : 'bottom-full left-0 mb-2'
+            }`}
+            style={{
+              borderColor: LINE,
+              background: 'var(--bg-app)',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
+            }}
+          >
+            <div className="border-b px-4 py-3" style={{ borderColor: LINE }}>
+              <span className="text-[11.5px] font-bold" style={{ color: TXT.primary }}>
+                Уведомления
+              </span>
+            </div>
+            <div className="max-h-[300px] overflow-y-auto">
+              {items.length === 0 && (
+                <div className="px-4 py-5 text-center text-[12px]" style={{ color: TXT.rest }}>
+                  Новых уведомлений нет
+                </div>
+              )}
+              {items.slice(0, 15).map((n) => (
+                <button
+                  key={n.notificationId}
+                  onClick={() => markRead(n.notificationId)}
+                  className="w-full border-b px-4 py-3 text-left last:border-0 transition-colors duration-200 hover:bg-[color:var(--app-line-soft)]"
+                  style={{ borderColor: LINE, opacity: n.isRead ? 0.55 : 1 }}
+                >
+                  <div className="text-[12.5px] font-medium leading-snug" style={{ color: TXT.primary }}>
+                    {n.message}
+                  </div>
+                  <div className="mt-0.5 text-[10.5px]" style={{ color: TXT.rest }}>
+                    {new Date(n.createdAt).toLocaleString('ru-RU', {
+                      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                    })}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export function AppShell() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -152,7 +279,7 @@ export function AppShell() {
                 </span>
               </span>
             </NavLink>
-            <div className="flex items-center gap-4 text-[12px]">
+            <div className="flex items-center gap-3 text-[12px]">
               <NavLink
                 to="/app/settings"
                 className="transition-colors duration-300 hover:text-[color:var(--app-text-primary)]"
@@ -167,14 +294,17 @@ export function AppShell() {
               >
                 Выйти
               </button>
-              <button
-                onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
-                aria-label="Переключить тему"
-                className="ml-auto grid h-7 w-7 shrink-0 place-items-center rounded-lg transition-colors duration-300"
-                style={{ color: TXT.rest }}
-              >
-                {isDark ? <SunIcon width={14} height={14} /> : <MoonIcon width={14} height={14} />}
-              </button>
+              <div className="ml-auto flex items-center gap-1.5">
+                <AppNotificationBell />
+                <button
+                  onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
+                  aria-label="Переключить тему"
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition-colors duration-300"
+                  style={{ color: TXT.rest }}
+                >
+                  {isDark ? <SunIcon width={14} height={14} /> : <MoonIcon width={14} height={14} />}
+                </button>
+              </div>
             </div>
           </div>
         </aside>
@@ -192,7 +322,8 @@ export function AppShell() {
               </span>
               <span className="text-[15px] font-bold tracking-tight">Sarfkor</span>
             </NavLink>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <AppNotificationBell direction="down" />
               <button
                 onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
                 aria-label="Переключить тему"

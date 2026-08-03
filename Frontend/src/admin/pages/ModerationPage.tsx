@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode, type CSSProperties } from 'react'
+import { useCallback, useEffect, useId, useState, type FormEvent, type ReactNode, type CSSProperties } from 'react'
+import { motion } from 'framer-motion'
 import { LogoMark } from '../../components/Logo'
 import { Select } from '../components/Select'
 import { Card } from '../components/Card'
@@ -838,6 +839,7 @@ export function ModerationPage() {
   const { runThemeTransition } = useThemeTransition()
   const [view, setView] = useState<ViewId>('overview')
   const isDark = theme === 'dark'
+  const navLayoutId = useId()
 
   const priceDisputes = usePendingPriceDisputes()
   const reportDisputes = usePendingReportDisputes()
@@ -914,40 +916,69 @@ export function ModerationPage() {
           </div>
         </div>
 
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {navItems.map((item) => {
+        {/* Same nav grammar as the StorePartner cabinet (AdminLayout) and the
+            consumer app's rail — a tabular-nums index, a spring-driven sliding
+            mark instead of a static inset shadow — so the platform-Admin
+            "command centre" reads as the same product wearing a slightly
+            more data-dense, JetBrains-Mono-badged uniform, not a fourth
+            unrelated shell. */}
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {navItems.map((item, i) => {
             const on = view === item.id
             return (
               <button
                 key={item.id}
                 onClick={() => setView(item.id)}
                 style={{
+                  position: 'relative',
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   gap: 8,
-                  padding: '10px 12px',
-                  borderRadius: 11,
+                  padding: '12px 14px',
+                  borderRadius: 14,
                   border: 'none',
                   cursor: 'pointer',
                   textAlign: 'left',
-                  transition: 'all .18s ease',
-                  background: on ? 'var(--mod-accent-dim)' : 'transparent',
+                  background: 'none',
                   color: on ? 'var(--mod-text)' : 'var(--mod-muted)',
                   fontFamily: 'inherit',
-                  boxShadow: on ? 'inset 3px 0 0 var(--mod-accent)' : 'none',
                 }}
               >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
+                {on && (
+                  <motion.span
+                    layoutId={navLayoutId}
+                    style={{ position: 'absolute', inset: 0, borderRadius: 14, background: 'var(--mod-accent-dim)', zIndex: 0 }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                  />
+                )}
+                <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
+                  <span
+                    style={{
+                      width: 15,
+                      flex: '0 0 15px',
+                      fontFamily: "'JetBrains Mono',monospace",
+                      fontSize: 9.5,
+                      fontWeight: 700,
+                      letterSpacing: '.04em',
+                      color: on ? 'var(--mod-accent2)' : 'var(--mod-faint)',
+                    }}
+                  >
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
                   <span style={{ width: 18, height: 18, flex: '0 0 18px', opacity: 0.9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                     {item.icon}
                   </span>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
+                  <span style={{ fontSize: 13.5, fontWeight: on ? 700 : 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {item.label}
+                  </span>
                 </span>
                 {item.badge > 0 && (
                   <span
                     style={{
+                      position: 'relative',
+                      zIndex: 1,
                       fontFamily: "'JetBrains Mono',monospace",
                       fontSize: 11,
                       fontWeight: 700,
@@ -1020,13 +1051,14 @@ export function ModerationPage() {
         <header
           style={{
             flex: '0 0 auto',
-            height: 62,
+            height: 72,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 26px',
+            padding: '0 30px',
             borderBottom: '1px solid var(--mod-border)',
-            background: 'var(--mod-panel)',
+            background: 'color-mix(in srgb, var(--mod-panel) 82%, transparent)',
+            backdropFilter: 'blur(20px)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
@@ -1072,7 +1104,7 @@ export function ModerationPage() {
           </div>
         </header>
 
-        <main style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '24px 26px 40px' }}>
+        <main style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '30px 30px 48px' }}>
           {view === 'overview' && (
             <OverviewSection
               priceDisputes={priceDisputes.items}

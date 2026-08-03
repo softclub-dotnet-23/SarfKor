@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type SVGProps } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Card } from '../components/Card'
+import { Panel } from '../cabinet/components/primitives'
 import { Select } from '../components/Select'
 import { Toast } from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
@@ -318,7 +318,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
                 <button
                   type="submit"
                   disabled={commissionBusy || !commissionAmount}
-                  className="shrink-0 rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                  className="shrink-0 rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-1.5 text-[12px] font-semibold text-[color:var(--admin-accent-fg)] disabled:opacity-50"
                 >
                   {commissionBusy ? 'Сохраняем…' : 'Записать'}
                 </button>
@@ -368,7 +368,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
                 <button
                   type="submit"
                   disabled={returnBusy || !returnLineId || !returnReason.trim()}
-                  className="self-start rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                  className="self-start rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-1.5 text-[12px] font-semibold text-[color:var(--admin-accent-fg)] disabled:opacity-50"
                 >
                   {returnBusy ? 'Оформляем…' : 'Оформить возврат'}
                 </button>
@@ -688,7 +688,7 @@ export function PosPage() {
             const here = lastScan.stores.find((s) => s.storeId === storeId)
             if (!here) return null
             return (
-              <Card className="p-5">
+              <Panel className="p-5">
                 <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
                   Найдено по штрихкоду
                 </div>
@@ -698,7 +698,7 @@ export function PosPage() {
                     {fmt(here.price)} {here.currency}
                   </div>
                 </div>
-              </Card>
+              </Panel>
             )
           })()}
 
@@ -713,7 +713,7 @@ export function PosPage() {
       </div>
 
       {/* Cart / checkout */}
-      <Card className="flex h-fit flex-col gap-4 p-5 lg:sticky lg:top-6">
+      <Panel className="flex h-fit flex-col gap-4 p-5 lg:sticky lg:top-6">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Текущий чек</span>
           <div className="flex items-center gap-3">
@@ -836,14 +836,14 @@ export function PosPage() {
         <button
           onClick={completeSale}
           disabled={(cart.length === 0 && cartBundles.length === 0) || checkoutBusy}
-          className="rounded-xl bg-[color:var(--admin-accent)] py-3.5 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+          className="rounded-xl bg-[color:var(--admin-accent)] py-3.5 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
         >
           {checkoutBusy ? 'Проводим продажу…' : 'Оформить продажу'}
         </button>
-      </Card>
+      </Panel>
 
       {recentSales.length > 0 && (
-        <Card className="p-5 lg:col-span-2">
+        <Panel className="p-5 lg:col-span-2">
           <div className="mb-3 flex items-center gap-2">
             <CashIcon width={16} height={16} className="text-[color:var(--admin-accent)]" />
             <span className="text-[15px] font-bold text-[color:var(--admin-text)]">Недавние продажи</span>
@@ -865,7 +865,7 @@ export function PosPage() {
               />
             ))}
           </div>
-        </Card>
+        </Panel>
       )}
 
       <Toast open={!!successInfo} variant="success">

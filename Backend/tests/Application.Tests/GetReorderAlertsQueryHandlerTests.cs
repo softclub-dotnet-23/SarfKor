@@ -16,14 +16,18 @@ public class GetReorderAlertsQueryHandlerTests
     private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IReorderRuleRepository> _reorderRuleRepository = new();
     private readonly Mock<IStockLevelRepository> _stockLevelRepository = new();
+    private readonly Mock<IProductRepository> _productRepository = new();
 
     private GetReorderAlertsQueryHandler CreateHandler() =>
-        new(_storeRepository.Object, _storeAccessAuthorizer.Object, _reorderRuleRepository.Object, _stockLevelRepository.Object);
+        new(_storeRepository.Object, _storeAccessAuthorizer.Object, _reorderRuleRepository.Object, _stockLevelRepository.Object, _productRepository.Object);
 
     private void SetupOwnedStore()
     {
         _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
     }
 
     [Fact]

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode, type SVGProps } from 'react'
-import { Card } from '../components/Card'
+import { Panel } from '../cabinet/components/primitives'
 import { Select } from '../components/Select'
 import { Loading } from '../components/Loading'
 import { TruckIcon, PlusIcon, TrashIcon, RefreshIcon, PhoneIcon, MailIcon, AlertIcon } from '../components/icons'
@@ -152,7 +152,7 @@ const inputClass =
   'w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]'
 
 const primaryButtonClass =
-  'flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100'
+  'flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100'
 
 /* ---------- Suppliers ---------- */
 
@@ -195,7 +195,7 @@ function SuppliersSection({
 
   return (
     <div className="flex flex-col gap-5">
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <TruckIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новый поставщик</span>
@@ -220,9 +220,9 @@ function SuppliersSection({
             <FieldError message={formError} />
           </div>
         )}
-      </Card>
+      </Panel>
 
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Поставщики</span>
           <button
@@ -239,7 +239,7 @@ function SuppliersSection({
         {!loading && error && (
           <div className="py-6 text-center">
             <p className="mb-3 text-[13px] text-[color:var(--admin-text-secondary)]">{error}</p>
-            <button onClick={load} className="rounded-xl bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">
+            <button onClick={load} className="rounded-xl bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90">
               Повторить
             </button>
           </div>
@@ -274,7 +274,7 @@ function SuppliersSection({
             )}
           </div>
         )}
-      </Card>
+      </Panel>
     </div>
   )
 }
@@ -410,7 +410,7 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
 
   return (
     <div className="flex flex-col gap-5">
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <DocumentIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новый заказ поставщику</span>
@@ -492,9 +492,9 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
             </button>
           </form>
         )}
-      </Card>
+      </Panel>
 
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Заказы поставщикам</span>
           <button
@@ -511,7 +511,7 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
         {!loading && error && (
           <div className="py-6 text-center">
             <p className="mb-3 text-[13px] text-[color:var(--admin-text-secondary)]">{error}</p>
-            <button onClick={load} className="rounded-xl bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">
+            <button onClick={load} className="rounded-xl bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90">
               Повторить
             </button>
           </div>
@@ -548,7 +548,7 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
                     <button
                       onClick={() => handleReceiveOrder(o.purchaseOrderId)}
                       disabled={busyId === o.purchaseOrderId}
-                      className="rounded-lg bg-[color:var(--admin-accent)] px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                      className="rounded-lg bg-[color:var(--admin-accent)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90 disabled:opacity-50"
                     >
                       {busyId === o.purchaseOrderId ? 'Оприходуем…' : 'Оприходовать'}
                     </button>
@@ -561,7 +561,7 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
             )}
           </div>
         )}
-      </Card>
+      </Panel>
     </div>
   )
 }
@@ -653,7 +653,7 @@ function TransfersSection({ storeId }: { storeId: number }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <SwapIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новое перемещение</span>
@@ -704,9 +704,9 @@ function TransfersSection({ storeId }: { storeId: number }) {
             <FieldError message={formError} />
           </div>
         )}
-      </Card>
+      </Panel>
 
-      <Card className="p-5">
+      <Panel className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Перемещения этого магазина</span>
           <button
@@ -723,7 +723,7 @@ function TransfersSection({ storeId }: { storeId: number }) {
         {!loading && error && (
           <div className="py-6 text-center">
             <p className="mb-3 text-[13px] text-[color:var(--admin-text-secondary)]">{error}</p>
-            <button onClick={load} className="rounded-xl bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-white hover:opacity-90">
+            <button onClick={load} className="rounded-xl bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90">
               Повторить
             </button>
           </div>
@@ -753,7 +753,7 @@ function TransfersSection({ storeId }: { storeId: number }) {
                     <button
                       onClick={() => handleComplete(t.stockTransferId)}
                       disabled={busyId === t.stockTransferId}
-                      className="rounded-lg bg-[color:var(--admin-accent)] px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                      className="rounded-lg bg-[color:var(--admin-accent)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90 disabled:opacity-50"
                     >
                       {busyId === t.stockTransferId ? 'Завершаем…' : 'Завершить перемещение'}
                     </button>
@@ -766,7 +766,7 @@ function TransfersSection({ storeId }: { storeId: number }) {
             )}
           </div>
         )}
-      </Card>
+      </Panel>
     </div>
   )
 }
@@ -802,11 +802,11 @@ export function SupplyPage() {
 
   if (!storeId) {
     return (
-      <Card className="p-8 text-center">
+      <Panel className="p-8 text-center">
         <p className="text-[14px] text-[color:var(--admin-text-secondary)]">
           Сначала выберите магазин, чтобы управлять поставками
         </p>
-      </Card>
+      </Panel>
     )
   }
 
@@ -818,14 +818,14 @@ export function SupplyPage() {
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
-      <Card className="flex flex-wrap gap-1.5 p-1.5">
+      <Panel className="flex flex-wrap gap-1.5 p-1.5">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
               tab === t.id
-                ? 'bg-[color:var(--admin-accent)] text-white'
+                ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
                 : 'text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]'
             }`}
           >
@@ -833,7 +833,7 @@ export function SupplyPage() {
             {t.label}
           </button>
         ))}
-      </Card>
+      </Panel>
 
       {tab === 'suppliers' && (
         <SuppliersSection storeId={storeId} suppliers={suppliers} loading={suppliersLoading} error={suppliersError} load={loadSuppliers} />

@@ -220,6 +220,14 @@ using (var scope = app.Services.CreateScope())
         if (adminUser is not null && !await userManager.IsInRoleAsync(adminUser, "Admin"))
             await userManager.AddToRoleAsync(adminUser, "Admin");
     }
+
+    // Fixed dev accounts (admin@, partner@, user@ sarfkor.tj) — idempotent, Development only.
+    if (app.Environment.IsDevelopment())
+    {
+        var devLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        var devUserManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        await DatabaseSeeder.SeedDevAccountsAsync(devUserManager, devLogger);
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -253,6 +261,7 @@ else
 
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -273,7 +282,7 @@ public sealed record CreatePromotionRequest(
     DateTimeOffset EndsAt);
 public sealed record RecordCommissionRequest(decimal Amount, string Currency);
 public sealed record LoginRequest(string Email, string Password);
-public sealed record UpdateUserProfileRequest(string DisplayName, string? AvatarReference, string PreferredLanguage);
+public sealed record UpdateUserProfileRequest(string? DisplayName, string? AvatarReference, string? PreferredLanguage);
 public sealed record RecordUserConsentRequest(Domain.Identity.ConsentType Type, bool IsGranted);
 public sealed record AddStoreEmployeeRequest(string EmployeeEmail, Domain.Stores.StoreEmployeeRole Role);
 public sealed record RaiseDisputeRequest(string Reason);
@@ -302,6 +311,8 @@ public sealed record ReplyToReviewRequest(string Message);
 public sealed record CreatePriceAlertRequest(int ProductId, decimal TargetPrice, string Currency);
 public sealed record RegisterDeviceTokenRequest(string Token, Domain.Notifications.DevicePlatform Platform);
 public sealed record CreateStoreRequest(string Name, string Address, double Latitude, double Longitude);
+public sealed record UpdateStoreRequest(string Name, string Address, double Latitude, double Longitude);
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public sealed record AdminCreateStorePartnerRequest(string Email, string StoreName, string Address, double Latitude, double Longitude);
 public sealed record UpdateStoreEmployeeRequest(decimal? MonthlySalaryAmount, string? MonthlySalaryCurrency, TimeOnly? ScheduleStart, TimeOnly? ScheduleEnd);
 public sealed record SetCostPriceRequest(int StoreId, int ProductId, decimal Amount, string Currency);

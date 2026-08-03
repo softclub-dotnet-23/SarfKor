@@ -516,6 +516,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                   'Войдите, чтобы вернуться к своему магазину и отчётам.'
                 )}
               </motion.p>
+
               {stage === 'confirm' ? (
                 <form onSubmit={handleConfirmSubmit} className="flex flex-col" style={{ gap: 'clamp(18px,3.2vh,34px)' }}>
                   <motion.div {...rise(4, reduce)}>
@@ -545,7 +546,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                         transition={{ duration: 0.4, ease: EASE }}
                         style={{ overflow: 'hidden' }}
                       >
-                        <span className="block border-l-2 border-white pl-4 text-[13px] font-semibold leading-relaxed text-white">
+                        <span className="block border-l-2 border-[color:var(--admin-text)] pl-4 text-[13px] font-semibold leading-relaxed text-[color:var(--admin-text)]">
                           {error}
                         </span>
                       </motion.div>
@@ -572,15 +573,23 @@ function AuthPage({ mode }: { mode: Mode }) {
                     <button
                       type="submit"
                       disabled={busy || code.length !== 6}
-                      className="group relative w-full overflow-hidden rounded-full bg-white text-[14.5px] font-semibold tracking-wide text-black transition-all duration-700 hover:-translate-y-0.5 hover:shadow-[0_12px_38px_rgba(255,255,255,0.14)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-90"
+                      className="group relative w-full overflow-hidden rounded-full bg-[color:var(--admin-text)] text-[14.5px] font-semibold tracking-wide text-[color:var(--admin-content)] transition-all duration-700 hover:-translate-y-0.5 hover:shadow-[0_12px_38px_color-mix(in_srgb,var(--admin-text)_14%,transparent)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-90"
                       style={{ paddingBlock: 'clamp(13px,2vh,17px)', transitionTimingFunction: 'cubic-bezier(.16,1,.3,1)' }}
                     >
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                        style={{
+                          background: 'linear-gradient(180deg,color-mix(in srgb,var(--admin-content) 85%,transparent) 0%,transparent 55%)',
+                          mixBlendMode: 'overlay',
+                        }}
+                      />
                       <span className="relative flex items-center justify-center gap-2.5">
                         {busy ? (
                           <>
                             <span
                               aria-hidden
-                              className="h-[15px] w-[15px] rounded-full border-2 border-black/25 border-t-black"
+                              className="h-[15px] w-[15px] rounded-full border-2 border-[color:var(--admin-content)]/25 border-t-[color:var(--admin-content)]"
                               style={{ animation: 'sk-spin .7s linear infinite' }}
                             />
                             {success ? 'Готово' : 'Подождите…'}
@@ -588,7 +597,11 @@ function AuthPage({ mode }: { mode: Mode }) {
                         ) : (
                           <>
                             Подтвердить
-                            <span aria-hidden className="transition-transform duration-700 group-hover:translate-x-1.5">
+                            <span
+                              aria-hidden
+                              className="transition-transform duration-700 group-hover:translate-x-1.5"
+                              style={{ transitionTimingFunction: 'cubic-bezier(.16,1,.3,1)' }}
+                            >
                               →
                             </span>
                           </>
@@ -596,6 +609,16 @@ function AuthPage({ mode }: { mode: Mode }) {
                       </span>
                     </button>
                   </motion.div>
+
+                  <motion.button
+                    {...rise(7, reduce)}
+                    type="button"
+                    onClick={handleResend}
+                    disabled={loading}
+                    className="text-[13px] font-semibold text-[color:var(--admin-text)] underline decoration-[color:var(--admin-border)] underline-offset-[6px] transition-all duration-500 hover:decoration-[color:var(--admin-text)] disabled:opacity-50"
+                  >
+                    Отправить код ещё раз
+                  </motion.button>
                 </form>
               ) : (
                 <form
@@ -624,7 +647,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                         <button
                           type="button"
                           onClick={() => setShowPassword((v) => !v)}
-                          className="text-[10.5px] font-bold uppercase tracking-[0.1em] transition-colors duration-300 hover:text-white"
+                          className="text-[10.5px] font-bold uppercase tracking-[0.1em] transition-colors duration-300 hover:text-[color:var(--admin-text)]"
                           style={{ color: TXT.tertiary }}
                         >
                           {showPassword ? 'Скрыть' : 'Показать'}
@@ -685,7 +708,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                       >
                         {/* monochrome, per the no-accent-colour rule: the alert reads as
                             an alert through weight, a white rule and position, not hue */}
-                        <span className="block border-l-2 border-white pl-4 text-[13px] font-semibold leading-relaxed text-white">
+                        <span className="block border-l-2 border-[color:var(--admin-text)] pl-4 text-[13px] font-semibold leading-relaxed text-[color:var(--admin-text)]">
                           {error}
                         </span>
                       </motion.div>
@@ -696,7 +719,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                     <button
                       type="submit"
                       disabled={busy}
-                      className="group relative w-full overflow-hidden rounded-full bg-white text-[14.5px] font-semibold tracking-wide text-black transition-all duration-700 hover:-translate-y-0.5 hover:shadow-[0_12px_38px_rgba(255,255,255,0.14)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-90"
+                      className="group relative w-full overflow-hidden rounded-full bg-[color:var(--admin-text)] text-[14.5px] font-semibold tracking-wide text-[color:var(--admin-content)] transition-all duration-700 hover:-translate-y-0.5 hover:shadow-[0_12px_38px_color-mix(in_srgb,var(--admin-text)_14%,transparent)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-90"
                       style={{
                         paddingBlock: 'clamp(13px,2vh,17px)',
                         transitionTimingFunction: 'cubic-bezier(.16,1,.3,1)',
@@ -706,7 +729,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                         aria-hidden
                         className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                         style={{
-                          background: 'linear-gradient(180deg,rgba(255,255,255,.85) 0%,transparent 55%)',
+                          background: 'linear-gradient(180deg,color-mix(in srgb,var(--admin-content) 85%,transparent) 0%,transparent 55%)',
                           mixBlendMode: 'overlay',
                         }}
                       />
@@ -715,7 +738,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                           <>
                             <span
                               aria-hidden
-                              className="h-[15px] w-[15px] rounded-full border-2 border-black/25 border-t-black"
+                              className="h-[15px] w-[15px] rounded-full border-2 border-[color:var(--admin-content)]/25 border-t-[color:var(--admin-content)]"
                               style={{ animation: 'sk-spin .7s linear infinite' }}
                             />
                             {success ? 'Готово' : 'Подождите…'}

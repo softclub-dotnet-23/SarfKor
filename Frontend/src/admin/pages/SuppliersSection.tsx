@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Card } from '../components/Card'
-import { TruckIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, XIcon } from '../components/icons'
+import { Panel, SectionHeader } from '../cabinet/components/primitives'
+import { PlusIcon, EditIcon, TrashIcon, CheckIcon, XIcon } from '../components/icons'
 import { suppliersApi, ApiError, type Supplier } from '../../lib/api'
 
 export function SuppliersSection({ storeId }: { storeId: number | null }) {
@@ -80,17 +80,14 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
   }
 
   return (
-    <Card className="p-6">
-      <div className="mb-5 flex items-center gap-2">
-        <TruckIcon width={18} height={18} className="text-[color:var(--admin-accent)]" />
-        <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Поставщики</span>
-      </div>
+    <Panel>
+      <SectionHeader title="Поставщики" />
 
-      {error && <div className="mb-3 rounded-lg bg-[color:var(--admin-danger-dim)] px-3.5 py-2.5 text-[12.5px] font-medium text-[color:var(--admin-danger)]">{error}</div>}
+      {error && <div className="mb-3 rounded-2xl bg-[color:var(--admin-danger-dim)] px-3.5 py-2.5 text-[12.5px] font-medium text-[color:var(--admin-danger)]">{error}</div>}
 
       <div className="flex flex-col gap-2">
         {suppliers?.map((s) => (
-          <div key={s.supplierId} className="flex flex-wrap items-center gap-2 rounded-xl bg-[color:var(--admin-hover)] px-4 py-3">
+          <div key={s.supplierId} className="flex flex-wrap items-center gap-2 rounded-2xl bg-[color:var(--admin-hover)] px-4 py-3">
             {editingId === s.supplierId ? (
               <>
                 <input
@@ -188,12 +185,12 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
         <button
           onClick={handleCreate}
           disabled={busyId === 'new' || !newName.trim()}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-white disabled:opacity-50"
+          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] disabled:opacity-50"
         >
           <PlusIcon width={13} height={13} />
           Добавить
         </button>
       </div>
-    </Card>
+    </Panel>
   )
 }

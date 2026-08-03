@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { meApi, type ConsentType } from '../../lib/api'
-import { EmptyState, ErrorState, LINE, Reveal, SectionTitle, Skeleton, TXT, useAsync } from '../ui'
+import { Button, EmptyState, ErrorState, LINE, Reveal, SectionTitle, Skeleton, Spinner, TXT, useAsync } from '../ui'
 
 /* Exactly the four the backend defines (ConsentType in lib/api/me.ts) — no more,
    no fewer, so a toggle can never post a value the server will reject. */
@@ -26,6 +26,82 @@ const CONSENTS: { type: ConsentType; label: string; body: string }[] = [
     body: 'Подборки скидок и товаров с истекающим сроком.',
   },
 ]
+
+function ChangePasswordSection() {
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!current || !next) return
+    setSaving(true)
+    setMsg(null)
+    try {
+      const res = await meApi.changePassword(current, next)
+      if (res.outcome === 'Changed') {
+        setMsg({ text: 'Пароль изменён', ok: true })
+        setCurrent('')
+        setNext('')
+      } else if (res.outcome === 'WrongCurrentPassword') {
+        setMsg({ text: 'Неверный текущий пароль', ok: false })
+      } else {
+        setMsg({ text: 'Не удалось изменить пароль', ok: false })
+      }
+    } catch {
+      setMsg({ text: 'Не удалось связаться с сервером', ok: false })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mb-16">
+      <SectionTitle>Сменить пароль</SectionTitle>
+      <form onSubmit={submit} className="flex max-w-[420px] flex-col gap-8">
+        <label className="flex flex-col">
+          <span className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: TXT.rest }}>
+            Текущий пароль
+          </span>
+          <input
+            type="password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            autoComplete="current-password"
+            className="border-0 bg-transparent pb-3 text-[16px] text-[color:var(--app-text-primary)] caret-[color:var(--app-text-primary)]"
+            style={{ borderBottom: `1px solid ${LINE}` }}
+          />
+        </label>
+        <label className="flex flex-col">
+          <span className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: TXT.rest }}>
+            Новый пароль
+          </span>
+          <input
+            type="password"
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+            autoComplete="new-password"
+            minLength={8}
+            className="border-0 bg-transparent pb-3 text-[16px] text-[color:var(--app-text-primary)] caret-[color:var(--app-text-primary)]"
+            style={{ borderBottom: `1px solid ${LINE}` }}
+          />
+        </label>
+        <div className="flex items-center gap-5">
+          <Button type="submit" disabled={saving || !current || !next}>
+            {saving && <Spinner dark />}
+            Изменить
+          </Button>
+          {msg && (
+            <span className="text-[13px]" style={{ color: msg.ok ? TXT.secondary : 'var(--app-text-primary)' }}>
+              {msg.text}
+            </span>
+          )}
+        </div>
+      </form>
+    </div>
+  )
+}
 
 const EVENT_LABEL: Record<string, string> = {
   LoginSucceeded: 'Вход выполнен',
@@ -122,8 +198,13 @@ export function SettingsPage() {
         )}
       </Reveal>
 
-      {/* ── SECURITY ─────────────────────────────────────────── */}
+      {/* ── CHANGE PASSWORD ──────────────────────────────────── */}
       <Reveal i={2}>
+        <ChangePasswordSection />
+      </Reveal>
+
+      {/* ── SECURITY ─────────────────────────────────────────── */}
+      <Reveal i={3}>
         <SectionTitle>Последние события входа</SectionTitle>
 
         {events.loading && <Skeleton h={110} className="rounded-xl" />}

@@ -1,4 +1,4 @@
-import { apiFetch } from './client'
+import { apiFetch, apiUpload } from './client'
 
 export interface UserProfile {
   found: boolean
@@ -57,4 +57,17 @@ export interface MyStore {
 
 export function getMyStores() {
   return apiFetch<{ stores: MyStore[] }>('/api/me/stores')
+}
+
+export function changePassword(currentPassword: string, newPassword: string) {
+  return apiFetch<{ outcome: 'Changed' | 'WrongCurrentPassword' | 'UserNotFound' }>('/api/me/password', {
+    method: 'PUT',
+    body: { currentPassword, newPassword },
+  })
+}
+
+export function uploadAvatar(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  return apiUpload<{ avatarUrl: string }>('/api/me/avatar', form)
 }

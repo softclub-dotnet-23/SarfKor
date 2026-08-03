@@ -18,6 +18,11 @@ public static class ImageContentTypeDetector
             && header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A)
             return ".png";
 
+        // WebP: "RIFF" + 4 bytes file size + "WEBP"
+        if (bytesRead >= 8
+            && header[0] == 0x52 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x46)
+            return ".webp";
+
         return null;
     }
 }

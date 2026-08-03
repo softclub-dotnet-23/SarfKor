@@ -469,7 +469,7 @@ export function InventoryPage() {
             </div>
             <button
               onClick={() => { setRuleOpen(true); setRuleError('') }}
-              className="mt-1 shrink-0 rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
+              className="mt-1 shrink-0 rounded-[6px] bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[12px] font-[500] text-[color:var(--admin-accent)] transition-opacity hover:opacity-80"
             >
               + Правило
             </button>
@@ -490,7 +490,7 @@ export function InventoryPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Поиск по ID товара или названию (если уже распознано)"
-              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2.5 pl-9 pr-3 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
+              className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2.5 pl-9 pr-3 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none transition-colors placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]"
             />
           </div>
           <button
@@ -498,7 +498,7 @@ export function InventoryPage() {
               setScanOpen(true)
               setScanError('')
             }}
-            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
+            className="flex shrink-0 items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
           >
             <BarcodeIcon width={15} height={15} />
             Приход по штрихкоду
@@ -531,22 +531,22 @@ export function InventoryPage() {
                     )}
                     <button
                       onClick={() => { setReceiptFor({ productId: s.productId, productName: name }); setReceiptQty(10); setReceiptPrice(''); setReceiptError('') }}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
+                      className="inline-flex items-center gap-1.5 rounded-[6px] bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[12px] font-[500] text-[color:var(--admin-accent)] transition-opacity hover:opacity-80"
                     >
-                      <TruckIcon width={13} height={13} />
+                      <TruckIcon width={12} height={12} />
                       Приход
                     </button>
                     <button
                       onClick={() => { setPriceFor({ productId: s.productId, productName: name }); setPriceAmount(''); setPriceDone(false); setPriceError('') }}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-hover)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+                      className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color:var(--admin-border)] px-3 py-1.5 text-[12px] font-[400] text-[color:var(--admin-text-secondary)] transition-colors hover:text-[color:var(--admin-text)]"
                     >
-                      Цена продажи
+                      Цена
                     </button>
                     <button
                       onClick={() => { setCostFor({ productId: s.productId, productName: name }); setCostAmount(''); setCostDone(false); setCostError('') }}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-hover)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+                      className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color:var(--admin-border)] px-3 py-1.5 text-[12px] font-[400] text-[color:var(--admin-text-secondary)] transition-colors hover:text-[color:var(--admin-text)]"
                     >
-                      Себестоимость
+                      Себест.
                     </button>
                   </div>
                 </div>
@@ -572,7 +572,7 @@ export function InventoryPage() {
           <button
             type="button"
             onClick={() => setCameraOpen((v) => !v)}
-            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-hover)] py-2.5 text-[13px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+            className="flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-hover)] py-2.5 text-[13px] font-[500] text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
           >
             <CameraIcon width={15} height={15} />
             {cameraOpen ? 'Скрыть камеру' : 'Сканировать камерой'}
@@ -587,7 +587,7 @@ export function InventoryPage() {
             value={scanBarcode}
             onChange={(e) => setScanBarcode(e.target.value)}
             placeholder="Штрихкод"
-            className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+            className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
           />
           {scanError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{scanError}</div>}
           {notFoundBarcode && (
@@ -870,7 +870,7 @@ export function InventoryPage() {
               min={1}
               value={ruleProductId}
               onChange={(e) => setRuleProductId(e.target.value)}
-              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+              className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
             />
           </label>
 
@@ -882,7 +882,7 @@ export function InventoryPage() {
                 min={0}
                 value={ruleThreshold}
                 onChange={(e) => setRuleThreshold(e.target.value)}
-                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+                className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
               />
             </label>
             <label className="flex flex-col gap-1.5">
@@ -892,7 +892,7 @@ export function InventoryPage() {
                 min={1}
                 value={ruleReorderQty}
                 onChange={(e) => setRuleReorderQty(e.target.value)}
-                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+                className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
               />
             </label>
           </div>
@@ -904,7 +904,7 @@ export function InventoryPage() {
               min={1}
               value={ruleSupplierId}
               onChange={(e) => setRuleSupplierId(e.target.value)}
-              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+              className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
             />
           </label>
 

@@ -140,9 +140,9 @@ export function ReportsPage() {
         </div>
         <button
           onClick={exportReport}
-          className="flex items-center justify-center gap-2 rounded-full bg-[color:var(--admin-text)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--admin-content)] hover:opacity-90"
+          className="flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
         >
-          <DownloadIcon width={15} height={15} />
+          <DownloadIcon width={14} height={14} />
           Экспорт CSV
         </button>
       </div>

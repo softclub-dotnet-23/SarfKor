@@ -39,7 +39,7 @@ function fmtDate(iso: string) {
 }
 
 function inputCls() {
-  return 'w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13.5px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]'
+  return 'w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none transition-colors placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]'
 }
 
 function labelCls() {
@@ -231,14 +231,14 @@ function PromotionsSection({ storeId }: { storeId: number }) {
       <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <PercentIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новая акция</span>
+          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Новая акция</span>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setTargetMode('product')}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
+              className={`flex-1 rounded-[8px] px-4 py-2.5 text-[13px] font-[500] transition-colors ${
                 targetMode === 'product'
                   ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
                   : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
@@ -249,7 +249,7 @@ function PromotionsSection({ storeId }: { storeId: number }) {
             <button
               type="button"
               onClick={() => setTargetMode('category')}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
+              className={`flex-1 rounded-[8px] px-4 py-2.5 text-[13px] font-[500] transition-colors ${
                 targetMode === 'category'
                   ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
                   : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
@@ -338,7 +338,7 @@ function PromotionsSection({ storeId }: { storeId: number }) {
           <button
             type="submit"
             disabled={creating}
-            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] active:scale-[0.99] disabled:opacity-40"
           >
             {createSuccess ? (
               <>
@@ -358,7 +358,7 @@ function PromotionsSection({ storeId }: { storeId: number }) {
       <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Активные акции</span>
+          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Активные акции</span>
         </div>
         {loading ? (
           <Loading label="Загружаем акции…" />
@@ -498,7 +498,7 @@ function BundlesSection({ storeId }: { storeId: number }) {
       <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новый набор товаров</span>
+          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Новый набор товаров</span>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
@@ -560,7 +560,7 @@ function BundlesSection({ storeId }: { storeId: number }) {
                   type="button"
                   onClick={() => removeItemRow(i)}
                   disabled={items.length <= 1}
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[color:var(--admin-hover)] text-[color:var(--admin-danger)] disabled:opacity-30"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-[8px] bg-[color:var(--admin-hover)] text-[color:var(--admin-danger)] transition-colors hover:bg-[color:var(--admin-danger-dim)] disabled:opacity-30"
                 >
                   <TrashIcon width={15} height={15} />
                 </button>
@@ -581,7 +581,7 @@ function BundlesSection({ storeId }: { storeId: number }) {
           <button
             type="submit"
             disabled={creating}
-            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] active:scale-[0.99] disabled:opacity-40"
           >
             {createSuccess ? (
               <>
@@ -601,7 +601,7 @@ function BundlesSection({ storeId }: { storeId: number }) {
       <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Наборы товаров магазина</span>
+          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Наборы товаров магазина</span>
         </div>
         {loading ? (
           <Loading label="Загружаем наборы…" />
@@ -621,7 +621,7 @@ function BundlesSection({ storeId }: { storeId: number }) {
                   {b.items.map((it, idx) => (
                     <span
                       key={idx}
-                      className="rounded-full bg-[color:var(--admin-border)] px-2.5 py-1 text-[11px] text-[color:var(--admin-text-secondary)]"
+                      className="rounded-[4px] bg-[color:var(--admin-border)] px-2 py-0.5 text-[11px] font-[400] text-[color:var(--admin-text-secondary)]"
                     >
                       Товар #{it.productId} × {it.quantity}
                     </span>
@@ -745,7 +745,7 @@ function OffersSection({ storeId }: { storeId: number }) {
       <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <ClockIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Опубликовать «скоро истекает»</span>
+          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Опубликовать «скоро истекает»</span>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
@@ -812,7 +812,7 @@ function OffersSection({ storeId }: { storeId: number }) {
           <button
             type="submit"
             disabled={creating}
-            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] active:scale-[0.99] disabled:opacity-40"
           >
             {createSuccess ? (
               <>
@@ -832,7 +832,7 @@ function OffersSection({ storeId }: { storeId: number }) {
       <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <AlertIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Предложения этого магазина</span>
+          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Предложения этого магазина</span>
         </div>
         {loading ? (
           <Loading label="Загружаем предложения…" />
@@ -948,7 +948,7 @@ function RepliesSection() {
       <Panel className="p-5">
         <div className="mb-4 flex items-center gap-2">
           <StarIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Найти отзывы по товару</span>
+          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Найти отзывы по товару</span>
         </div>
         <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
           В бэкенде нет эндпоинта «все отзывы моего магазина» — отзывы можно посмотреть только по ID конкретного
@@ -966,7 +966,7 @@ function RepliesSection() {
           <button
             type="submit"
             disabled={loading}
-            className="shrink-0 rounded-xl bg-[color:var(--admin-accent)] px-5 py-2.5 text-[13px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90 disabled:opacity-50"
+            className="shrink-0 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] disabled:opacity-40"
           >
             {loading ? 'Ищем…' : 'Показать отзывы'}
           </button>
@@ -976,7 +976,7 @@ function RepliesSection() {
       {searched && (
         <Panel className="p-5">
           <div className="mb-4 flex items-center gap-2">
-            <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Отзывы</span>
+            <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Отзывы</span>
           </div>
           {loading ? (
             <Loading label="Загружаем отзывы…" />
@@ -1014,7 +1014,7 @@ function RepliesSection() {
                         onChange={(e) => setReplyText(e.target.value)}
                         placeholder="Ваш ответ на отзыв"
                         rows={3}
-                        className="w-full resize-none rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
+                        className="w-full resize-none rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none transition-colors placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]"
                       />
                       {replyError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{replyError}</div>}
                       <div className="flex gap-2">

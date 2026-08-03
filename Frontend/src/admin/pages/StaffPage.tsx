@@ -117,7 +117,7 @@ function EmployeesSection() {
             value={employeeEmail}
             onChange={(e) => setEmployeeEmail(e.target.value)}
             placeholder="cashier@sarfkor.tj"
-            className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+            className="rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none transition-colors focus:border-[color:var(--admin-border-strong)] placeholder:text-[color:var(--admin-text-tertiary)]"
           />
         </label>
         <label className="flex flex-col gap-1.5">
@@ -134,7 +134,7 @@ function EmployeesSection() {
         <button
           type="submit"
           disabled={busy || !employeeEmail.trim()}
-          className="flex items-center justify-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90 disabled:opacity-50"
+          className="flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] disabled:opacity-40"
         >
           <PlusIcon width={14} height={14} />
           {busy ? 'Добавляем…' : 'Добавить'}

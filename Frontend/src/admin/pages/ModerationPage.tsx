@@ -204,7 +204,7 @@ function ModRow({
           onClick={onReject}
           disabled={busy}
           title={rejectLabel}
-          className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-[color:var(--mod-border)] text-[color:var(--mod-danger)] transition-colors hover:bg-[color:var(--mod-danger-dim)] disabled:opacity-40 sm:w-11 sm:flex-none"
+          className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[8px] border border-[color:var(--mod-border)] text-[color:var(--mod-danger)] transition-colors hover:bg-[color:var(--mod-danger-dim)] disabled:opacity-40 sm:w-11 sm:flex-none"
         >
           <XIcon width={17} height={17} strokeWidth={2.5} />
         </button>
@@ -212,7 +212,7 @@ function ModRow({
           onClick={onApprove}
           disabled={busy}
           title={approveLabel}
-          className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[color:var(--mod-ok)] text-white shadow-[0_3px_10px_var(--mod-ok-dim)] transition-transform hover:brightness-110 active:scale-95 disabled:opacity-40 sm:w-11 sm:flex-none"
+          className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[8px] bg-[color:var(--mod-ok)] text-white shadow-[0_3px_10px_var(--mod-ok-dim)] transition-transform hover:brightness-110 active:scale-95 disabled:opacity-40 sm:w-11 sm:flex-none"
         >
           <CheckIcon width={18} height={18} strokeWidth={2.6} />
         </button>
@@ -586,12 +586,12 @@ function BrandsSubsection() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Название бренда"
-          className="flex-1 rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+          className="flex-1 rounded-[8px] border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--mod-text)] outline-none transition-colors focus:border-[color:var(--mod-accent)]"
         />
         <button
           type="submit"
           disabled={submitting || !name.trim()}
-          className="shrink-0 rounded-xl bg-[color:var(--mod-accent)] px-4 py-2.5 text-[13px] font-bold text-white disabled:opacity-50"
+          className="shrink-0 rounded-[8px] bg-[color:var(--mod-accent)] px-5 py-[10px] text-[14px] font-[500] text-white transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] disabled:opacity-40"
         >
           Добавить
         </button>
@@ -671,7 +671,7 @@ function CategoriesSubsection() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Название категории"
-          className="min-w-[160px] flex-1 rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+          className="min-w-[160px] flex-1 rounded-[8px] border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--mod-text)] outline-none transition-colors focus:border-[color:var(--mod-accent)]"
         />
         <Select
           value={parentId}
@@ -684,7 +684,7 @@ function CategoriesSubsection() {
         <button
           type="submit"
           disabled={submitting || !name.trim()}
-          className="shrink-0 rounded-xl bg-[color:var(--mod-accent)] px-4 py-2.5 text-[13px] font-bold text-white disabled:opacity-50"
+          className="shrink-0 rounded-[8px] bg-[color:var(--mod-accent)] px-5 py-[10px] text-[14px] font-[500] text-white transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] disabled:opacity-40"
         >
           Добавить
         </button>
@@ -769,7 +769,7 @@ function TaxRatesSubsection() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Название"
-          className="min-w-[140px] flex-1 rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+          className="min-w-[140px] flex-1 rounded-[8px] border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--mod-text)] outline-none transition-colors focus:border-[color:var(--mod-accent)]"
         />
         <input
           value={percentage}
@@ -779,7 +779,7 @@ function TaxRatesSubsection() {
           min={0}
           max={100}
           step="0.01"
-          className="w-20 rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+          className="w-20 rounded-[8px] border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3 py-2.5 text-[14px] font-[400] text-[color:var(--mod-text)] outline-none transition-colors focus:border-[color:var(--mod-accent)]"
         />
         <Select
           value={categoryId}
@@ -792,7 +792,7 @@ function TaxRatesSubsection() {
         <button
           type="submit"
           disabled={submitting || !name.trim() || percentage === ''}
-          className="shrink-0 rounded-xl bg-[color:var(--mod-accent)] px-4 py-2.5 text-[13px] font-bold text-white disabled:opacity-50"
+          className="shrink-0 rounded-[8px] bg-[color:var(--mod-accent)] px-5 py-[10px] text-[14px] font-[500] text-white transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] disabled:opacity-40"
         >
           Добавить
         </button>

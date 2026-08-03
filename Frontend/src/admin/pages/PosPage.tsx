@@ -822,7 +822,7 @@ export function PosPage() {
           </div>
           <div className="flex items-center justify-between text-[15px]">
             <span className="font-semibold text-[color:var(--admin-text)]">Итого</span>
-            <span className="text-[22px] font-extrabold text-[color:var(--admin-text)]">{fmt(total)} смн</span>
+            <span className="text-[32px] font-[500] tabular-nums text-[color:var(--admin-text)]">{fmt(total)} смн</span>
           </div>
         </div>
 
@@ -836,7 +836,7 @@ export function PosPage() {
         <button
           onClick={completeSale}
           disabled={(cart.length === 0 && cartBundles.length === 0) || checkoutBusy}
-          className="rounded-xl bg-[color:var(--admin-accent)] py-3.5 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+          className="rounded-[8px] bg-[color:var(--admin-accent)] py-3.5 text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 disabled:hover:shadow-none"
         >
           {checkoutBusy ? 'Проводим продажу…' : 'Оформить продажу'}
         </button>

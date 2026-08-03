@@ -148,7 +148,7 @@ export function DashboardPage() {
         {/* Revenue chart */}
         <Panel>
           <SectionHeader
-            eyebrow="/reports/daily-sales"
+            eyebrow="Ежедневные продажи"
             title="Выручка за 7 дней"
             action={
               <button

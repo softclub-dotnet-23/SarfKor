@@ -282,7 +282,7 @@ export function StaffPage() {
 
       <Panel>
         <SectionHeader
-          eyebrow="Аномальным считается кассир с необычно высокой долей отмен продаж — эта метрика считается на бэкенде"
+          eyebrow="Аномалии по отменам"
           title="Активность кассиров за 30 дней"
         />
         {anomaliesForbidden ? (

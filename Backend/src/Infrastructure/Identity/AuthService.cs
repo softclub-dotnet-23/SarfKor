@@ -251,6 +251,38 @@ public sealed class AuthService(
         return true;
     }
 
+    public async Task<ChangePasswordServiceResult> ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return new ChangePasswordServiceResult(false, true, false, Array.Empty<string>());
+
+        var result = await userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        if (!result.Succeeded)
+        {
+            var incorrectCurrent = result.Errors.Any(e => e.Code == "PasswordMismatch");
+            return new ChangePasswordServiceResult(false, false, incorrectCurrent, result.Errors.Select(e => e.Description).ToList());
+        }
+
+        // Same reasoning as ResetPasswordAsync: a password change is exactly the moment a
+        // hijacked session should be killed, even though here it's the legitimate owner
+        // triggering it. Their own refresh token dies too — the access token is left to expire
+        // naturally rather than forcing an immediate re-login mid-change.
+        await refreshTokenRepository.RevokeAllForUserAsync(user.Id, cancellationToken);
+
+        securityEventRepository.Add(new SecurityEvent
+        {
+            UserId = user.Id,
+            Type = SecurityEventType.PasswordChanged,
+            IpAddress = null,
+            UserAgent = null,
+            OccurredAt = DateTimeOffset.UtcNow
+        });
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return new ChangePasswordServiceResult(true, false, false, Array.Empty<string>());
+    }
+
     private async Task<RegisterAccountResult> ResendConfirmationCodeAsync(ApplicationUser user, CancellationToken cancellationToken) =>
         new(null, false, RequiresEmailConfirmation: true, EmailConfirmationCode: await IssueEmailVerificationCodeAsync(user, cancellationToken));
 

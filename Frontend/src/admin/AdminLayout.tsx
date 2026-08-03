@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import clsx from 'clsx'
 import { LogoMark } from '../components/Logo'
@@ -8,7 +8,11 @@ import { useThemeTransition } from '../theme/useThemeTransition'
 import { SunIcon, MoonIcon } from '../components/icons'
 import { useAuth } from '../auth/AuthContext'
 import { salesApi, ApiError, type CashierShift } from '../lib/api'
+import { useProfile, ProfileProvider } from '../lib/useProfile'
+import { useAvatarUrl } from '../lib/useAvatarUrl'
 import { AssistantPanel } from './components/AssistantPanel'
+import { NotificationBell } from './components/NotificationBell'
+import { CommandPalette, type CommandPaletteItem } from './components/CommandPalette'
 import {
   GridIcon,
   RegisterIcon,
@@ -18,10 +22,12 @@ import {
   SettingsIcon,
   RefreshIcon,
   LogOutIcon,
-  SearchIcon,
   TruckIcon,
   TagIcon,
+  ChevronLeftIcon,
 } from './components/icons'
+
+const SIDEBAR_COLLAPSED_KEY = 'sarfkor-sidebar-collapsed'
 
 const NAV_ITEMS = [
   { to: '/admin', label: 'Дашборд', icon: GridIcon, end: true, ownerOnly: true },
@@ -45,7 +51,7 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   '/admin/settings': { title: 'Настройки', subtitle: 'Магазин, профиль и безопасность' },
 }
 
-function ShiftCard() {
+function ShiftCard({ collapsed }: { collapsed: boolean }) {
   const { storeId, user } = useAuth()
   const [shifts, setShifts] = useState<CashierShift[] | null>(null)
   const [amount, setAmount] = useState('')
@@ -86,6 +92,8 @@ function ShiftCard() {
       setBusy(false)
     }
   }
+
+  if (collapsed) return null
 
   return (
     <div className="mt-3 rounded-2xl bg-[color:var(--admin-hover)] p-4">
@@ -148,15 +156,34 @@ function PageTransition({ pathKey, children }: { pathKey: string; children: Reac
 }
 
 export function AdminLayout() {
+  return (
+    <ProfileProvider>
+      <AdminLayoutInner />
+    </ProfileProvider>
+  )
+}
+
+function AdminLayoutInner() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1')
   const { theme, toggleTheme } = useTheme()
   const { runThemeTransition } = useThemeTransition()
   const isDark = theme === 'dark'
   const location = useLocation()
+  const navigate = useNavigate()
   const { user, logout, currentStoreRole } = useAuth()
+  const { profile } = useProfile()
+  const avatarUrl = useAvatarUrl(!!profile?.avatarReference, profile?.avatarReference)
   const page = PAGE_TITLES[location.pathname] ?? PAGE_TITLES['/admin']
   const initial = user?.email?.charAt(0).toUpperCase() ?? '?'
   const visibleNavItems = NAV_ITEMS.filter((item) => currentStoreRole !== 'Cashier' || !item.ownerOnly)
+
+  function toggleCollapsed() {
+    setCollapsed((c) => {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, c ? '0' : '1')
+      return !c
+    })
+  }
 
   // RequireAuth (the parent route) redirects to /login the moment `user`
   // goes null, so logging out doesn't need its own navigate() — a manual one
@@ -165,19 +192,52 @@ export function AdminLayout() {
     logout()
   }
 
+  const paletteItems: CommandPaletteItem[] = [
+    ...visibleNavItems.map((item) => ({
+      id: item.to,
+      label: item.label,
+      icon: item.icon,
+      action: () => navigate(item.to),
+    })),
+    {
+      id: 'toggle-theme',
+      label: isDark ? 'Светлая тема' : 'Тёмная тема',
+      icon: isDark ? SunIcon : MoonIcon,
+      hint: 'Оформление',
+      action: () => toggleTheme(),
+    },
+    {
+      id: 'logout',
+      label: 'Выйти',
+      icon: LogOutIcon,
+      action: handleLogout,
+    },
+  ]
+
   return (
     <div className="admin-shell flex h-screen w-full overflow-hidden bg-[color:var(--admin-content)] text-[color:var(--admin-text)]">
       {/* Sidebar */}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-40 flex w-[240px] shrink-0 flex-col overflow-y-auto border-r border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-4 pb-5 pt-6 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] [box-shadow:var(--admin-shadow)] lg:static lg:shadow-none lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-[240px] shrink-0 flex-col overflow-y-auto overflow-x-hidden border-r border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-4 pb-5 pt-6 transition-[transform,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] [box-shadow:var(--admin-shadow)] lg:static lg:shadow-none lg:translate-x-0',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full',
+          collapsed ? 'lg:w-[76px]' : 'lg:w-[240px]',
         )}
       >
-        <Link to="/" className="mb-8 flex items-center gap-2.5 px-2">
-          <LogoMark size={28} />
-          <span className="text-[19px] font-extrabold tracking-tight text-[color:var(--admin-text)]">Sarfkor</span>
-        </Link>
+        <div className={clsx('mb-8 flex items-center', collapsed ? 'flex-col gap-3 px-0' : 'justify-between px-2')}>
+          <Link to="/" className="flex items-center gap-2.5 overflow-hidden">
+            <LogoMark size={28} />
+            {!collapsed && <span className="whitespace-nowrap text-[19px] font-extrabold tracking-tight text-[color:var(--admin-text)]">Sarfkor</span>}
+          </Link>
+          <button
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
+            aria-expanded={!collapsed}
+            className="hidden h-7 w-7 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)] lg:grid"
+          >
+            <ChevronLeftIcon width={14} height={14} className={clsx('transition-transform duration-300', collapsed && 'rotate-180')} />
+          </button>
+        </div>
 
         <nav className="flex flex-1 flex-col gap-1">
           {visibleNavItems.map((item) => (
@@ -185,30 +245,47 @@ export function AdminLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
+              title={collapsed ? item.label : undefined}
               onClick={() => setMobileNavOpen(false)}
               className={({ isActive }) =>
                 clsx(
-                  'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[14px] font-medium transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
+                  'relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[14px] font-medium transition-colors duration-200',
+                  collapsed && 'justify-center px-0',
                   isActive
-                    ? 'bg-[color:var(--admin-accent-soft)] font-semibold text-[color:var(--admin-accent)]'
-                    : 'text-[color:var(--admin-text-secondary)] hover:translate-x-0.5 hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]',
+                    ? 'font-semibold text-[color:var(--admin-accent)]'
+                    : 'text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]',
                 )
               }
             >
-              <item.icon width={18} height={18} />
-              {item.label}
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <motion.span
+                      layoutId="admin-nav-pill"
+                      className="absolute inset-0 rounded-xl bg-[color:var(--admin-accent-soft)]"
+                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                  )}
+                  <item.icon width={18} height={18} className="relative z-10 shrink-0" />
+                  {!collapsed && <span className="relative z-10 truncate">{item.label}</span>}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
 
-        <ShiftCard />
+        <ShiftCard collapsed={collapsed} />
 
         <button
           onClick={handleLogout}
-          className="mt-2 flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-[14px] font-medium text-[color:var(--admin-text-tertiary)] transition-colors hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]"
+          title={collapsed ? 'Выйти' : undefined}
+          className={clsx(
+            'mt-2 flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-[14px] font-medium text-[color:var(--admin-text-tertiary)] transition-colors hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]',
+            collapsed && 'justify-center px-0',
+          )}
         >
-          <LogOutIcon width={18} height={18} />
-          Выйти
+          <LogOutIcon width={18} height={18} className="shrink-0" />
+          {!collapsed && 'Выйти'}
         </button>
       </aside>
 
@@ -248,18 +325,11 @@ export function AdminLayout() {
             <p className="truncate text-[13px] text-[color:var(--admin-text-tertiary)]">{page.subtitle}</p>
           </div>
 
-          <div className="relative hidden w-64 shrink-0 md:block">
-            <SearchIcon
-              width={16}
-              height={16}
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[color:var(--admin-text-tertiary)]"
-            />
-            <input
-              type="text"
-              placeholder="Поиск..."
-              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2 pl-9 pr-3 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
-            />
+          <div className="hidden w-64 shrink-0 md:block">
+            <CommandPalette items={paletteItems} />
           </div>
+
+          <NotificationBell />
 
           <button
             onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
@@ -269,25 +339,28 @@ export function AdminLayout() {
             {isDark ? <SunIcon width={17} height={17} /> : <MoonIcon width={17} height={17} />}
           </button>
 
-          <div className="hidden shrink-0 items-center gap-2.5 border-l border-[color:var(--admin-border)] pl-4 sm:flex">
+          <Link
+            to="/admin/settings"
+            className="hidden shrink-0 items-center gap-2.5 border-l border-[color:var(--admin-border)] pl-4 sm:flex"
+          >
             <div
-              className="grid h-9 w-9 place-items-center rounded-xl text-[15px] font-bold text-white [box-shadow:var(--admin-shadow)]"
+              className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-xl text-[15px] font-bold text-white [box-shadow:var(--admin-shadow)]"
               style={{
                 background:
                   'linear-gradient(135deg, var(--admin-accent), color-mix(in srgb, var(--admin-accent) 65%, black))',
               }}
             >
-              {initial}
+              {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : initial}
             </div>
             <div className="hidden lg:block">
               <div className="max-w-[160px] truncate text-[13px] font-semibold leading-tight text-[color:var(--admin-text)]">
-                {user?.email}
+                {profile?.displayName || user?.email}
               </div>
               <div className="text-[11px] leading-tight text-[color:var(--admin-text-tertiary)]">
                 {currentStoreRole === 'Cashier' ? 'Кассир' : user?.roles.includes('StorePartner') ? 'Владелец' : 'Пользователь'}
               </div>
             </div>
-          </div>
+          </Link>
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">

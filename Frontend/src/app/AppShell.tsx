@@ -3,6 +3,8 @@ import { motion } from 'framer-motion'
 import { useAuth } from '../auth/AuthContext'
 import { useTheme } from '../theme/ThemeProvider'
 import { useThemeTransition } from '../theme/useThemeTransition'
+import { useProfile, ProfileProvider } from '../lib/useProfile'
+import { useAvatarUrl } from '../lib/useAvatarUrl'
 import { SunIcon, MoonIcon } from '../components/icons'
 import { AppStyles, EASE, LINE, TXT } from './ui'
 
@@ -81,11 +83,21 @@ function NavItem({
 }
 
 export function AppShell() {
+  return (
+    <ProfileProvider>
+      <AppShellInner />
+    </ProfileProvider>
+  )
+}
+
+function AppShellInner() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const { theme, toggleTheme } = useTheme()
   const { runThemeTransition } = useThemeTransition()
+  const { profile } = useProfile()
+  const avatarUrl = useAvatarUrl(!!profile?.avatarReference, profile?.avatarReference)
   const isDark = theme === 'dark'
 
   const role = user?.roles?.includes('Admin')
@@ -138,14 +150,14 @@ export function AppShell() {
             <div className="mb-5 h-px w-full" style={{ background: LINE }} />
             <NavLink to="/app/profile" className="mb-4 flex items-center gap-3">
               <span
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[12px] font-bold"
+                className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[12px] font-bold"
                 style={{ background: 'var(--app-line)', color: TXT.primary }}
               >
-                {initials(user?.email ?? '')}
+                {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(user?.email ?? '')}
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-[13px] font-semibold" style={{ color: TXT.primary }}>
-                  {user?.email ?? '—'}
+                  {profile?.displayName || user?.email || '—'}
                 </span>
                 <span className="block text-[11px]" style={{ color: TXT.rest }}>
                   {ROLE_LABEL[role]}
@@ -203,10 +215,10 @@ export function AppShell() {
               </button>
               <NavLink
                 to="/app/profile"
-                className="grid h-8 w-8 place-items-center rounded-full text-[11px] font-bold"
+                className="grid h-8 w-8 place-items-center overflow-hidden rounded-full text-[11px] font-bold"
                 style={{ background: 'var(--app-line)' }}
               >
-                {initials(user?.email ?? '')}
+                {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : initials(user?.email ?? '')}
               </NavLink>
             </div>
           </div>

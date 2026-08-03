@@ -163,6 +163,13 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("assistant", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 15, Window = TimeSpan.FromMinutes(5) }));
+
+    // Смена пароля / загрузка аватара — аутентифицированные, но чувствительные операции
+    // (перебор текущего пароля, спам загрузок на диск); партиционируется по пользователю,
+    // а не по IP, так как обе операции уже требуют валидного JWT.
+    options.AddPolicy("account-security", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
 });
 
 var app = builder.Build();
@@ -274,6 +281,7 @@ public sealed record CreatePromotionRequest(
 public sealed record RecordCommissionRequest(decimal Amount, string Currency);
 public sealed record LoginRequest(string Email, string Password);
 public sealed record UpdateUserProfileRequest(string DisplayName, string? AvatarReference, string PreferredLanguage);
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public sealed record RecordUserConsentRequest(Domain.Identity.ConsentType Type, bool IsGranted);
 public sealed record AddStoreEmployeeRequest(string EmployeeEmail, Domain.Stores.StoreEmployeeRole Role);
 public sealed record RaiseDisputeRequest(string Reason);

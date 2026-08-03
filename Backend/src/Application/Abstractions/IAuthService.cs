@@ -46,4 +46,17 @@ public interface IAuthService
     /// <summary>Null if no account exists for the email — callers must not let that distinguish the response they give back (email enumeration). Reuses the same 6-digit-code mechanics as registration confirmation (same hash/expiry/attempt fields on ApplicationUser), not Identity's opaque token provider.</summary>
     Task<string?> GeneratePasswordResetCodeAsync(string email, CancellationToken cancellationToken);
     Task<bool> ResetPasswordAsync(string email, string code, string newPassword, CancellationToken cancellationToken);
+
+    /// <summary>The "change password while logged in" path — requires the caller to already know
+    /// their current password, unlike ResetPasswordAsync's email-code flow. On success, every
+    /// refresh token for the user is revoked the same way ResetPasswordAsync does (a password
+    /// change is exactly the moment a hijacked session should be killed), so the caller's own
+    /// refresh token stops working too and the access token is left to expire naturally.</summary>
+    Task<ChangePasswordServiceResult> ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken);
 }
+
+/// <summary>UserNotFound and IncorrectCurrentPassword are mutually exclusive with Succeeded and with
+/// each other; Errors carries Identity's password-policy messages when neither of those two applies
+/// but Succeeded is still false (e.g. new password fails a strength rule despite matching FluentValidation's
+/// own copy of that policy — defense in depth, not expected to normally trigger).</summary>
+public sealed record ChangePasswordServiceResult(bool Succeeded, bool UserNotFound, bool IncorrectCurrentPassword, IReadOnlyList<string> Errors);

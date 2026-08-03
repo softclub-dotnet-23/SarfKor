@@ -1,4 +1,4 @@
-import { apiFetch } from './client'
+import { apiFetch, apiFetchBlob, apiUpload } from './client'
 
 export interface UserProfile {
   found: boolean
@@ -16,6 +16,21 @@ export function updateProfile(displayName: string, avatarReference: string | und
     method: 'PUT',
     body: { displayName, avatarReference, preferredLanguage },
   })
+}
+
+export function changePassword(currentPassword: string, newPassword: string) {
+  return apiFetch<void>('/api/me/password', { method: 'POST', body: { currentPassword, newPassword } })
+}
+
+export function uploadAvatar(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiUpload<{ avatarReference: string }>('/api/me/avatar', formData)
+}
+
+/** Object-URL-ready blob of the caller's own avatar, or null if none is set — see useAvatarUrl. */
+export function fetchAvatarBlob() {
+  return apiFetchBlob('/api/me/avatar')
 }
 
 export type ConsentType = 'Geolocation' | 'ReceiptStorage' | 'PaymentData' | 'Marketing'

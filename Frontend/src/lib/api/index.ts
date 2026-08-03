@@ -1,4 +1,4 @@
-export { apiFetch, apiUpload, ApiError, getTokens, setTokens, clearTokens, refreshTokens } from './client'
+export { apiFetch, apiUpload, apiFetchBlob, ApiError, getTokens, setTokens, clearTokens, refreshTokens } from './client'
 export { decodeJwt, rolesFromToken } from './jwt'
 export * as authApi from './auth'
 export * as storesApi from './stores'
@@ -21,6 +21,7 @@ export * as favoritesApi from './favorites'
 export * as priceAlertsApi from './priceAlerts'
 export * as shoppingListsApi from './shoppingLists'
 export * as assistantApi from './assistant'
+export * as notificationsApi from './notifications'
 export type {
   CashierShift,
   ProcessSaleRequest,
@@ -64,3 +65,4 @@ export type { Promotion, PromotionDiscountType, CreatePromotionInput } from './p
 export type { ProductBundle, BundleItem } from './bundles'
 export type { ExpiringOffer } from './expiringOffers'
 export type { AssistantChatMessage, ProposedAction, AssistantChatResult, ConfirmActionResult } from './assistant'
+export type { AppNotification, NotificationType } from './notifications'

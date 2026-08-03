@@ -77,54 +77,69 @@ export function ScanPage() {
           )}
 
           {phase !== 'live' && (
+            // This box is a permanently dark surface (#050505) regardless of the app's own
+            // light/dark theme — a real bug lived here before: the fallback copy used the
+            // theme-variable TXT.secondary/TXT.rest, which resolves to near-black in light mode
+            // and was therefore unreadable on this near-black background (the exact "unclear
+            // black rectangle" CLAUDE.md §4 warns against, just with invisible text on top of it
+            // instead of no text at all). Every color in here is a fixed light value on purpose.
             <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
-              <span className="mb-6 text-[color:var(--app-text-primary)]" style={{ opacity: 0.85 }}>
+              <span className="mb-6" style={{ color: 'rgba(255,255,255,0.85)' }}>
                 <BarcodeGlyph size={38} />
               </span>
 
               {phase === 'idle' && supported && (
                 <>
-                  <p className="mb-6 max-w-[300px] text-[13.5px]" style={{ color: TXT.secondary }}>
+                  <p className="mb-6 max-w-[300px] text-[13.5px]" style={{ color: 'rgba(255,255,255,0.75)' }}>
                     Разрешите доступ к камере, чтобы найти товар по штрихкоду.
                   </p>
-                  <Button onClick={start}>Включить камеру</Button>
+                  <button
+                    onClick={start}
+                    className="rounded-full bg-white px-6 py-3 text-[14px] font-bold tracking-wide text-black transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
+                  >
+                    Включить камеру
+                  </button>
                 </>
               )}
 
               {phase === 'starting' && (
-                <p className="text-[13.5px]" style={{ color: TXT.rest }}>
+                <p className="text-[13.5px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
                   Запускаем камеру…
                 </p>
               )}
 
               {(phase === 'denied' || phase === 'error') && (
                 <>
-                  <p className="mb-6 max-w-[300px] text-[13.5px]" style={{ color: TXT.secondary }}>
+                  <p className="mb-6 max-w-[300px] text-[13.5px]" style={{ color: 'rgba(255,255,255,0.75)' }}>
                     {phase === 'denied'
                       ? 'Доступ к камере закрыт. Разрешите его в настройках браузера или введите код вручную.'
                       : 'Не удалось получить доступ к камере. Введите код вручную.'}
                   </p>
-                  <Button variant="ghost" onClick={start}>
+                  <button
+                    onClick={start}
+                    className="rounded-full border px-6 py-3 text-[14px] font-bold tracking-wide transition-colors hover:bg-white/10 active:scale-[0.98]"
+                    style={{ borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}
+                  >
                     Попробовать снова
-                  </Button>
+                  </button>
                 </>
               )}
 
               {phase === 'no-camera' && (
-                <p className="max-w-[300px] text-[13.5px]" style={{ color: TXT.secondary }}>
+                <p className="max-w-[300px] text-[13.5px]" style={{ color: 'rgba(255,255,255,0.75)' }}>
                   На этом устройстве не найдена камера. Введите код вручную.
                 </p>
               )}
 
               {phase === 'unsupported' && (
-                <p className="max-w-[300px] text-[13.5px]" style={{ color: TXT.secondary }}>
+                <p className="max-w-[300px] text-[13.5px]" style={{ color: 'rgba(255,255,255,0.75)' }}>
                   Этот браузер не поддерживает сканирование. Введите код вручную — результат будет
                   тот же.
                 </p>
               )}
 
               {phase === 'insecure' && (
-                <p className="max-w-[300px] text-[13.5px]" style={{ color: TXT.secondary }}>
+                <p className="max-w-[300px] text-[13.5px]" style={{ color: 'rgba(255,255,255,0.75)' }}>
                   Камера работает только по HTTPS (или на localhost) — с этого адреса браузер её не
                   даёт использовать. Введите код вручную.
                 </p>

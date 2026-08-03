@@ -170,7 +170,7 @@ export function AdminLayout() {
       {/* Sidebar */}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-40 flex w-[240px] shrink-0 flex-col border-r border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-4 pb-5 pt-6 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] [box-shadow:var(--admin-shadow)] lg:static lg:shadow-none lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-[240px] shrink-0 flex-col overflow-y-auto border-r border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-4 pb-5 pt-6 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] [box-shadow:var(--admin-shadow)] lg:static lg:shadow-none lg:translate-x-0',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >

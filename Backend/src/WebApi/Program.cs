@@ -53,6 +53,7 @@ foreach (var key in new[] { "Jwt:Issuer", "Jwt:Audience", "Jwt:Key" })
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.Configure<Application.Assistant.AssistantOptions>(builder.Configuration.GetSection(Application.Assistant.AssistantOptions.SectionName));
 
 // Enums serialize/deserialize as their string name ("Product", "Android") instead of a raw
 // integer — matters for every request/response DTO that carries an enum field, so it belongs
@@ -156,6 +157,12 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("money-write", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
+
+    // ИИ-ассистент — каждое обращение стоит денег (вызов LLM API), а окно чата легко
+    // заспамить сообщениями; отдельная, более жёсткая политика, чем обычные операции.
+    options.AddPolicy("assistant", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 15, Window = TimeSpan.FromMinutes(5) }));
 });
 
 var app = builder.Build();
@@ -320,3 +327,5 @@ public sealed record UpdateCategoryRequest(string Name, int? ParentCategoryId);
 public sealed record UpdateTaxRateRequest(string Name, decimal Percentage, int? CategoryId);
 public sealed record CreateSupplierRequest(int StoreId, string Name, string? ContactPhone, string? ContactEmail);
 public sealed record UpdateSupplierRequest(string Name, string? ContactPhone, string? ContactEmail);
+public sealed record AssistantChatMessageRequest(string Role, string Content);
+public sealed record AssistantChatRequest(int? StoreId, IReadOnlyList<AssistantChatMessageRequest> History, string Message);

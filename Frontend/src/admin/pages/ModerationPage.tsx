@@ -5,6 +5,7 @@ import { Card } from '../components/Card'
 import { EmptyState as SharedEmptyState } from '../components/EmptyState'
 import { ErrorState as SharedErrorState } from '../components/ErrorState'
 import { Loading as SharedLoading } from '../components/Loading'
+import { AssistantPanel } from '../components/AssistantPanel'
 import { useAuth } from '../../auth/AuthContext'
 import { useTheme } from '../../theme/ThemeProvider'
 import { useThemeTransition } from '../../theme/useThemeTransition'
@@ -1087,6 +1088,8 @@ export function ModerationPage() {
           {view === 'catalog' && <CatalogSection />}
         </main>
       </div>
+
+      <AssistantPanel />
     </div>
   )
 }

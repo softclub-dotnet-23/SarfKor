@@ -8,6 +8,7 @@ import { useThemeTransition } from '../theme/useThemeTransition'
 import { SunIcon, MoonIcon } from '../components/icons'
 import { useAuth } from '../auth/AuthContext'
 import { salesApi, ApiError, type CashierShift } from '../lib/api'
+import { AssistantPanel } from './components/AssistantPanel'
 import {
   GridIcon,
   RegisterIcon,
@@ -295,6 +296,8 @@ export function AdminLayout() {
           </PageTransition>
         </main>
       </div>
+
+      <AssistantPanel />
     </div>
   )
 }

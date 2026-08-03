@@ -229,6 +229,28 @@ public sealed class AuthService(
         return true;
     }
 
+    public async Task<bool> ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId)
+                   ?? throw new InvalidOperationException($"User {userId} not found.");
+
+        var result = await userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        if (!result.Succeeded)
+            return false;
+
+        securityEventRepository.Add(new SecurityEvent
+        {
+            UserId = user.Id,
+            Type = SecurityEventType.PasswordChanged,
+            IpAddress = null,
+            UserAgent = null,
+            OccurredAt = DateTimeOffset.UtcNow
+        });
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     private async Task<RegisterAccountResult> ResendConfirmationCodeAsync(ApplicationUser user, CancellationToken cancellationToken)
     {
         var code = OtpCode.Generate();

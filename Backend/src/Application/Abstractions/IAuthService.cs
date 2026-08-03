@@ -46,4 +46,7 @@ public interface IAuthService
     /// <summary>Null if no account exists for the email — callers must not let that distinguish the response they give back (email enumeration).</summary>
     Task<string?> GeneratePasswordResetTokenAsync(string email, CancellationToken cancellationToken);
     Task<bool> ResetPasswordAsync(string email, string token, string newPassword, CancellationToken cancellationToken);
+
+    /// <summary>Returns false only if currentPassword is wrong; throws if userId does not exist.</summary>
+    Task<bool> ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken);
 }

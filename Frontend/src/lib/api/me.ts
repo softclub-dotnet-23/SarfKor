@@ -58,3 +58,10 @@ export interface MyStore {
 export function getMyStores() {
   return apiFetch<{ stores: MyStore[] }>('/api/me/stores')
 }
+
+export function changePassword(currentPassword: string, newPassword: string) {
+  return apiFetch<{ outcome: 'Changed' | 'WrongCurrentPassword' | 'UserNotFound' }>('/api/me/password', {
+    method: 'PUT',
+    body: { currentPassword, newPassword },
+  })
+}

@@ -11,6 +11,20 @@ export function createStore(req: CreateStoreRequest) {
   return apiFetch<{ storeId: number }>('/api/stores', { method: 'POST', body: req })
 }
 
+export interface UpdateStoreRequest {
+  name: string
+  address: string
+  latitude: number
+  longitude: number
+}
+
+export function updateStore(storeId: number, req: UpdateStoreRequest) {
+  return apiFetch<{ outcome: 'Updated' | 'StoreNotFound' | 'Forbidden' }>(`/api/stores/${storeId}`, {
+    method: 'PATCH',
+    body: req,
+  })
+}
+
 export interface StoreDashboard {
   outcome: 'Found' | 'StoreNotFound' | 'Forbidden'
   todaySalesCount: number
@@ -66,6 +80,7 @@ export function getCashierAnomalies(storeId: number, from: string, to: string) {
 
 export interface ReorderAlert {
   productId: number
+  productName: string
   currentQuantity: number
   thresholdQuantity: number
   reorderQuantity: number

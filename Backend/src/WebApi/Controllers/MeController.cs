@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Application.Common;
+using Application.Identity.Commands.ChangePassword;
 using Application.Identity.Commands.RecordUserConsent;
 using Application.Identity.Commands.UpdateUserProfile;
 using Application.Identity.Queries.GetSecurityEvents;
@@ -9,6 +10,7 @@ using Application.Stores.Queries.GetMyStores;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace WebApi.Controllers;
 
@@ -111,6 +113,34 @@ public sealed class MeController : ControllerBase
             return this.ToValidationProblem(validationResult);
 
         return Ok(await handler.Handle(query, cancellationToken));
+    }
+
+    [HttpPut("password")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> ChangePassword(
+        ChangePasswordRequest request,
+        [FromServices] ICommandHandler<ChangePasswordCommand, ChangePasswordResult> handler,
+        [FromServices] IValidator<ChangePasswordCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new ChangePasswordCommand(userId, request.CurrentPassword, request.NewPassword);
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            ChangePasswordOutcome.Changed => Ok(result),
+            ChangePasswordOutcome.WrongCurrentPassword => BadRequest(new { outcome = "WrongCurrentPassword" }),
+            ChangePasswordOutcome.UserNotFound => NotFound(),
+            _ => Problem()
+        };
     }
 
     // The backend never handed the frontend a way to recover which store(s) an owner/cashier

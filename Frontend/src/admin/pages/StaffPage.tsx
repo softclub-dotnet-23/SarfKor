@@ -190,7 +190,7 @@ export function StaffPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!storeId) return
+    if (!storeId) { setLoading(false); return }
     let cancelled = false
     async function load() {
       // Independent try/catch per endpoint — cost/profit-adjacent metrics like cashier

@@ -286,6 +286,8 @@ public sealed record ReplyToReviewRequest(string Message);
 public sealed record CreatePriceAlertRequest(int ProductId, decimal TargetPrice, string Currency);
 public sealed record RegisterDeviceTokenRequest(string Token, Domain.Notifications.DevicePlatform Platform);
 public sealed record CreateStoreRequest(string Name, string Address, double Latitude, double Longitude);
+public sealed record UpdateStoreRequest(string Name, string Address, double Latitude, double Longitude);
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public sealed record AdminCreateStorePartnerRequest(string Email, string StoreName, string Address, double Latitude, double Longitude);
 public sealed record UpdateStoreEmployeeRequest(decimal? MonthlySalaryAmount, string? MonthlySalaryCurrency, TimeOnly? ScheduleStart, TimeOnly? ScheduleEnd);
 public sealed record SetCostPriceRequest(int StoreId, int ProductId, decimal Amount, string Currency);

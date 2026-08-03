@@ -258,7 +258,7 @@ export function DashboardPage() {
               <Row
                 icon={<AlertIcon width={14} height={14} />}
                 iconTone="warning"
-                title={`Товар #${alert.productId}`}
+                title={alert.productName}
                 subtitle={`Осталось ${alert.currentQuantity} из ${alert.thresholdQuantity}`}
               />
             </div>

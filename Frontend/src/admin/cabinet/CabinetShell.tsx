@@ -21,6 +21,44 @@ import {
   ChevronDownIcon,
 } from '../components/icons'
 
+// ─── collapsed-state persistence ─────────────────────────────────────────────
+const COLLAPSED_KEY = 'sarfkor-sidebar-collapsed'
+
+function readCollapsed(): boolean {
+  try { return localStorage.getItem(COLLAPSED_KEY) === '1' } catch { return false }
+}
+function saveCollapsed(v: boolean) {
+  try { localStorage.setItem(COLLAPSED_KEY, v ? '1' : '0') } catch {}
+}
+
+// ─── ChevronLeft icon (not in shared icons) ──────────────────────────────────
+function ChevronLeftIcon({ width = 16, height = 16 }: { width?: number; height?: number }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  )
+}
+
+function StoreIcon({ width = 16, height = 16 }: { width?: number; height?: number }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  )
+}
+
+function SearchIcon({ width = 15, height = 15 }: { width?: number; height?: number }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+  )
+}
+
+// ─── Navigation items ─────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { to: '/admin', label: 'Дашборд', icon: GridIcon, end: true, ownerOnly: true },
   { to: '/admin/pos', label: 'Касса', icon: RegisterIcon, ownerOnly: false },
@@ -32,17 +70,7 @@ const NAV_ITEMS = [
   { to: '/admin/settings', label: 'Настройки', icon: SettingsIcon, ownerOnly: true },
 ]
 
-const PAGE_META: Record<string, { title: string; subtitle: string }> = {
-  '/admin': { title: 'Дашборд', subtitle: 'Обзор магазина за сегодня' },
-  '/admin/pos': { title: 'Касса', subtitle: 'Сканируйте штрихкод и оформляйте продажи' },
-  '/admin/inventory': { title: 'Склад', subtitle: 'Остатки и приход товаров' },
-  '/admin/supply': { title: 'Поставки', subtitle: 'Поставщики, заказы и перемещения' },
-  '/admin/marketing': { title: 'Маркетинг', subtitle: 'Акции, наборы и истекающие предложения' },
-  '/admin/staff': { title: 'Сотрудники', subtitle: 'Кассиры и смены' },
-  '/admin/reports': { title: 'Отчёты', subtitle: 'Выручка, прибыль и динамика продаж' },
-  '/admin/settings': { title: 'Настройки', subtitle: 'Магазин, профиль и безопасность' },
-}
-
+// ─── Shift control popover ────────────────────────────────────────────────────
 function useDismiss(open: boolean, onDismiss: () => void) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -65,49 +93,7 @@ function useDismiss(open: boolean, onDismiss: () => void) {
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
-/** Horizontal nav tab — active state is a 2px underline, not a filled pill. */
-function TabItem({
-  to,
-  label,
-  icon: Icon,
-  end,
-  layoutId,
-}: {
-  to: string
-  label: string
-  icon: (p: { width: number; height: number }) => ReactNode
-  end?: boolean
-  layoutId: string
-}) {
-  return (
-    <NavLink to={to} end={end} className="group relative shrink-0">
-      {({ isActive }) => (
-        <span className="relative flex items-center gap-2 px-3.5 py-3">
-          <Icon width={15} height={15} />
-          <span
-            className={clsx(
-              'whitespace-nowrap text-[13px] tracking-tight transition-colors duration-200',
-              isActive
-                ? 'font-semibold text-[color:var(--admin-text)]'
-                : 'font-medium text-[color:var(--admin-text-tertiary)] group-hover:text-[color:var(--admin-text-secondary)]',
-            )}
-          >
-            {label}
-          </span>
-          {isActive && (
-            <motion.span
-              layoutId={layoutId}
-              className="absolute inset-x-3 bottom-0 h-[2px] rounded-full bg-[color:var(--admin-accent)]"
-              transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-            />
-          )}
-        </span>
-      )}
-    </NavLink>
-  )
-}
-
-function ShiftControl() {
+function ShiftBadge({ collapsed }: { collapsed: boolean }) {
   const { storeId, user } = useAuth()
   const [open, setOpen] = useState(false)
   const [shifts, setShifts] = useState<CashierShift[] | null>(null)
@@ -121,32 +107,27 @@ function ShiftControl() {
     try {
       const res = await salesApi.getCashierShifts(storeId)
       setShifts(res.shifts ?? [])
-    } catch {
-      setShifts([])
-    }
+    } catch { setShifts([]) }
   }, [storeId])
 
   useEffect(() => { load() }, [load])
 
   const myOpenShift = shifts?.find((s) => s.cashierUserId === user?.userId && !s.endedAt) ?? null
+  const isOpen = !!myOpenShift
 
   async function handleToggle() {
     if (!storeId) return
-    setBusy(true)
-    setError('')
+    setBusy(true); setError('')
     try {
       if (myOpenShift) {
         await salesApi.closeCashierShift(myOpenShift.cashierShiftId, Number(amount) || 0)
       } else {
         await salesApi.openCashierShift(storeId, Number(amount) || 0, 'TJS')
       }
-      setAmount('')
-      await load()
+      setAmount(''); await load()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось обновить смену')
-    } finally {
-      setBusy(false)
-    }
+    } finally { setBusy(false) }
   }
 
   if (!storeId) return null
@@ -155,43 +136,45 @@ function ShiftControl() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
+        title={collapsed ? (isOpen ? 'Смена открыта' : 'Смена закрыта') : undefined}
         className={clsx(
-          'flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[11.5px] font-semibold transition-all duration-200',
-          myOpenShift
-            ? 'border-[color:var(--admin-accent)] bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-text)]'
+          'flex items-center gap-2 rounded-xl border transition-all duration-200',
+          collapsed ? 'h-9 w-9 justify-center' : 'w-full px-3 py-2',
+          isOpen
+            ? 'border-[color:var(--admin-success-dim)] bg-[color:var(--admin-success-dim)] text-[color:var(--admin-success)]'
             : 'border-[color:var(--admin-border)] text-[color:var(--admin-text-tertiary)] hover:border-[color:var(--admin-border-strong)] hover:text-[color:var(--admin-text-secondary)]',
         )}
       >
-        <span
-          className={clsx(
-            'h-1.5 w-1.5 rounded-full',
-            myOpenShift ? 'bg-[color:var(--admin-success)]' : 'bg-[color:var(--admin-text-tertiary)]',
-          )}
-        />
-        {myOpenShift ? 'Смена открыта' : 'Закрыта'}
+        <span className={clsx('h-1.5 w-1.5 shrink-0 rounded-full', isOpen ? 'bg-[color:var(--admin-success)]' : 'bg-current opacity-40')} />
+        {!collapsed && (
+          <span className="text-[11.5px] font-semibold">{isOpen ? 'Смена открыта' : 'Смена закрыта'}</span>
+        )}
       </button>
 
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.97 }}
-            transition={{ duration: 0.2, ease: EASE }}
-            className="absolute right-0 top-[calc(100%+10px)] z-50 w-[260px] rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] p-4"
+            initial={{ opacity: 0, x: collapsed ? 8 : 0, y: collapsed ? 0 : 8, scale: 0.97 }}
+            animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.18, ease: EASE }}
+            className={clsx(
+              'absolute z-50 w-[260px] rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] p-4',
+              collapsed ? 'left-full ml-3 top-0' : 'bottom-full left-0 mb-2',
+            )}
             style={{ boxShadow: 'var(--admin-shadow-lift)' }}
           >
-            <div className="mb-0.5 truncate text-[13px] font-semibold text-[color:var(--admin-text)]">{user?.email}</div>
-            <div className="mb-4 text-[11px] text-[color:var(--admin-text-tertiary)]">
-              {myOpenShift
-                ? `На смене с ${new Date(myOpenShift.startedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+            <div className="mb-0.5 text-[12px] font-bold uppercase tracking-[0.12em] text-[color:var(--admin-text-tertiary)]">Управление сменой</div>
+            <div className="mb-4 text-[12px] text-[color:var(--admin-text-secondary)]">
+              {isOpen
+                ? `Открыта в ${new Date(myOpenShift!.startedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
                 : 'Смена не открыта'}
             </div>
             <input
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder={myOpenShift ? 'Сумма в кассе' : 'Начальная сумма, TJS'}
+              placeholder={isOpen ? 'Итоговая сумма в кассе' : 'Начальная сумма, TJS'}
               className="mb-3 w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[12.5px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]"
             />
             {error && <div className="mb-2 text-[11px] font-medium text-[color:var(--admin-danger)]">{error}</div>}
@@ -200,12 +183,10 @@ function ShiftControl() {
               disabled={busy}
               className={clsx(
                 'w-full rounded-xl py-2.5 text-[12.5px] font-bold transition-opacity disabled:opacity-40',
-                myOpenShift
-                  ? 'bg-[color:var(--admin-danger)] text-white'
-                  : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
+                isOpen ? 'bg-[color:var(--admin-danger)] text-white' : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
               )}
             >
-              {busy ? '…' : myOpenShift ? 'Закрыть смену' : 'Открыть смену'}
+              {busy ? '…' : isOpen ? 'Закрыть смену' : 'Открыть смену'}
             </button>
           </motion.div>
         )}
@@ -214,78 +195,69 @@ function ShiftControl() {
   )
 }
 
-function AccountMenu() {
-  const { user, logout, currentStoreRole } = useAuth()
-  const [open, setOpen] = useState(false)
-  const ref = useDismiss(open, () => setOpen(false))
-  const initial = user?.email?.charAt(0).toUpperCase() ?? '?'
-  const roleLabel =
-    currentStoreRole === 'Cashier' ? 'Кассир' : user?.roles.includes('StorePartner') ? 'Владелец' : 'Пользователь'
-
+// ─── Sidebar nav item ─────────────────────────────────────────────────────────
+function SideNavItem({
+  to,
+  label,
+  icon: Icon,
+  end,
+  collapsed,
+}: {
+  to: string
+  label: string
+  icon: (p: { width: number; height: number }) => ReactNode
+  end?: boolean
+  collapsed: boolean
+}) {
   return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2.5 transition-colors duration-200 hover:bg-[color:var(--admin-hover)]"
-      >
+    <NavLink to={to} end={end} className="group relative block">
+      {({ isActive }) => (
         <span
-          className="grid h-8 w-8 place-items-center rounded-full text-[13px] font-bold"
-          style={{
-            background: 'color-mix(in srgb, var(--admin-text) 12%, transparent)',
-            color: 'var(--admin-text)',
-          }}
-        >
-          {initial}
-        </span>
-        <ChevronDownIcon
-          width={13}
-          height={13}
+          title={collapsed ? label : undefined}
           className={clsx(
-            'hidden text-[color:var(--admin-text-tertiary)] transition-transform duration-200 sm:block',
-            open && 'rotate-180',
+            'relative flex items-center gap-3 rounded-xl transition-all duration-150',
+            collapsed ? 'h-9 w-9 justify-center' : 'h-9 px-3',
+            isActive
+              ? 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-text)]'
+              : 'text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text-secondary)]',
           )}
-        />
-      </button>
+        >
+          {isActive && (
+            <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-[color:var(--admin-accent)]" aria-hidden />
+          )}
+          <span className="shrink-0"><Icon width={16} height={16} /></span>
+          {!collapsed && (
+            <span className={clsx('truncate text-[13px]', isActive ? 'font-semibold' : 'font-medium')}>{label}</span>
+          )}
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.97 }}
-            transition={{ duration: 0.2, ease: EASE }}
-            className="absolute right-0 top-[calc(100%+10px)] z-50 w-[220px] overflow-hidden rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)]"
-            style={{ boxShadow: 'var(--admin-shadow-lift)' }}
-          >
-            <div className="border-b border-[color:var(--admin-border)] px-4 py-3">
-              <div className="truncate text-[13px] font-semibold text-[color:var(--admin-text)]">{user?.email}</div>
-              <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">{roleLabel}</div>
-            </div>
-            <button
-              onClick={logout}
-              className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] font-medium text-[color:var(--admin-text-secondary)] transition-colors hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]"
+          {/* Tooltip for collapsed state */}
+          {collapsed && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-2.5 py-1.5 text-[12px] font-semibold text-[color:var(--admin-text)] opacity-0 shadow-lg transition-opacity group-hover:opacity-100"
+              style={{ boxShadow: 'var(--admin-shadow)' }}
             >
-              <LogOutIcon width={15} height={15} />
-              Выйти
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+              {label}
+            </span>
+          )}
+        </span>
+      )}
+    </NavLink>
   )
 }
 
+// ─── Page transition ──────────────────────────────────────────────────────────
 function PageTransition({ pathKey, children }: { pathKey: string; children: ReactNode }) {
   const reduce = useReducedMotion()
   if (reduce) return <>{children}</>
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={pathKey}
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -4 }}
-        transition={{ duration: 0.3, ease: EASE }}
+        exit={{ opacity: 0, y: -3 }}
+        transition={{ duration: 0.22, ease: EASE }}
       >
         {children}
       </motion.div>
@@ -293,116 +265,258 @@ function PageTransition({ pathKey, children }: { pathKey: string; children: Reac
   )
 }
 
-/**
- * StorePartner cabinet shell — film-dark monochrome identity.
- *
- * Command-bar architecture: brand → horizontal nav tabs → utilities in one
- * sticky strip. Below it a thin page-title band. Below that the content.
- * Mobile: same bar collapses to brand + icons; a fixed bottom tab bar takes
- * over navigation.
- */
+// ─── CabinetShell ─────────────────────────────────────────────────────────────
 export function CabinetShell() {
   const { theme, toggleTheme } = useTheme()
   const { runThemeTransition } = useThemeTransition()
   const isDark = theme === 'dark'
   const location = useLocation()
-  const { currentStoreRole } = useAuth()
-  const page = PAGE_META[location.pathname] ?? PAGE_META['/admin']
-  const visibleNavItems = NAV_ITEMS.filter((item) => currentStoreRole !== 'Cashier' || !item.ownerOnly)
-  const tabLayoutId = useId()
+  const { user, logout, storeId, currentStoreRole } = useAuth()
   const bottomTabLayoutId = useId()
 
-  return (
-    <div className="cabinet-shell admin-shell flex h-screen w-full flex-col overflow-hidden bg-[color:var(--admin-content)] text-[color:var(--admin-text)]">
-      <style>{`.cabinet-tabs::-webkit-scrollbar{display:none}.cabinet-tabs{scrollbar-width:none}`}</style>
+  // Collapsed state — remember across sessions, start collapsed on tablet
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return window.innerWidth < 1280 ? true : readCollapsed()
+  })
 
-      {/* ── Command bar ── */}
-      <header
-        className="relative z-20 flex shrink-0 items-center gap-4 border-b border-[color:var(--admin-border)] px-5"
+  function toggleCollapsed() {
+    setCollapsed((v) => { saveCollapsed(!v); return !v })
+  }
+
+  const visibleNavItems = NAV_ITEMS.filter((item) => currentStoreRole !== 'Cashier' || !item.ownerOnly)
+
+  const initial = user?.email?.charAt(0).toUpperCase() ?? '?'
+  const roleLabel = currentStoreRole === 'Cashier' ? 'Кассир' : user?.roles.includes('Admin') ? 'Администратор' : user?.roles.includes('StorePartner') ? 'Владелец' : 'Пользователь'
+
+  const SIDEBAR_W = collapsed ? 64 : 240
+
+  return (
+    <div className="cabinet-shell admin-shell flex h-screen w-full overflow-hidden bg-[color:var(--admin-content)] text-[color:var(--admin-text)]">
+
+      {/* ──────────────────────────────────────────────────────────────────────
+          LEFT SIDEBAR — desktop/tablet only (hidden on mobile via CSS)
+      ─────────────────────────────────────────────────────────────────────── */}
+      <aside
+        className="relative hidden shrink-0 flex-col border-r border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] md:flex"
         style={{
-          height: '56px',
-          background: 'color-mix(in srgb, var(--admin-sidebar) 90%, transparent)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
+          width: SIDEBAR_W,
+          transition: 'width 0.25s cubic-bezier(0.16,1,0.3,1)',
+          overflow: 'hidden',
         }}
       >
-        {/* Brand */}
-        <Link to="/" className="flex shrink-0 items-center gap-2.5 py-1">
-          <LogoMark size={24} />
-          <span className="hidden text-[15px] font-extrabold tracking-tight sm:inline">Sarfkor</span>
-        </Link>
+        {/* ── Header: logo + collapse toggle ── */}
+        <div
+          className="flex shrink-0 items-center border-b border-[color:var(--admin-border)] px-3"
+          style={{ height: 56, minWidth: SIDEBAR_W }}
+        >
+          <Link to="/" className={clsx('flex items-center gap-2.5', collapsed ? 'justify-center w-full' : '')}>
+            <LogoMark size={22} />
+            {!collapsed && (
+              <span className="whitespace-nowrap text-[14.5px] font-extrabold tracking-tight">Sarfkor</span>
+            )}
+          </Link>
+          {!collapsed && (
+            <button
+              onClick={toggleCollapsed}
+              title="Свернуть"
+              className="ml-auto grid h-7 w-7 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] transition-colors hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]"
+            >
+              <ChevronLeftIcon width={15} height={15} />
+            </button>
+          )}
+        </div>
 
-        <div className="mx-0.5 hidden h-5 w-px shrink-0 bg-[color:var(--admin-border)] lg:block" />
+        {/* ── Expand button when collapsed ── */}
+        {collapsed && (
+          <button
+            onClick={toggleCollapsed}
+            title="Развернуть"
+            className="absolute right-0 top-[72px] z-10 grid h-6 w-3 translate-x-full items-center justify-center rounded-r-md border border-l-0 border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text)]"
+            style={{ cursor: 'e-resize' }}
+          >
+            <span className="text-[8px]">›</span>
+          </button>
+        )}
 
-        {/* Horizontal nav — visible on desktop */}
-        <nav className="cabinet-tabs hidden min-w-0 flex-1 items-center overflow-x-auto lg:flex">
+        {/* ── Navigation ── */}
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden p-3">
+          {/* Quick search hint */}
+          {!collapsed && (
+            <button
+              className="mb-2 flex w-full items-center gap-2 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2 text-left text-[12px] text-[color:var(--admin-text-tertiary)] transition-colors hover:border-[color:var(--admin-border-strong)] hover:text-[color:var(--admin-text-secondary)]"
+              onClick={() => document.dispatchEvent(new CustomEvent('sarfkor:open-palette'))}
+            >
+              <SearchIcon width={13} height={13} />
+              <span className="flex-1">Поиск…</span>
+              <kbd className="rounded border border-[color:var(--admin-border)] px-1 py-0.5 text-[10px]">⌘K</kbd>
+            </button>
+          )}
+          {collapsed && (
+            <button
+              title="Поиск (⌘K)"
+              className="mb-2 grid h-9 w-9 place-items-center rounded-xl text-[color:var(--admin-text-tertiary)] transition-colors hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text-secondary)]"
+              onClick={() => document.dispatchEvent(new CustomEvent('sarfkor:open-palette'))}
+            >
+              <SearchIcon width={16} height={16} />
+            </button>
+          )}
+
           {visibleNavItems.map((item) => (
-            <TabItem key={item.to} to={item.to} label={item.label} icon={item.icon} end={item.end} layoutId={tabLayoutId} />
+            <SideNavItem
+              key={item.to}
+              to={item.to}
+              label={item.label}
+              icon={item.icon}
+              end={item.end}
+              collapsed={collapsed}
+            />
           ))}
         </nav>
-        <div className="min-w-0 flex-1 lg:hidden" />
 
-        {/* Utility cluster */}
-        <div className="flex shrink-0 items-center gap-2">
-          <div className="hidden md:block">
-            <ShiftControl />
+        {/* ── Footer: store info + user + theme ── */}
+        <div className="shrink-0 border-t border-[color:var(--admin-border)] p-3">
+          {/* Store info */}
+          {storeId && (
+            <div
+              className={clsx(
+                'mb-2 flex items-center gap-2.5 rounded-xl bg-[color:var(--admin-hover)] transition-all',
+                collapsed ? 'h-9 w-9 justify-center' : 'px-3 py-2.5',
+              )}
+              title={collapsed ? `Магазин #${storeId}` : undefined}
+            >
+              <span className="shrink-0 text-[color:var(--admin-text-tertiary)]"><StoreIcon width={15} height={15} /></span>
+              {!collapsed && (
+                <div className="min-w-0">
+                  <div className="truncate text-[11px] font-bold text-[color:var(--admin-text)]">Магазин #{storeId}</div>
+                  <div className="text-[10px] text-[color:var(--admin-text-tertiary)]">{roleLabel}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Shift control */}
+          <div className={clsx('mb-2', collapsed && 'flex justify-center')}>
+            <ShiftBadge collapsed={collapsed} />
           </div>
 
-          <button
-            onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
-            aria-label="Переключить тему"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[color:var(--admin-text-secondary)] transition-colors duration-300 hover:bg-[color:var(--admin-hover)]"
+          {/* User row */}
+          <div
+            className={clsx(
+              'mb-2 flex items-center gap-2.5 rounded-xl transition-all',
+              collapsed ? 'h-9 w-9 justify-center' : 'px-2 py-1.5',
+            )}
           >
-            {isDark ? <SunIcon width={15} height={15} /> : <MoonIcon width={15} height={15} />}
-          </button>
+            <span
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] font-bold"
+              style={{
+                background: 'color-mix(in srgb, var(--admin-text) 14%, transparent)',
+                color: 'var(--admin-text)',
+              }}
+            >
+              {initial}
+            </span>
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[12px] font-semibold text-[color:var(--admin-text)]">{user?.email}</div>
+              </div>
+            )}
+          </div>
 
-          <AccountMenu />
+          {/* Theme + Logout row */}
+          <div className={clsx('flex gap-1', collapsed ? 'flex-col items-center' : 'items-center')}>
+            <button
+              onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
+              title={isDark ? 'Светлая тема' : 'Тёмная тема'}
+              className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] transition-colors hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text-secondary)]"
+            >
+              {isDark ? <SunIcon width={15} height={15} /> : <MoonIcon width={15} height={15} />}
+            </button>
+            <button
+              onClick={logout}
+              title="Выйти"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[color:var(--admin-text-tertiary)] transition-colors hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-danger)]"
+            >
+              <LogOutIcon width={15} height={15} />
+            </button>
+            {!collapsed && (
+              <span className="ml-1 flex-1 truncate text-[11px] text-[color:var(--admin-text-tertiary)]">
+                {isDark ? 'Тёмная' : 'Светлая'} тема
+              </span>
+            )}
+          </div>
         </div>
-      </header>
+      </aside>
 
-      {/* ── Page title strip ── */}
-      <div
-        className="hidden shrink-0 items-baseline gap-3 border-b border-[color:var(--admin-border)] px-6 py-3 lg:flex"
-        style={{ background: 'color-mix(in srgb, var(--admin-sidebar) 60%, transparent)' }}
-      >
-        <h1 className="text-[15px] font-extrabold tracking-tight text-[color:var(--admin-text)]">{page.title}</h1>
-        <span className="text-[12px] text-[color:var(--admin-text-tertiary)]">{page.subtitle}</span>
+      {/* ──────────────────────────────────────────────────────────────────────
+          MAIN CONTENT AREA
+      ─────────────────────────────────────────────────────────────────────── */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        {/* Top bar — mobile only (md+ uses sidebar) */}
+        <header
+          className="flex shrink-0 items-center justify-between gap-3 border-b border-[color:var(--admin-border)] px-4 md:hidden"
+          style={{
+            height: 52,
+            background: 'color-mix(in srgb, var(--admin-sidebar) 92%, transparent)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+          }}
+        >
+          <Link to="/" className="flex items-center gap-2">
+            <LogoMark size={20} />
+            <span className="text-[14px] font-extrabold tracking-tight">Sarfkor</span>
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <ShiftBadge collapsed />
+            <button
+              onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
+              className="grid h-8 w-8 place-items-center rounded-full text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]"
+            >
+              {isDark ? <SunIcon width={14} height={14} /> : <MoonIcon width={14} height={14} />}
+            </button>
+            <button
+              onClick={logout}
+              className="grid h-8 w-8 place-items-center rounded-full text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-danger)]"
+            >
+              <LogOutIcon width={14} height={14} />
+            </button>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto px-4 py-5 pb-20 sm:px-6 sm:py-6 md:pb-6 lg:px-8 lg:py-7">
+          <PageTransition pathKey={location.pathname}>
+            <Outlet />
+          </PageTransition>
+        </main>
       </div>
 
-      {/* ── Page content ── */}
-      <main className="flex-1 overflow-y-auto px-5 py-6 pb-24 sm:px-6 sm:py-7 lg:pb-7">
-        <div className="mb-5 lg:hidden">
-          <h1 className="text-[20px] font-extrabold tracking-tight text-[color:var(--admin-text)]">{page.title}</h1>
-          <p className="text-[13px] text-[color:var(--admin-text-tertiary)]">{page.subtitle}</p>
-        </div>
-        <PageTransition pathKey={location.pathname}>
-          <Outlet />
-        </PageTransition>
-      </main>
-
-      {/* ── Mobile bottom tab bar ── */}
+      {/* ──────────────────────────────────────────────────────────────────────
+          MOBILE BOTTOM NAV — visible only on <md
+      ─────────────────────────────────────────────────────────────────────── */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-around border-t border-[color:var(--admin-border)] px-1 pb-[max(8px,env(safe-area-inset-bottom))] pt-1.5 lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-[color:var(--admin-border)] px-1 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 md:hidden"
         style={{
-          background: 'color-mix(in srgb, var(--admin-sidebar) 94%, transparent)',
-          backdropFilter: 'blur(20px)',
+          background: 'color-mix(in srgb, var(--admin-sidebar) 95%, transparent)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
         }}
       >
-        {visibleNavItems.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end} className="relative flex flex-1 flex-col items-center gap-1 py-1.5">
+        {visibleNavItems.slice(0, 5).map((item) => (
+          <NavLink key={item.to} to={item.to} end={item.end} className="relative flex flex-1 flex-col items-center gap-0.5 py-1.5">
             {({ isActive }) => (
               <>
                 {isActive && (
                   <motion.span
                     layoutId={bottomTabLayoutId}
-                    className="absolute top-0 h-[2px] w-7 rounded-full bg-[color:var(--admin-accent)]"
-                    transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                    className="absolute top-0 h-[2px] w-8 rounded-full bg-[color:var(--admin-accent)]"
+                    transition={{ type: 'spring', stiffness: 440, damping: 36 }}
                   />
                 )}
-                <item.icon width={18} height={18} />
+                <item.icon width={19} height={19} />
                 <span
                   className={clsx(
-                    'text-[9.5px] font-semibold leading-none',
+                    'text-[9px] font-semibold leading-none',
                     isActive ? 'text-[color:var(--admin-text)]' : 'text-[color:var(--admin-text-tertiary)]',
                   )}
                 >

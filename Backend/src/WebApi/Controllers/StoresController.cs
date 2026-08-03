@@ -6,6 +6,7 @@ using Application.Sales.Queries.GetProfitReport;
 using Application.Stores.Commands.AddStoreEmployee;
 using Application.Stores.Commands.CreateStore;
 using Application.Stores.Commands.RemoveStoreEmployee;
+using Application.Stores.Commands.UpdateStore;
 using Application.Stores.Commands.UpdateStoreEmployee;
 using Application.Stores.Queries.GetStoreDashboard;
 using Application.Stores.Queries.GetStoreEmployees;
@@ -41,6 +42,36 @@ public sealed class StoresController : ControllerBase
 
         var result = await handler.Handle(command, cancellationToken);
         return Ok(result);
+    }
+
+    [HttpPatch("stores/{storeId:int}")]
+    [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
+    public async Task<IActionResult> UpdateStore(
+        int storeId,
+        [FromBody] UpdateStoreRequest request,
+        [FromServices] ICommandHandler<UpdateStoreCommand, UpdateStoreResult> handler,
+        [FromServices] IValidator<UpdateStoreCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new UpdateStoreCommand(storeId, userId, request.Name, request.Address, request.Latitude, request.Longitude);
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            UpdateStoreOutcome.Updated => Ok(result),
+            UpdateStoreOutcome.StoreNotFound => NotFound("Store not found."),
+            UpdateStoreOutcome.Forbidden => Forbid(),
+            _ => Problem()
+        };
     }
 
     [HttpPost("stores/{storeId:int}/employees")]

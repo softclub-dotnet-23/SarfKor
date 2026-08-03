@@ -818,22 +818,22 @@ export function SupplyPage() {
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
-      <Panel className="flex flex-wrap gap-1.5 p-1.5">
+      <div className="flex flex-wrap gap-x-6 border-b border-[color:var(--admin-border)]">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
+            className={`-mb-px flex items-center gap-2 border-b-2 pb-3 text-[13px] font-semibold transition-colors ${
               tab === t.id
-                ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
-                : 'text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]'
+                ? 'border-[color:var(--admin-text)] text-[color:var(--admin-text)]'
+                : 'border-transparent text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text-secondary)]'
             }`}
           >
             {t.icon}
             {t.label}
           </button>
         ))}
-      </Panel>
+      </div>
 
       {tab === 'suppliers' && (
         <SuppliersSection storeId={storeId} suppliers={suppliers} loading={suppliersLoading} error={suppliersError} load={loadSuppliers} />

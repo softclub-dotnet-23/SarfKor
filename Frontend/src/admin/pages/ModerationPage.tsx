@@ -838,6 +838,7 @@ export function ModerationPage() {
   const { theme, toggleTheme } = useTheme()
   const { runThemeTransition } = useThemeTransition()
   const [view, setView] = useState<ViewId>('overview')
+  const [collapsed, setCollapsed] = useState(false)
   const isDark = theme === 'dark'
   const navLayoutId = useId()
 
@@ -881,62 +882,101 @@ export function ModerationPage() {
       {/* Sidebar */}
       <aside
         style={{
-          width: 246,
-          flex: '0 0 246px',
+          width: collapsed ? 64 : 246,
+          flex: collapsed ? '0 0 64px' : '0 0 246px',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
           background: 'var(--mod-panel)',
           borderRight: '1px solid var(--mod-border)',
+          overflow: 'hidden',
+          transition: 'width 200ms ease, flex-basis 200ms ease',
         }}
       >
-        <div style={{ padding: '20px 20px 16px', display: 'flex', alignItems: 'center', gap: 11 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--mod-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <LogoMark size={20} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-            <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: '-.02em' }}>Sarfkor</span>
-            <span
-              style={{
-                marginTop: 4,
-                fontFamily: "'JetBrains Mono',monospace",
-                fontSize: 9.5,
-                fontWeight: 600,
-                letterSpacing: '.12em',
-                color: 'var(--mod-accent2)',
-                textTransform: 'uppercase',
-                background: 'var(--mod-accent-dim)',
-                padding: '2px 6px',
-                borderRadius: 5,
-                alignSelf: 'flex-start',
-              }}
+        {/* Header */}
+        <div style={{
+          padding: collapsed ? '18px 15px' : '18px 14px 16px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          gap: 8,
+          borderBottom: '1px solid var(--mod-border)',
+          minHeight: 70,
+        }}>
+          {collapsed ? (
+            <button
+              onClick={() => setCollapsed(false)}
+              title="Развернуть"
+              style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--mod-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
             >
-              Admin
-            </span>
-          </div>
+              <LogoMark size={20} />
+            </button>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
+                <div style={{ width: 34, height: 34, flexShrink: 0, borderRadius: 9, background: 'var(--mod-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <LogoMark size={20} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, minWidth: 0 }}>
+                  <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: '-.02em' }}>Sarfkor</span>
+                  <span
+                    style={{
+                      marginTop: 4,
+                      fontFamily: "'JetBrains Mono',monospace",
+                      fontSize: 9.5,
+                      fontWeight: 600,
+                      letterSpacing: '.12em',
+                      color: 'var(--mod-accent2)',
+                      textTransform: 'uppercase',
+                      background: 'var(--mod-accent-dim)',
+                      padding: '2px 6px',
+                      borderRadius: 5,
+                      alignSelf: 'flex-start',
+                    }}
+                  >
+                    Admin
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setCollapsed(true)}
+                title="Свернуть"
+                style={{
+                  width: 28, height: 28, flexShrink: 0,
+                  borderRadius: 8,
+                  border: '1px solid var(--mod-border)',
+                  background: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--mod-muted)',
+                }}
+              >
+                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Same nav grammar as the StorePartner cabinet (AdminLayout) and the
-            consumer app's rail — a tabular-nums index, a spring-driven sliding
-            mark instead of a static inset shadow — so the platform-Admin
-            "command centre" reads as the same product wearing a slightly
-            more data-dense, JetBrains-Mono-badged uniform, not a fourth
-            unrelated shell. */}
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {navItems.map((item, i) => {
             const on = view === item.id
             return (
               <button
                 key={item.id}
                 onClick={() => setView(item.id)}
+                title={collapsed ? item.label : undefined}
                 style={{
                   position: 'relative',
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
+                  justifyContent: collapsed ? 'center' : 'space-between',
                   gap: 8,
-                  padding: '12px 14px',
+                  padding: collapsed ? '12px 0' : '12px 10px',
                   borderRadius: 14,
                   border: 'none',
                   cursor: 'pointer',
@@ -954,27 +994,31 @@ export function ModerationPage() {
                   />
                 )}
                 <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
-                  <span
-                    style={{
-                      width: 15,
-                      flex: '0 0 15px',
-                      fontFamily: "'JetBrains Mono',monospace",
-                      fontSize: 9.5,
-                      fontWeight: 700,
-                      letterSpacing: '.04em',
-                      color: on ? 'var(--mod-accent2)' : 'var(--mod-faint)',
-                    }}
-                  >
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
+                  {!collapsed && (
+                    <span
+                      style={{
+                        width: 15,
+                        flex: '0 0 15px',
+                        fontFamily: "'JetBrains Mono',monospace",
+                        fontSize: 9.5,
+                        fontWeight: 700,
+                        letterSpacing: '.04em',
+                        color: on ? 'var(--mod-accent2)' : 'var(--mod-faint)',
+                      }}
+                    >
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                  )}
                   <span style={{ width: 18, height: 18, flex: '0 0 18px', opacity: 0.9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                     {item.icon}
                   </span>
-                  <span style={{ fontSize: 13.5, fontWeight: on ? 700 : 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {item.label}
-                  </span>
+                  {!collapsed && (
+                    <span style={{ fontSize: 13.5, fontWeight: on ? 700 : 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.label}
+                    </span>
+                  )}
                 </span>
-                {item.badge > 0 && (
+                {!collapsed && item.badge > 0 && (
                   <span
                     style={{
                       position: 'relative',
@@ -993,14 +1037,29 @@ export function ModerationPage() {
                     {item.badge}
                   </span>
                 )}
+                {collapsed && item.badge > 0 && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 7,
+                      right: 7,
+                      zIndex: 2,
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: 'var(--mod-accent)',
+                      border: '1.5px solid var(--mod-panel)',
+                    }}
+                  />
+                )}
               </button>
             )
           })}
         </nav>
 
-        <div style={{ padding: 12, borderTop: '1px solid var(--mod-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 10px', borderRadius: 11, background: 'var(--mod-panel2)' }}>
-            <div style={{ position: 'relative', width: 36, height: 36, flex: '0 0 36px' }}>
+        <div style={{ padding: collapsed ? '12px 8px' : 12, borderTop: '1px solid var(--mod-border)' }}>
+          {collapsed ? (
+            <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
               <div
                 style={{
                   width: 36,
@@ -1013,36 +1072,71 @@ export function ModerationPage() {
                   fontWeight: 700,
                   fontSize: 13,
                   color: 'var(--mod-accent2)',
+                  position: 'relative',
                 }}
               >
                 {user?.email?.charAt(0).toUpperCase() ?? '?'}
+                <span
+                  style={{
+                    position: 'absolute',
+                    right: -1,
+                    bottom: -1,
+                    width: 11,
+                    height: 11,
+                    borderRadius: '50%',
+                    background: 'var(--mod-accent)',
+                    border: '2px solid var(--mod-panel)',
+                    animation: 'mod-live-ping 2s ease-in-out infinite',
+                  }}
+                />
               </div>
-              <span
-                style={{
-                  position: 'absolute',
-                  right: -1,
-                  bottom: -1,
-                  width: 11,
-                  height: 11,
-                  borderRadius: '50%',
-                  background: 'var(--mod-accent)',
-                  border: '2px solid var(--mod-panel)',
-                  animation: 'mod-live-ping 2s ease-in-out infinite',
-                }}
-              />
             </div>
-            <div style={{ minWidth: 0, lineHeight: 1.25, flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</div>
-              <div style={{ fontSize: 11, color: 'var(--mod-accent2)', fontWeight: 600 }}>Администратор</div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 10px', borderRadius: 11, background: 'var(--mod-panel2)' }}>
+              <div style={{ position: 'relative', width: 36, height: 36, flex: '0 0 36px' }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    background: 'var(--mod-accent-dim)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    color: 'var(--mod-accent2)',
+                  }}
+                >
+                  {user?.email?.charAt(0).toUpperCase() ?? '?'}
+                </div>
+                <span
+                  style={{
+                    position: 'absolute',
+                    right: -1,
+                    bottom: -1,
+                    width: 11,
+                    height: 11,
+                    borderRadius: '50%',
+                    background: 'var(--mod-accent)',
+                    border: '2px solid var(--mod-panel)',
+                    animation: 'mod-live-ping 2s ease-in-out infinite',
+                  }}
+                />
+              </div>
+              <div style={{ minWidth: 0, lineHeight: 1.25, flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</div>
+                <div style={{ fontSize: 11, color: 'var(--mod-accent2)', fontWeight: 600 }}>Администратор</div>
+              </div>
+              <button
+                onClick={logout}
+                aria-label="Выйти"
+                style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mod-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                <LogOutIcon width={16} height={16} />
+              </button>
             </div>
-            <button
-              onClick={logout}
-              aria-label="Выйти"
-              style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mod-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              <LogOutIcon width={16} height={16} />
-            </button>
-          </div>
+          )}
         </div>
       </aside>
 

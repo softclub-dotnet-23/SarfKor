@@ -123,15 +123,15 @@ export function ReportsPage() {
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-1 rounded-full bg-[color:var(--admin-hover)] p-1">
+        <div className="flex gap-5 border-b border-[color:var(--admin-border)]">
           {(Object.keys(RANGE_LABEL) as Range[]).map((r) => (
             <button
               key={r}
               onClick={() => setRange(r)}
-              className={`rounded-full px-4 py-1.5 text-[12px] font-semibold transition-colors duration-200 ${
+              className={`-mb-px border-b-2 pb-2.5 text-[12px] font-semibold transition-colors ${
                 range === r
-                  ? 'bg-[color:var(--admin-card)] text-[color:var(--admin-text)] [box-shadow:var(--admin-shadow)]'
-                  : 'text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text-secondary)]'
+                  ? 'border-[color:var(--admin-text)] text-[color:var(--admin-text)]'
+                  : 'border-transparent text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text-secondary)]'
               }`}
             >
               {RANGE_LABEL[r]}

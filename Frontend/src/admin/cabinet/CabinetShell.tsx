@@ -469,12 +469,14 @@ export function CabinetShell() {
             <NotificationBell collapsed />
             <button
               onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
+              aria-label="Переключить тему"
               className="grid h-8 w-8 place-items-center rounded-full text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]"
             >
               {isDark ? <SunIcon width={14} height={14} /> : <MoonIcon width={14} height={14} />}
             </button>
             <button
               onClick={logout}
+              aria-label="Выйти"
               className="grid h-8 w-8 place-items-center rounded-full text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-danger)]"
             >
               <LogOutIcon width={14} height={14} />

@@ -1,5 +1,5 @@
 import { lazy, StrictMode, Suspense } from 'react'
-import { createRoot } from 'react-dom/client'
+import { createRoot, type Root } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import { StaticLanding } from './StaticLanding'
@@ -62,7 +62,17 @@ function PageLoader() {
   )
 }
 
-createRoot(document.getElementById('root')!).render(
+// Reuse the existing root on HMR updates to avoid the "createRoot on a
+// container that already has a root" warning every time main.tsx changes.
+let root: Root
+if (import.meta.hot?.data.root) {
+  root = import.meta.hot.data.root as Root
+} else {
+  root = createRoot(document.getElementById('root')!)
+  if (import.meta.hot) import.meta.hot.data.root = root
+}
+
+root.render(
   <StrictMode>
     <ThemeProvider>
       <BrowserRouter>

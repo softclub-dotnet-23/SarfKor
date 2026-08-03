@@ -116,6 +116,24 @@ export function InventoryPage() {
       ])
       setStock(stockRes)
       setAlerts(alertsRes.alerts ?? [])
+
+      // Batch-resolve any product names not yet in the local cache.
+      const cached = loadNameCache()
+      const missing = stockRes.filter((s) => !cached[s.productId]).map((s) => s.productId)
+      if (missing.length > 0) {
+        const results = await Promise.allSettled(missing.map((id) => productsApi.getProductById(id)))
+        const updates: Record<number, string> = {}
+        results.forEach((r, i) => {
+          if (r.status === 'fulfilled') updates[missing[i]] = r.value.productName
+        })
+        if (Object.keys(updates).length > 0) {
+          setNameCache((c) => {
+            const next = { ...c, ...updates }
+            saveNameCache(next)
+            return next
+          })
+        }
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не удалось загрузить склад')
     } finally {

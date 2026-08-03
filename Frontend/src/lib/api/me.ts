@@ -1,4 +1,4 @@
-import { apiFetch } from './client'
+import { apiFetch, apiUpload } from './client'
 
 export interface UserProfile {
   found: boolean
@@ -64,4 +64,10 @@ export function changePassword(currentPassword: string, newPassword: string) {
     method: 'PUT',
     body: { currentPassword, newPassword },
   })
+}
+
+export function uploadAvatar(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  return apiUpload<{ avatarUrl: string }>('/api/me/avatar', form)
 }

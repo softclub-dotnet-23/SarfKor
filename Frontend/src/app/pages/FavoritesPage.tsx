@@ -1,15 +1,33 @@
-import { useState } from 'react'
-import { favoritesApi } from '../../lib/api'
+import { useEffect, useState } from 'react'
+import { favoritesApi, productsApi } from '../../lib/api'
 import { EmptyState, ErrorState, LINE, Reveal, Skeleton, TXT, useAsync } from '../ui'
+import type { Favorite } from '../../lib/api'
 
-/**
- * Favourites come back as {type, entityId} and nothing more — there is no
- * product-by-id or store-by-id route to resolve them against, so the rows show
- * what the backend actually returned rather than a fabricated name.
- */
+type ResolvedName = Record<string, string>
+
 export function FavoritesPage() {
   const favs = useAsync(() => favoritesApi.getFavorites(), [])
+  const [names, setNames] = useState<ResolvedName>({})
   const [removing, setRemoving] = useState<number | null>(null)
+
+  // Batch-resolve product names once the list loads
+  useEffect(() => {
+    if (!favs.data) return
+    const productIds = favs.data.favorites
+      .filter((f) => f.type === 'Product')
+      .map((f) => f.entityId)
+    if (productIds.length === 0) return
+
+    Promise.allSettled(productIds.map((id) => productsApi.getProductById(id))).then((results) => {
+      const resolved: ResolvedName = {}
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled') {
+          resolved[`Product:${productIds[i]}`] = r.value.productName
+        }
+      })
+      setNames(resolved)
+    })
+  }, [favs.data])
 
   async function remove(type: favoritesApi.FavoriteType, entityId: number, favoriteId: number) {
     setRemoving(favoriteId)
@@ -19,6 +37,17 @@ export function FavoritesPage() {
     } finally {
       setRemoving(null)
     }
+  }
+
+  function displayName(f: Favorite) {
+    if (f.type === 'Product') {
+      return names[`Product:${f.entityId}`] ?? `Товар #${f.entityId}`
+    }
+    return `Магазин #${f.entityId}`
+  }
+
+  function displaySub(f: Favorite) {
+    return f.type === 'Product' ? 'Товар' : 'Магазин'
   }
 
   return (
@@ -63,10 +92,10 @@ export function FavoritesPage() {
                 >
                   <span className="min-w-0">
                     <span className="block text-[15px] font-semibold text-[color:var(--app-text-primary)]">
-                      {f.type === 'Product' ? 'Товар' : 'Магазин'} #{f.entityId}
+                      {displayName(f)}
                     </span>
                     <span className="mt-0.5 block text-[12px]" style={{ color: TXT.rest }}>
-                      {f.type === 'Product' ? 'Товар в избранном' : 'Магазин в избранном'}
+                      {displaySub(f)}
                     </span>
                   </span>
                   <button

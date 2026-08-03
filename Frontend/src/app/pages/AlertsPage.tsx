@@ -1,15 +1,24 @@
-import { useState } from 'react'
-import { priceAlertsApi } from '../../lib/api'
+import { useEffect, useState } from 'react'
+import { priceAlertsApi, productsApi } from '../../lib/api'
 import { EmptyState, ErrorState, LINE, Reveal, SectionTitle, Skeleton, TXT, money, useAsync } from '../ui'
 
-/**
- * Price alerts. The backend has no delete — an alert is deactivated, not removed —
- * so inactive rows stay visible and are shown as switched off rather than hidden,
- * which is also what stops the list from looking like the action silently failed.
- */
 export function AlertsPage() {
   const alerts = useAsync(() => priceAlertsApi.getPriceAlerts(), [])
   const [busy, setBusy] = useState<number | null>(null)
+  const [names, setNames] = useState<Record<number, string>>({})
+
+  useEffect(() => {
+    const rows = alerts.data?.alerts ?? []
+    const ids = [...new Set(rows.map((a) => a.productId))]
+    if (ids.length === 0) return
+    Promise.allSettled(ids.map((id) => productsApi.getProductById(id))).then((results) => {
+      const resolved: Record<number, string> = {}
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled') resolved[ids[i]] = r.value.productName
+      })
+      setNames(resolved)
+    })
+  }, [alerts.data])
 
   async function deactivate(id: number) {
     setBusy(id)
@@ -24,6 +33,7 @@ export function AlertsPage() {
   const rows = alerts.data?.alerts ?? []
   const active = rows.filter((a) => a.isActive)
   const off = rows.filter((a) => !a.isActive)
+  const name = (productId: number) => names[productId] ?? `Товар #${productId}`
 
   return (
     <>
@@ -68,7 +78,7 @@ export function AlertsPage() {
               >
                 <span className="min-w-0">
                   <span className="block text-[15px] font-semibold text-[color:var(--app-text-primary)]">
-                    Товар #{a.productId}
+                    {name(a.productId)}
                   </span>
                   <span className="mt-0.5 block text-[12px]" style={{ color: TXT.rest }}>
                     Цель — {money(a.targetPrice, a.currency)}
@@ -99,7 +109,7 @@ export function AlertsPage() {
                 style={{ borderColor: LINE }}
               >
                 <span className="text-[14px]" style={{ color: TXT.rest }}>
-                  Товар #{a.productId}
+                  {name(a.productId)}
                 </span>
                 <span className="text-[12px] tabular-nums" style={{ color: TXT.rest }}>
                   {money(a.targetPrice, a.currency)}

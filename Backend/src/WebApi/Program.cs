@@ -237,6 +237,7 @@ else
 
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -257,7 +258,7 @@ public sealed record CreatePromotionRequest(
     DateTimeOffset EndsAt);
 public sealed record RecordCommissionRequest(decimal Amount, string Currency);
 public sealed record LoginRequest(string Email, string Password);
-public sealed record UpdateUserProfileRequest(string DisplayName, string? AvatarReference, string PreferredLanguage);
+public sealed record UpdateUserProfileRequest(string? DisplayName, string? AvatarReference, string? PreferredLanguage);
 public sealed record RecordUserConsentRequest(Domain.Identity.ConsentType Type, bool IsGranted);
 public sealed record AddStoreEmployeeRequest(string EmployeeEmail, Domain.Stores.StoreEmployeeRole Role);
 public sealed record RaiseDisputeRequest(string Reason);

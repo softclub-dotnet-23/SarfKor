@@ -113,16 +113,20 @@ public sealed class AuthService(
 
         // Recorded for both outcomes — a string of LoginFailed events for the same account is
         // exactly the anomaly signal CLAUDE.md §10 asks for ("алерты на аномальные паттерны").
-        // user can be null on a failed attempt (unknown email) — UserId falls back to the
-        // attempted email so the event is still attributable to something searchable.
-        securityEventRepository.Add(new SecurityEvent
+        // Only logged when a real user exists; unknown-email attempts are already blocked by
+        // the IP-level "login" rate-limit policy, and there is no valid FK target to attach an
+        // event to (UserId is a FK → AspNetUsers.Id, not a free-form string).
+        if (user is not null)
         {
-            UserId = user?.Id ?? email,
-            Type = succeeded ? SecurityEventType.LoginSucceeded : SecurityEventType.LoginFailed,
-            IpAddress = ipAddress,
-            UserAgent = userAgent,
-            OccurredAt = DateTimeOffset.UtcNow
-        });
+            securityEventRepository.Add(new SecurityEvent
+            {
+                UserId = user.Id,
+                Type = succeeded ? SecurityEventType.LoginSucceeded : SecurityEventType.LoginFailed,
+                IpAddress = ipAddress,
+                UserAgent = userAgent,
+                OccurredAt = DateTimeOffset.UtcNow
+            });
+        }
 
         if (!succeeded)
         {

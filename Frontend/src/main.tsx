@@ -53,9 +53,9 @@ createRoot(document.getElementById('root')!).render(
               <Route element={<AppShell />}>
                 <Route index element={<HomePage />} />
                 <Route path="scan" element={<ScanPage />} />
-                {/* Keyed by barcode, not id: the backend has no product-by-id
-                    route, so scan/{barcode} is the only way to resolve a product
-                    and a bookmarked link has to carry the code itself. */}
+                {/* Keyed by barcode: scan/{barcode} remains the canonical deep-link
+                    because a barcode is stable and bookmarkable; productId is
+                    an internal key the consumer surface doesn't need to expose. */}
                 <Route path="p/:barcode" element={<ProductPage />} />
                 <Route path="lists" element={<ListsPage />} />
                 <Route path="favorites" element={<FavoritesPage />} />

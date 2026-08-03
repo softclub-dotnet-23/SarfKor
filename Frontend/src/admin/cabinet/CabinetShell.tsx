@@ -20,6 +20,8 @@ import {
   TagIcon,
   ChevronDownIcon,
 } from '../components/icons'
+import { CommandPalette } from '../components/CommandPalette'
+import { NotificationBell } from '../components/NotificationBell'
 
 // ─── collapsed-state persistence ─────────────────────────────────────────────
 const COLLAPSED_KEY = 'sarfkor-sidebar-collapsed'
@@ -293,6 +295,7 @@ export function CabinetShell() {
 
   return (
     <div className="cabinet-shell admin-shell flex h-screen w-full overflow-hidden bg-[color:var(--admin-content)] text-[color:var(--admin-text)]">
+      <CommandPalette />
 
       {/* ──────────────────────────────────────────────────────────────────────
           LEFT SIDEBAR — desktop/tablet only (hidden on mobile via CSS)
@@ -423,8 +426,9 @@ export function CabinetShell() {
             )}
           </div>
 
-          {/* Theme + Logout row */}
+          {/* Notification + Theme + Logout row */}
           <div className={clsx('flex gap-1', collapsed ? 'flex-col items-center' : 'items-center')}>
+            <NotificationBell collapsed={collapsed} />
             <button
               onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
               title={isDark ? 'Светлая тема' : 'Тёмная тема'}
@@ -439,11 +443,6 @@ export function CabinetShell() {
             >
               <LogOutIcon width={15} height={15} />
             </button>
-            {!collapsed && (
-              <span className="ml-1 flex-1 truncate text-[11px] text-[color:var(--admin-text-tertiary)]">
-                {isDark ? 'Тёмная' : 'Светлая'} тема
-              </span>
-            )}
           </div>
         </div>
       </aside>
@@ -468,6 +467,7 @@ export function CabinetShell() {
           </Link>
           <div className="flex items-center gap-1.5">
             <ShiftBadge collapsed />
+            <NotificationBell collapsed />
             <button
               onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
               className="grid h-8 w-8 place-items-center rounded-full text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]"

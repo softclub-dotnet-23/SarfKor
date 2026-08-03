@@ -40,10 +40,10 @@ export function HomePage() {
   const navigate = useNavigate()
   const [barcode, setBarcode] = useState('')
 
-  // Real endpoint. Note it returns productId + name only: with no product-by-id
-  // route on the backend there is nothing to navigate to, so this stays a
-  // read-only pulse of what the platform is being asked about rather than a
-  // list of links that would 404.
+  // Most-scanned products — shown as a read-only popularity ranking.
+  // These are full scan records, not catalog entries, so the display navigates
+  // to the barcode scan page rather than a product page (the scan lookup is
+  // the canonical entry point for consumers).
   const popular = useAsync(() => productsApi.getMostScannedProducts(6), [])
 
   function handleSubmit(e: FormEvent) {

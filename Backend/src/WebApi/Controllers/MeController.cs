@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
+
 namespace WebApi.Controllers;
 
 // Self-service identity: profile, consent, security event history. All three are scoped to the
@@ -116,7 +117,7 @@ public sealed class MeController : ControllerBase
     }
 
     [HttpPut("password")]
-    [EnableRateLimiting("auth")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> ChangePassword(
         ChangePasswordRequest request,
         [FromServices] ICommandHandler<ChangePasswordCommand, ChangePasswordResult> handler,
@@ -141,6 +142,55 @@ public sealed class MeController : ControllerBase
             ChangePasswordOutcome.UserNotFound => NotFound(),
             _ => Problem()
         };
+    }
+
+    // Accepts a multipart/form-data image upload, validates by magic bytes (not MIME header —
+    // CLAUDE.md §2 requires content-based validation), and persists it to wwwroot/uploads/avatars/.
+    // The file is keyed by userId so each upload atomically replaces the previous one.
+    [HttpPost("avatar")]
+    [EnableRateLimiting("login")]
+    [RequestSizeLimit(2 * 1024 * 1024)]
+    public async Task<IActionResult> UploadAvatar(
+        IFormFile file,
+        IWebHostEnvironment env,
+        [FromServices] ICommandHandler<UpdateUserProfileCommand, UpdateUserProfileResult> handler,
+        [FromServices] IValidator<UpdateUserProfileCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return Unauthorized();
+
+        if (file is null || file.Length == 0)
+            return BadRequest(new { error = "Файл не приложен." });
+        if (file.Length > 2 * 1024 * 1024)
+            return BadRequest(new { error = "Максимальный размер файла — 2 МБ." });
+
+        var ext = await ImageContentTypeDetector.DetectExtensionAsync(file, cancellationToken);
+        if (ext is null)
+            return BadRequest(new { error = "Разрешены только форматы JPEG, PNG и WebP." });
+
+        var avatarDir = Path.Combine(env.WebRootPath, "uploads", "avatars");
+        Directory.CreateDirectory(avatarDir);
+
+        // Safe filename: userId (already opaque GUID) + extension — no attacker-controlled chars.
+        var safeUserId = userId.Replace("/", "").Replace("\\", "").Replace("..", "");
+        var fileName = $"{safeUserId}{ext}";
+        var filePath = Path.Combine(avatarDir, fileName);
+
+        using var full = file.OpenReadStream();
+        using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+        await full.CopyToAsync(fs, cancellationToken);
+
+        var avatarUrl = $"/uploads/avatars/{fileName}";
+
+        // UpdateUserProfile persists AvatarReference — reuse existing command to keep the layer intact.
+        var command = new UpdateUserProfileCommand(userId, null, avatarUrl, null);
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        await handler.Handle(command, cancellationToken);
+        return Ok(new { avatarUrl });
     }
 
     // The backend never handed the frontend a way to recover which store(s) an owner/cashier

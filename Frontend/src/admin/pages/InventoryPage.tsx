@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Panel } from '../cabinet/components/primitives'
+import { Panel, RowDivider } from '../cabinet/components/primitives'
 import { AdminModal } from '../components/AdminModal'
 import { Select } from '../components/Select'
 import { Badge } from '../components/Badge'
@@ -456,31 +456,28 @@ export function InventoryPage() {
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
-      <Reveal className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Panel className="p-5">
-          <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Позиций на складе</div>
-          <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-text)]">{stock?.length ?? 0}</div>
+      <Reveal className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+        <Panel className="p-6">
+          <div className="text-[32px] font-[500] tabular-nums text-[color:var(--admin-text)]">{stock?.length ?? 0}</div>
+          <div className="mt-1.5 text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">Позиций на складе</div>
         </Panel>
-        <Panel className="p-5">
+        <Panel className="p-6">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Требуют пополнения</div>
-              <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-warning)]">{alerts.length}</div>
+              <div className="text-[32px] font-[500] tabular-nums text-[color:var(--admin-text)]">{alerts.length}</div>
+              <div className="mt-1.5 text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">Требуют пополнения</div>
             </div>
             <button
-              onClick={() => {
-                setRuleOpen(true)
-                setRuleError('')
-              }}
-              className="mt-1 shrink-0 rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
+              onClick={() => { setRuleOpen(true); setRuleError('') }}
+              className="mt-1 shrink-0 rounded-[6px] bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[12px] font-[500] text-[color:var(--admin-accent)] transition-opacity hover:opacity-80"
             >
-              + Правило пополнения
+              + Правило
             </button>
           </div>
         </Panel>
-        <Panel className="p-5">
-          <div className="text-[13px] text-[color:var(--admin-text-secondary)]">Всего единиц</div>
-          <div className="mt-2 text-[26px] font-extrabold text-[color:var(--admin-text)]">{fmt(totalUnits)}</div>
+        <Panel className="p-6">
+          <div className="text-[32px] font-[500] tabular-nums text-[color:var(--admin-text)]">{fmt(totalUnits)}</div>
+          <div className="mt-1.5 text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">Всего единиц</div>
         </Panel>
       </Reveal>
 
@@ -493,7 +490,7 @@ export function InventoryPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Поиск по ID товара или названию (если уже распознано)"
-              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2.5 pl-9 pr-3 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
+              className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2.5 pl-9 pr-3 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none transition-colors placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]"
             />
           </div>
           <button
@@ -501,7 +498,7 @@ export function InventoryPage() {
               setScanOpen(true)
               setScanError('')
             }}
-            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
+            className="flex shrink-0 items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
           >
             <BarcodeIcon width={15} height={15} />
             Приход по штрихкоду
@@ -512,84 +509,55 @@ export function InventoryPage() {
           Отсканируйте штрихкод товара через кассу, чтобы увидеть его название здесь.
         </p>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
-                <th className="pb-3 font-semibold">Товар</th>
-                <th className="pb-3 font-semibold">Остаток</th>
-                <th className="pb-3 font-semibold" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s) => {
-                const alert = alertMap.get(s.productId)
-                const name = nameCache[s.productId]
-                return (
-                  <tr key={s.productId} className="border-t border-[color:var(--admin-border)]">
-                    <td className="py-3 pr-3">
-                      <div className="font-semibold text-[color:var(--admin-text)]">{name ?? `Товар #${s.productId}`}</div>
-                      <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">ID {s.productId}</div>
-                    </td>
-                    <td className="py-3 pr-3">
-                      {alert ? (
-                        <Badge variant="warning">Мало · {s.quantity} (порог {alert.thresholdQuantity})</Badge>
-                      ) : s.quantity === 0 ? (
-                        <Badge variant="danger">Нет в наличии</Badge>
-                      ) : (
-                        <Badge variant="success">{s.quantity}</Badge>
-                      )}
-                    </td>
-                    <td className="py-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => {
-                            setReceiptFor({ productId: s.productId, productName: name })
-                            setReceiptQty(10)
-                            setReceiptPrice('')
-                            setReceiptError('')
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
-                        >
-                          <TruckIcon width={13} height={13} />
-                          Приход
-                        </button>
-                        <button
-                          onClick={() => {
-                            setPriceFor({ productId: s.productId, productName: name })
-                            setPriceAmount('')
-                            setPriceDone(false)
-                            setPriceError('')
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-hover)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
-                        >
-                          Цена продажи
-                        </button>
-                        <button
-                          onClick={() => {
-                            setCostFor({ productId: s.productId, productName: name })
-                            setCostAmount('')
-                            setCostDone(false)
-                            setCostError('')
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-hover)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
-                        >
-                          Себестоимость
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="py-12 text-center text-[color:var(--admin-text-tertiary)]">
-                    {stock?.length === 0 ? 'На складе пока нет ни одной позиции' : 'Ничего не найдено'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="flex flex-col">
+          {filtered.map((s, i) => {
+            const alert = alertMap.get(s.productId)
+            const name = nameCache[s.productId]
+            return (
+              <div key={s.productId}>
+                {i > 0 && <RowDivider />}
+                <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">{name ?? `Товар #${s.productId}`}</div>
+                    <div className="mt-0.5 text-[11px] text-[color:var(--admin-text-tertiary)]">ID {s.productId}</div>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    {alert ? (
+                      <Badge variant="warning">Мало · {s.quantity} (порог {alert.thresholdQuantity})</Badge>
+                    ) : s.quantity === 0 ? (
+                      <Badge variant="danger">Нет в наличии</Badge>
+                    ) : (
+                      <Badge variant="success">{s.quantity}</Badge>
+                    )}
+                    <button
+                      onClick={() => { setReceiptFor({ productId: s.productId, productName: name }); setReceiptQty(10); setReceiptPrice(''); setReceiptError('') }}
+                      className="inline-flex items-center gap-1.5 rounded-[6px] bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[12px] font-[500] text-[color:var(--admin-accent)] transition-opacity hover:opacity-80"
+                    >
+                      <TruckIcon width={12} height={12} />
+                      Приход
+                    </button>
+                    <button
+                      onClick={() => { setPriceFor({ productId: s.productId, productName: name }); setPriceAmount(''); setPriceDone(false); setPriceError('') }}
+                      className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color:var(--admin-border)] px-3 py-1.5 text-[12px] font-[400] text-[color:var(--admin-text-secondary)] transition-colors hover:text-[color:var(--admin-text)]"
+                    >
+                      Цена
+                    </button>
+                    <button
+                      onClick={() => { setCostFor({ productId: s.productId, productName: name }); setCostAmount(''); setCostDone(false); setCostError('') }}
+                      className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color:var(--admin-border)] px-3 py-1.5 text-[12px] font-[400] text-[color:var(--admin-text-secondary)] transition-colors hover:text-[color:var(--admin-text)]"
+                    >
+                      Себест.
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          {filtered.length === 0 && (
+            <div className="py-12 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">
+              {stock?.length === 0 ? 'На складе пока нет ни одной позиции' : 'Ничего не найдено'}
+            </div>
+          )}
         </div>
       </Panel>
       </Reveal>
@@ -604,7 +572,7 @@ export function InventoryPage() {
           <button
             type="button"
             onClick={() => setCameraOpen((v) => !v)}
-            className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-hover)] py-2.5 text-[13px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+            className="flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-hover)] py-2.5 text-[13px] font-[500] text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
           >
             <CameraIcon width={15} height={15} />
             {cameraOpen ? 'Скрыть камеру' : 'Сканировать камерой'}
@@ -619,7 +587,7 @@ export function InventoryPage() {
             value={scanBarcode}
             onChange={(e) => setScanBarcode(e.target.value)}
             placeholder="Штрихкод"
-            className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+            className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
           />
           {scanError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{scanError}</div>}
           {notFoundBarcode && (
@@ -902,7 +870,7 @@ export function InventoryPage() {
               min={1}
               value={ruleProductId}
               onChange={(e) => setRuleProductId(e.target.value)}
-              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+              className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
             />
           </label>
 
@@ -914,7 +882,7 @@ export function InventoryPage() {
                 min={0}
                 value={ruleThreshold}
                 onChange={(e) => setRuleThreshold(e.target.value)}
-                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+                className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
               />
             </label>
             <label className="flex flex-col gap-1.5">
@@ -924,7 +892,7 @@ export function InventoryPage() {
                 min={1}
                 value={ruleReorderQty}
                 onChange={(e) => setRuleReorderQty(e.target.value)}
-                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+                className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
               />
             </label>
           </div>
@@ -936,7 +904,7 @@ export function InventoryPage() {
               min={1}
               value={ruleSupplierId}
               onChange={(e) => setRuleSupplierId(e.target.value)}
-              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+              className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
             />
           </label>
 

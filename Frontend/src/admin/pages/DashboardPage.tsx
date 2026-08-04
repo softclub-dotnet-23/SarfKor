@@ -14,7 +14,6 @@ function fmt(n: number) {
   return Math.round(n).toLocaleString('ru-RU')
 }
 
-
 interface DashboardData {
   dashboard: StoreDashboard
   profitToday: ProfitReport
@@ -70,30 +69,35 @@ function useDashboardData(storeId: number) {
   return { data, loading, error, reload: load }
 }
 
-/** Large editorial KPI block — the number dominates, label is a small eyebrow. */
-function HeroStat({
+/** Flat KPI: 32/500 number, 12/400 muted label, no icon, hairline left rule. */
+function KpiStat({
   label,
   value,
   suffix,
   sub,
+  accentColor,
 }: {
   label: string
   value: string
   suffix?: string
   sub?: string
+  accentColor?: string
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <div className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-[color:var(--admin-text-tertiary)]">
-        {label}
-      </div>
-      <div className="flex items-end gap-2 leading-none">
-        <span className="text-[44px] font-black tracking-tighter text-[color:var(--admin-text)]">{value}</span>
+    <div className="relative pl-4">
+      <span
+        className="absolute inset-y-1 left-0 w-[2px] rounded-full"
+        style={{ background: accentColor ?? 'var(--admin-text-tertiary)' }}
+        aria-hidden
+      />
+      <div className="text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">{label}</div>
+      <div className="mt-1.5 flex items-end gap-1.5 leading-none">
+        <span className="text-[32px] font-[500] tabular-nums text-[color:var(--admin-text)]">{value}</span>
         {suffix && (
-          <span className="mb-1.5 text-[15px] font-semibold text-[color:var(--admin-text-tertiary)]">{suffix}</span>
+          <span className="mb-0.5 text-[13px] font-[400] text-[color:var(--admin-text-tertiary)]">{suffix}</span>
         )}
       </div>
-      {sub && <div className="text-[12px] text-[color:var(--admin-text-tertiary)]">{sub}</div>}
+      {sub && <div className="mt-1 text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">{sub}</div>}
     </div>
   )
 }
@@ -122,25 +126,28 @@ export function DashboardPage() {
       {/* Left column */}
       <div className="flex min-w-0 flex-1 flex-col gap-5">
 
-        {/* Hero KPI strip */}
+        {/* Hero KPI strip — today's numbers */}
         <Panel>
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
-            <HeroStat
+            <KpiStat
               label="Продано сегодня"
               value={fmt(dashboard.todaySalesCount)}
               sub="позиций"
+              accentColor="var(--admin-accent)"
             />
-            <HeroStat
+            <KpiStat
               label="Выручка сегодня"
               value={fmt(dashboard.todayRevenue)}
               suffix={dashboard.currency}
               sub={`себестоимость ${fmt(profitToday.totalCost)}`}
+              accentColor="#38bdf8"
             />
-            <HeroStat
+            <KpiStat
               label="Прибыль сегодня"
               value={fmt(profitToday.profit)}
               suffix={profitToday.currency}
               sub={profitToday.revenue > 0 ? `маржа ${Math.round((profitToday.profit / profitToday.revenue) * 100)}%` : undefined}
+              accentColor="var(--admin-success)"
             />
           </div>
         </Panel>
@@ -153,7 +160,7 @@ export function DashboardPage() {
             action={
               <button
                 onClick={reload}
-                className="text-[11.5px] font-semibold text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text)] transition-colors"
+                className="text-[12px] font-[400] text-[color:var(--admin-text-tertiary)] transition-colors hover:text-[color:var(--admin-text)]"
               >
                 Обновить
               </button>
@@ -164,46 +171,28 @@ export function DashboardPage() {
 
         {/* Month overview */}
         <Panel>
-          <SectionHeader eyebrow="Месяц" title="Финансовый итог" />
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-            <div>
-              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--admin-text-tertiary)]">Выручка</div>
-              <div className="mt-1.5 text-[24px] font-black tracking-tight text-[color:var(--admin-text)]">
-                {fmt(profitMonth.revenue)}
-                <span className="ml-1.5 text-[12px] font-semibold text-[color:var(--admin-text-tertiary)]">{profitMonth.currency}</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--admin-text-tertiary)]">Себестоимость</div>
-              <div className="mt-1.5 text-[24px] font-black tracking-tight text-[color:var(--admin-text)]">
-                {fmt(profitMonth.totalCost)}
-                <span className="ml-1.5 text-[12px] font-semibold text-[color:var(--admin-text-tertiary)]">{profitMonth.currency}</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--admin-text-tertiary)]">Прибыль</div>
-              <div className="mt-1.5 text-[24px] font-black tracking-tight text-[color:var(--admin-text)]">
-                {fmt(profitMonth.profit)}
-                <span className="ml-1.5 text-[12px] font-semibold text-[color:var(--admin-text-tertiary)]">{profitMonth.currency}</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[color:var(--admin-text-tertiary)]">Маржа</div>
-              <div className="mt-1.5 text-[24px] font-black tracking-tight" style={{ color: marginPct >= 20 ? 'var(--admin-success)' : 'var(--admin-text)' }}>
-                {marginPct}%
-              </div>
-            </div>
+          <SectionHeader eyebrow="Текущий месяц" title="Финансовый итог" />
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+            <KpiStat label="Выручка" value={fmt(profitMonth.revenue)} suffix={profitMonth.currency} />
+            <KpiStat label="Себестоимость" value={fmt(profitMonth.totalCost)} suffix={profitMonth.currency} />
+            <KpiStat label="Прибыль" value={fmt(profitMonth.profit)} suffix={profitMonth.currency} accentColor="var(--admin-success)" />
+            <KpiStat
+              label="Маржинальность"
+              value={`${marginPct}`}
+              suffix="%"
+              accentColor={marginPct >= 20 ? 'var(--admin-success)' : 'var(--admin-text-tertiary)'}
+            />
           </div>
 
-          {/* Goal progress bar */}
-          <div className="mt-6 border-t border-[color:var(--admin-border)] pt-5">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[color:var(--admin-text-tertiary)]">
-                Цель дня — {dashboard.todaySalesCount} / {dailyGoal}
+          {/* Goal progress */}
+          <div className="mt-8 border-t border-[color:var(--admin-border)] pt-6">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">
+                Цель дня — {dashboard.todaySalesCount} / {dailyGoal} позиций
               </span>
-              <span className="text-[13px] font-black text-[color:var(--admin-text)]">{goalPct}%</span>
+              <span className="text-[14px] font-[500] text-[color:var(--admin-text)]">{goalPct}%</span>
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--admin-hover)]">
+            <div className="h-1 w-full overflow-hidden rounded-full bg-[color:var(--admin-border)]">
               <div
                 className="h-full rounded-full bg-[color:var(--admin-accent)] transition-all duration-700"
                 style={{ width: `${goalPct}%` }}
@@ -215,15 +204,15 @@ export function DashboardPage() {
 
       {/* Right column */}
       <div className="flex w-full flex-col gap-5 xl:w-[300px] xl:shrink-0">
-        {/* Store info */}
+        {/* Store KPI */}
         <Panel>
-          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--admin-text-tertiary)]">
-            Магазин #{storeId}
+          <div className="text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">
+            Магазин #{storeId} · склад
           </div>
-          <div className="mt-2 text-[32px] font-black tracking-tighter text-[color:var(--admin-text)]">
+          <div className="mt-2 text-[32px] font-[500] tabular-nums leading-none text-[color:var(--admin-text)]">
             {fmt(dashboard.productsInStockCount)}
           </div>
-          <div className="text-[12px] text-[color:var(--admin-text-tertiary)]">товаров на складе</div>
+          <div className="mt-1 text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">позиций в наличии</div>
         </Panel>
 
         {/* Recent shifts */}

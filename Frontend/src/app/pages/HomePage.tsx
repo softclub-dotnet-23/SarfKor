@@ -129,8 +129,7 @@ export function HomePage() {
           <button
             type="submit"
             disabled={!barcode.trim()}
-            className="shrink-0 rounded-full bg-[color:var(--app-text-primary)] px-6 py-3 text-[13.5px] font-bold text-[color:var(--bg-app)] transition-all duration-500 hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-30"
-            style={{ transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)' }}
+            className="shrink-0 rounded-[8px] bg-[color:var(--app-text-primary)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--bg-app)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] disabled:pointer-events-none disabled:opacity-30"
           >
             Найти
           </button>

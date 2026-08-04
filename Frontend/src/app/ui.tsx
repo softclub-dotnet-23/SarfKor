@@ -335,20 +335,16 @@ export function Button({
   ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'ghost' }) {
   const base =
-    'inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-[14px] font-bold tracking-wide transition-all duration-500 disabled:opacity-45 disabled:pointer-events-none'
+    'inline-flex items-center justify-center gap-2 rounded-[8px] px-5 py-[10px] text-[14px] font-[500] transition-all duration-150 ease-out disabled:opacity-45 disabled:pointer-events-none'
   const skin =
     variant === 'primary'
-      ? 'bg-[color:var(--app-text-primary)] text-[color:var(--bg-app)] hover:-translate-y-0.5 hover:shadow-[0_10px_34px_color-mix(in_srgb,var(--app-text-primary)_10%,transparent)] active:scale-[0.98]'
-      : 'text-[color:var(--app-text-primary)] hover:bg-[color:var(--app-line-soft)] active:scale-[0.98] border'
+      ? 'bg-[color:var(--app-text-primary)] text-[color:var(--bg-app)] hover:scale-[1.01] hover:shadow-[0_4px_20px_color-mix(in_srgb,var(--app-text-primary)_20%,transparent)] active:scale-[0.99]'
+      : 'text-[color:var(--app-text-secondary)] border border-[color:var(--app-line)] hover:text-[color:var(--app-text-primary)] hover:border-[color:var(--app-line)] active:scale-[0.99]'
   return (
     <button
       {...rest}
       className={`${base} ${skin} ${className}`}
-      style={{
-        transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
-        ...(variant === 'ghost' ? { borderColor: 'var(--app-line)' } : null),
-        ...rest.style,
-      }}
+      style={rest.style}
     >
       {children}
     </button>

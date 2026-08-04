@@ -573,12 +573,12 @@ function AuthPage({ mode }: { mode: Mode }) {
                     <button
                       type="submit"
                       disabled={busy || code.length !== 6}
-                      className="group relative w-full overflow-hidden rounded-full bg-[color:var(--admin-text)] text-[14.5px] font-semibold tracking-wide text-[color:var(--admin-content)] transition-all duration-700 hover:-translate-y-0.5 hover:shadow-[0_12px_38px_color-mix(in_srgb,var(--admin-text)_14%,transparent)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-90"
+                      className="group relative w-full overflow-hidden rounded-[8px] bg-[color:var(--admin-text)] text-[14px] font-[500] text-[color:var(--admin-content)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_20px_color-mix(in_srgb,var(--admin-text)_20%,transparent)] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
                       style={{ paddingBlock: 'clamp(13px,2vh,17px)', transitionTimingFunction: 'cubic-bezier(.16,1,.3,1)' }}
                     >
                       <span
                         aria-hidden
-                        className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                        className="pointer-events-none absolute inset-0 rounded-[8px] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                         style={{
                           background: 'linear-gradient(180deg,color-mix(in srgb,var(--admin-content) 85%,transparent) 0%,transparent 55%)',
                           mixBlendMode: 'overlay',
@@ -719,7 +719,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                     <button
                       type="submit"
                       disabled={busy}
-                      className="group relative w-full overflow-hidden rounded-full bg-[color:var(--admin-text)] text-[14.5px] font-semibold tracking-wide text-[color:var(--admin-content)] transition-all duration-700 hover:-translate-y-0.5 hover:shadow-[0_12px_38px_color-mix(in_srgb,var(--admin-text)_14%,transparent)] active:translate-y-0 active:scale-[0.985] disabled:pointer-events-none disabled:opacity-90"
+                      className="group relative w-full overflow-hidden rounded-[8px] bg-[color:var(--admin-text)] text-[14px] font-[500] text-[color:var(--admin-content)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_20px_color-mix(in_srgb,var(--admin-text)_20%,transparent)] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
                       style={{
                         paddingBlock: 'clamp(13px,2vh,17px)',
                         transitionTimingFunction: 'cubic-bezier(.16,1,.3,1)',
@@ -727,7 +727,7 @@ function AuthPage({ mode }: { mode: Mode }) {
                     >
                       <span
                         aria-hidden
-                        className="pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                        className="pointer-events-none absolute inset-0 rounded-[8px] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                         style={{
                           background: 'linear-gradient(180deg,color-mix(in srgb,var(--admin-content) 85%,transparent) 0%,transparent 55%)',
                           mixBlendMode: 'overlay',

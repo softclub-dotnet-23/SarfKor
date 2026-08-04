@@ -123,15 +123,15 @@ export function ReportsPage() {
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-1 rounded-full bg-[color:var(--admin-hover)] p-1">
+        <div className="flex gap-5 border-b border-[color:var(--admin-border)]">
           {(Object.keys(RANGE_LABEL) as Range[]).map((r) => (
             <button
               key={r}
               onClick={() => setRange(r)}
-              className={`rounded-full px-4 py-1.5 text-[12px] font-semibold transition-colors duration-200 ${
+              className={`-mb-px border-b-2 pb-2.5 text-[12px] font-semibold transition-colors ${
                 range === r
-                  ? 'bg-[color:var(--admin-card)] text-[color:var(--admin-text)] [box-shadow:var(--admin-shadow)]'
-                  : 'text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text-secondary)]'
+                  ? 'border-[color:var(--admin-text)] text-[color:var(--admin-text)]'
+                  : 'border-transparent text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text-secondary)]'
               }`}
             >
               {RANGE_LABEL[r]}
@@ -140,9 +140,9 @@ export function ReportsPage() {
         </div>
         <button
           onClick={exportReport}
-          className="flex items-center justify-center gap-2 rounded-full bg-[color:var(--admin-text)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--admin-content)] hover:opacity-90"
+          className="flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
         >
-          <DownloadIcon width={15} height={15} />
+          <DownloadIcon width={14} height={14} />
           Экспорт CSV
         </button>
       </div>

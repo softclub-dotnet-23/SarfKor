@@ -3,7 +3,7 @@ import { Select } from '../components/Select'
 import { Loading } from '../components/Loading'
 import { ErrorState } from '../components/ErrorState'
 import { Panel, SectionHeader, Stat, Row, RowDivider, EmptyRow } from '../cabinet/components/primitives'
-import { ClockIcon, ShieldIcon, PlusIcon, TrashIcon } from '../components/icons'
+import { ClockIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import {
   storesApi,
@@ -16,11 +16,6 @@ import {
 } from '../../lib/api'
 import { daysAgo, today } from '../lib/dates'
 
-const ROLE_ACCESS: { role: string; access: string[] }[] = [
-  { role: 'User', access: ['Сравнение цен', 'Личный список покупок', 'Отзывы и репорты'] },
-  { role: 'StorePartner', access: ['Касса и склад своего магазина', 'Себестоимость и отчёты о прибыли', 'Управление ценами и сменами'] },
-  { role: 'Admin', access: ['Модерация товаров и репортов', 'Полный доступ к аналитике платформы'] },
-]
 
 function shortId(id: string, myId?: string) {
   if (id === myId) return 'Вы'
@@ -122,7 +117,7 @@ function EmployeesSection() {
             value={employeeEmail}
             onChange={(e) => setEmployeeEmail(e.target.value)}
             placeholder="cashier@sarfkor.tj"
-            className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+            className="rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none transition-colors focus:border-[color:var(--admin-border-strong)] placeholder:text-[color:var(--admin-text-tertiary)]"
           />
         </label>
         <label className="flex flex-col gap-1.5">
@@ -139,7 +134,7 @@ function EmployeesSection() {
         <button
           type="submit"
           disabled={busy || !employeeEmail.trim()}
-          className="flex items-center justify-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90 disabled:opacity-50"
+          className="flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] disabled:opacity-40"
         >
           <PlusIcon width={14} height={14} />
           {busy ? 'Добавляем…' : 'Добавить'}
@@ -193,9 +188,8 @@ export function StaffPage() {
     if (!storeId) { setLoading(false); return }
     let cancelled = false
     async function load() {
-      // Independent try/catch per endpoint — cost/profit-adjacent metrics like cashier
-      // anomalies are owner-only (see the "Роли и доступ" note below), so a 403 there
-      // shouldn't blank out the shifts/KPI sections a non-owner employee can still see.
+      // Independent try/catch per endpoint — a 403 on cashier anomalies (owner-only)
+      // must not blank out the shifts/KPI sections a non-owner employee can still see.
       try {
         const shiftsRes = await salesApi.getCashierShifts(storeId!)
         if (cancelled) return
@@ -309,32 +303,6 @@ export function StaffPage() {
         )}
       </Panel>
 
-      <Panel>
-        <SectionHeader title="Роли и доступ" />
-        <p className="-mt-2 mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-          Отдельной JWT-роли «кассир» пока нет — все, кто работает с кассой этого магазина, входят под ролью
-          StorePartner. Доступ к себестоимости и отчётам о прибыли ограничен отдельно: только владелец магазина, не
-          добавленные сотрудники.
-        </p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {ROLE_ACCESS.map((r) => (
-            <div key={r.role} className="rounded-[18px] bg-[color:var(--admin-hover)] p-4">
-              <div className="mb-2.5 flex items-center gap-1.5 text-[13px] font-bold text-[color:var(--admin-text)]">
-                <ShieldIcon width={14} height={14} className="text-[color:var(--admin-accent)]" />
-                {r.role}
-              </div>
-              <ul className="flex flex-col gap-1.5">
-                {r.access.map((item) => (
-                  <li key={item} className="flex items-center gap-1.5 text-[12px] text-[color:var(--admin-text-secondary)]">
-                    <span className="h-1 w-1 shrink-0 rounded-full bg-[color:var(--admin-accent)]" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </Panel>
     </div>
   )
 }

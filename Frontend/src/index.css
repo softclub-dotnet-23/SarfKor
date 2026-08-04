@@ -136,6 +136,15 @@ button {
   border-radius: 4px;
 }
 
+/* Admin/StorePartner surfaces use the sidebar's own border-strong token instead
+   of the global brand-blue — keeps focus rings legible without a hue collision
+   on the dark monochrome ground (#0A0A0A sidebar where blue reads as alien). */
+.admin-shell :focus-visible {
+  outline: 2px solid var(--admin-border-strong);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 html.theme-wipe::view-transition-group(root) {
   animation-duration: 0.85s;
 }

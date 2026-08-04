@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import clsx from 'clsx'
 import { notificationsApi, type Notification } from '../../lib/api'
 
 const EASE = [0.16, 1, 0.3, 1] as const
@@ -46,6 +47,9 @@ export function NotificationBell({ collapsed }: { collapsed: boolean }) {
   const [items, setItems] = useState<Notification[]>([])
   const [markingId, setMarkingId] = useState<number | null>(null)
   const ref = useDismiss(open, () => setOpen(false))
+  const btnRef = useRef<HTMLButtonElement>(null)
+  // Fixed-position style used when collapsed — escapes aside's overflow:hidden
+  const [fixedStyle, setFixedStyle] = useState<CSSProperties>({})
 
   const load = useCallback(async () => {
     try {
@@ -78,18 +82,28 @@ export function NotificationBell({ collapsed }: { collapsed: boolean }) {
     setItems((prev) => prev.map((n) => ({ ...n, isRead: true })))
   }
 
+  function handleOpen() {
+    if (collapsed && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      // Anchor popover bottom to button bottom; 64px sidebar + 12px gap = 76px left
+      setFixedStyle({ position: 'fixed', bottom: window.innerHeight - rect.bottom, left: 76, zIndex: 9999 })
+    }
+    setOpen((v) => !v)
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
-        title={collapsed ? `Уведомления${unread > 0 ? ` (${unread})` : ''}` : undefined}
-        className={`relative flex items-center justify-center rounded-xl transition-colors duration-150 ${
-          collapsed ? 'h-9 w-9' : 'h-9 w-9'
-        } text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text-secondary)]`}
+        ref={btnRef}
+        onClick={handleOpen}
+        title={`Уведомления${unread > 0 ? ` (${unread})` : ''}`}
+        aria-label={`Уведомления${unread > 0 ? `, ${unread} непрочитанных` : ''}`}
+        aria-expanded={open}
+        className="relative grid h-9 w-9 place-items-center rounded-[6px] text-[color:var(--admin-text-tertiary)] transition-colors duration-150 hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text-secondary)]"
       >
         <BellIcon />
         {unread > 0 && (
-          <span className="absolute right-1.5 top-1.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-[color:var(--admin-danger)] px-[3px] text-[8px] font-bold text-white leading-none">
+          <span className="absolute right-1.5 top-1.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-[color:var(--admin-danger)] px-[3px] text-[8px] font-bold leading-none text-white">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
@@ -102,10 +116,13 @@ export function NotificationBell({ collapsed }: { collapsed: boolean }) {
             animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.18, ease: EASE }}
-            className={`absolute z-50 w-[300px] overflow-hidden rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] ${
-              collapsed ? 'left-full ml-3 bottom-0' : 'bottom-full left-0 mb-2'
-            }`}
-            style={{ boxShadow: 'var(--admin-shadow-lift)' }}
+            // In collapsed mode: position:fixed escapes overflow:hidden on <aside>.
+            // In expanded mode: absolute bottom-full.
+            className={clsx(
+              'w-[300px] overflow-hidden rounded-[12px] border border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)]',
+              !collapsed && 'absolute bottom-full left-0 mb-2 z-50',
+            )}
+            style={{ boxShadow: 'var(--admin-shadow-lift)', ...(collapsed ? fixedStyle : {}) }}
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-[color:var(--admin-border)] px-4 py-3">

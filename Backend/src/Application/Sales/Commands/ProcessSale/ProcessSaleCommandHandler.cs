@@ -45,6 +45,12 @@ public sealed class ProcessSaleCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(command.StoreId, command.CashierUserId, cancellationToken))
             return new ProcessSaleResult(ProcessSaleOutcome.Forbidden, null, null, null, null);
 
+        // ADMIN_PROMPT.md §2.1: a Suspended subscription (or an administratively Suspended/Blocked/
+        // Archived store) closes the register — checked ahead of the idempotency lookup so a retry
+        // of an already-blocked attempt is refused the same way a fresh one is.
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new ProcessSaleResult(ProcessSaleOutcome.SubscriptionInactive, null, null, null, null);
+
         var existing = await saleTransactionRepository.GetByIdempotencyKeyAsync(command.StoreId, command.IdempotencyKey, cancellationToken);
         if (existing is not null)
         {

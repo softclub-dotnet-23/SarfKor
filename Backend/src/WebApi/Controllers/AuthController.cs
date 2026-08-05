@@ -1,4 +1,5 @@
 using Application.Common;
+using Application.Identity.Commands.ConfirmAdminInvitation;
 using Application.Identity.Commands.ConfirmEmail;
 using Application.Identity.Commands.ForgotPassword;
 using Application.Identity.Commands.Login;
@@ -191,6 +192,32 @@ public sealed class AuthController : ControllerBase
             ConfirmStoreOwnerInvitationOutcome.TooManyAttempts => BadRequest("Too many attempts — ask the administrator to resend the invitation."),
             ConfirmStoreOwnerInvitationOutcome.EmailAlreadyRegistered => Conflict("This email already has an account."),
             ConfirmStoreOwnerInvitationOutcome.RegistrationFailed => BadRequest("Could not create the account — check password requirements."),
+            _ => Problem()
+        };
+    }
+
+    [HttpPost("confirm-admin-invite")]
+    [EnableRateLimiting("password-reset")]
+    public async Task<IActionResult> ConfirmAdminInvite(
+        ConfirmAdminInvitationRequest request,
+        [FromServices] ICommandHandler<ConfirmAdminInvitationCommand, ConfirmAdminInvitationResult> handler,
+        [FromServices] IValidator<ConfirmAdminInvitationCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var command = new ConfirmAdminInvitationCommand(request.Email, request.Code, request.Password);
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            ConfirmAdminInvitationOutcome.Confirmed => Ok(result.Auth),
+            ConfirmAdminInvitationOutcome.InvalidOrExpiredCode => BadRequest("Invalid or expired code."),
+            ConfirmAdminInvitationOutcome.TooManyAttempts => BadRequest("Too many attempts — ask an administrator to resend the invitation."),
+            ConfirmAdminInvitationOutcome.EmailAlreadyRegistered => Conflict("This email already has an account."),
+            ConfirmAdminInvitationOutcome.RegistrationFailed => BadRequest("Could not create the account — check password requirements."),
             _ => Problem()
         };
     }

@@ -139,7 +139,7 @@ public class ConfirmStoreOwnerInvitationCommandHandlerTests
         Assert.Equal("fresh-token", result.Auth!.AccessToken);
         Assert.NotNull(addedStore);
         Assert.Equal("new-user-1", addedStore!.OwnerUserId);
-        Assert.Equal(StoreStatus.Approved, addedStore.Status);
+        Assert.Equal(StoreStatus.Active, addedStore.Status);
         Assert.Equal(new[] { "AssignRole", "Login" }, callOrder);
         Assert.NotNull(invitation.AcceptedAt);
     }

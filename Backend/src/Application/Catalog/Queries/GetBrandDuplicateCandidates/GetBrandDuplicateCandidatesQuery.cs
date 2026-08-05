@@ -1,0 +1,3 @@
+namespace Application.Catalog.Queries.GetBrandDuplicateCandidates;
+
+public sealed record GetBrandDuplicateCandidatesQuery;

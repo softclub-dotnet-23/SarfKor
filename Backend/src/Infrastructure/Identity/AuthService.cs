@@ -27,7 +27,7 @@ public sealed class AuthService(
         if (existingUnconfirmed is not null && !existingUnconfirmed.EmailConfirmed && !emailPreVerified)
             return await ResendConfirmationCodeAsync(existingUnconfirmed, cancellationToken);
 
-        var user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = emailPreVerified };
+        var user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = emailPreVerified, CreatedAt = DateTimeOffset.UtcNow };
         var createResult = await userManager.CreateAsync(user, password);
         if (!createResult.Succeeded)
         {
@@ -281,6 +281,76 @@ public sealed class AuthService(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return new ChangePasswordServiceResult(true, false, false, Array.Empty<string>());
+    }
+
+    public async Task<(IReadOnlyList<AdminUserSummary> Users, int TotalCount)> SearchUsersAsync(
+        int skip, int take, string? search, CancellationToken cancellationToken)
+    {
+        var query = userManager.Users.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(u => u.Email != null && EF.Functions.ILike(u.Email, $"%{term}%"));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var page = await query.OrderByDescending(u => u.CreatedAt).Skip(skip).Take(take).ToListAsync(cancellationToken);
+
+        var summaries = new List<AdminUserSummary>();
+        foreach (var user in page)
+        {
+            var roles = await userManager.GetRolesAsync(user);
+            summaries.Add(new AdminUserSummary(user.Id, user.Email, user.CreatedAt, user.BlockedAt is not null, roles.ToList()));
+        }
+
+        return (summaries, totalCount);
+    }
+
+    public async Task<AdminUserDetail?> GetUserDetailAsync(string userId, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return null;
+
+        var roles = await userManager.GetRolesAsync(user);
+        return new AdminUserDetail(user.Id, user.Email, user.CreatedAt, user.BlockedAt is not null,
+            user.BlockedReason, user.BlockedAt, user.BlockedByAdminUserId, roles.ToList());
+    }
+
+    public async Task<bool> BlockUserAsync(string userId, string reason, string performedByAdminUserId, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return false;
+
+        if (!await userManager.GetLockoutEnabledAsync(user))
+            await userManager.SetLockoutEnabledAsync(user, true);
+        await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+
+        user.BlockedReason = reason;
+        user.BlockedAt = DateTimeOffset.UtcNow;
+        user.BlockedByAdminUserId = performedByAdminUserId;
+        await userManager.UpdateAsync(user);
+
+        await refreshTokenRepository.RevokeAllForUserAsync(user.Id, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> UnblockUserAsync(string userId, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return false;
+
+        await userManager.SetLockoutEndDateAsync(user, null);
+        user.BlockedReason = null;
+        user.BlockedAt = null;
+        user.BlockedByAdminUserId = null;
+        await userManager.UpdateAsync(user);
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     private async Task<RegisterAccountResult> ResendConfirmationCodeAsync(ApplicationUser user, CancellationToken cancellationToken) =>

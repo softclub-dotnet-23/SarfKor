@@ -2,10 +2,9 @@ using Domain.Products;
 
 namespace Application.Abstractions;
 
+// Pure provenance log now (ADMIN_PROMPT.md §1) — every submission creates its Product in the same
+// transaction, so there is nothing left to "get pending" or moderate.
 public interface IProductSubmissionRepository
 {
-    Task<ProductSubmission?> GetByIdAsync(int productSubmissionId, CancellationToken cancellationToken);
-    Task<ProductSubmission?> GetPendingByBarcodeAsync(string barcode, CancellationToken cancellationToken);
-    Task<IReadOnlyList<ProductSubmission>> GetPendingAsync(CancellationToken cancellationToken);
     void Add(ProductSubmission submission);
 }

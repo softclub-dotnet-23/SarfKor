@@ -23,7 +23,13 @@ import { ProfilePage } from './app/pages/ProfilePage'
 import { SettingsPage as AppSettingsPage } from './app/pages/SettingsPage'
 import { AdminLayout } from './admin/AdminLayout'
 import { StoreOnboardingPage } from './admin/pages/StoreOnboardingPage'
-import { ModerationPage } from './admin/pages/ModerationPage'
+import { AdminConsoleLayout } from './admin/AdminConsoleLayout'
+import { AdminOverviewPage } from './admin/pages/AdminOverviewPage'
+import { AdminStoresPage } from './admin/pages/AdminStoresPage'
+import { AdminSubscriptionsPage } from './admin/pages/AdminSubscriptionsPage'
+import { AdminUsersPage } from './admin/pages/AdminUsersPage'
+import { AdminReferencePage } from './admin/pages/AdminReferencePage'
+import { AdminAuditLogPage } from './admin/pages/AdminAuditLogPage'
 import { DashboardPage } from './admin/pages/DashboardPage'
 import { PosPage } from './admin/pages/PosPage'
 import { InventoryPage } from './admin/pages/InventoryPage'
@@ -65,7 +71,14 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/admin" element={<RequireAuth />}>
               <Route path="onboarding" element={<StoreOnboardingPage />} />
               <Route element={<RequireAdmin />}>
-                <Route path="moderation" element={<ModerationPage />} />
+                <Route element={<AdminConsoleLayout />}>
+                  <Route path="overview" element={<AdminOverviewPage />} />
+                  <Route path="stores" element={<AdminStoresPage />} />
+                  <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
+                  <Route path="users" element={<AdminUsersPage />} />
+                  <Route path="reference" element={<AdminReferencePage />} />
+                  <Route path="audit-log" element={<AdminAuditLogPage />} />
+                </Route>
               </Route>
               <Route element={<RequireStore />}>
                 <Route path="pos/display" element={<CustomerDisplayPage />} />

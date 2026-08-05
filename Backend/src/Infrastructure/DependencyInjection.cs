@@ -1,6 +1,7 @@
 using Application.Abstractions;
 using Application.Assistant.Abstractions;
 using Infrastructure.Assistant;
+using Infrastructure.BackgroundJobs;
 using Infrastructure.Email;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Infrastructure;
@@ -77,8 +79,6 @@ public static class DependencyInjection
         services.AddScoped<IProductBundleRepository, ProductBundleRepository>();
         services.AddScoped<ICashierShiftRepository, CashierShiftRepository>();
         services.AddScoped<ISaleReturnRepository, SaleReturnRepository>();
-        services.AddScoped<IPriceEntryDisputeRepository, PriceEntryDisputeRepository>();
-        services.AddScoped<IReportDisputeRepository, ReportDisputeRepository>();
         services.AddScoped<ISecurityEventRepository, SecurityEventRepository>();
         services.AddScoped<IUserProfileRepository, UserProfileRepository>();
         services.AddScoped<IUserConsentRepository, UserConsentRepository>();
@@ -89,11 +89,17 @@ public static class DependencyInjection
         services.AddScoped<IPromotionRepository, PromotionRepository>();
         services.AddScoped<ICommissionRepository, CommissionRepository>();
         services.AddScoped<IPendingAssistantActionRepository, PendingAssistantActionRepository>();
+        services.AddScoped<IContributorTrustScoreAdjustmentRepository, ContributorTrustScoreAdjustmentRepository>();
+        services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
+        services.AddScoped<IStoreSubscriptionRepository, StoreSubscriptionRepository>();
+        services.AddScoped<ISubscriptionPaymentRepository, SubscriptionPaymentRepository>();
+        services.AddScoped<IAdminInvitationRepository, AdminInvitationRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddSingleton<JwtTokenGenerator>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddHostedService<SubscriptionLifecycleJob>();
 
         services.Configure<AnthropicOptions>(configuration.GetSection(AnthropicOptions.SectionName));
         // Decided once at startup, not per-call (unlike SmtpEmailSender's per-send check) -- there's

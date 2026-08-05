@@ -5,6 +5,7 @@ public enum ProcessSaleOutcome
     Completed,
     StoreNotFound,
     Forbidden,
+    SubscriptionInactive,
     ProductNotFound,
     PriceNotFound,
     InsufficientStock,

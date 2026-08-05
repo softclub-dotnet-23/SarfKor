@@ -2,10 +2,8 @@ namespace Application.Products.Commands.SubmitNewProduct;
 
 public enum SubmitNewProductOutcome
 {
-    Submitted,
     Created,
     DuplicateBarcode,
-    DuplicatePendingSubmission,
     CategoryNotFound,
     BrandNotFound
 }

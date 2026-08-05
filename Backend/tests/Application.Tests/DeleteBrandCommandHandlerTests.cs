@@ -8,9 +8,10 @@ namespace Application.Tests;
 public class DeleteBrandCommandHandlerTests
 {
     private readonly Mock<IBrandRepository> _brandRepository = new();
+    private readonly Mock<IAuditLogRepository> _auditLogRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    private DeleteBrandCommandHandler CreateHandler() => new(_brandRepository.Object, _unitOfWork.Object);
+    private DeleteBrandCommandHandler CreateHandler() => new(_brandRepository.Object, _auditLogRepository.Object, _unitOfWork.Object);
 
     [Fact]
     public async Task Handle_BrandNotFound_ReturnsNotFound()
@@ -18,7 +19,7 @@ public class DeleteBrandCommandHandlerTests
         _brandRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync((Brand?)null);
 
         var handler = CreateHandler();
-        var result = await handler.Handle(new DeleteBrandCommand(1), CancellationToken.None);
+        var result = await handler.Handle(new DeleteBrandCommand(1, "admin-1"), CancellationToken.None);
 
         Assert.Equal(DeleteBrandOutcome.NotFound, result.Outcome);
     }
@@ -31,7 +32,7 @@ public class DeleteBrandCommandHandlerTests
         _brandRepository.Setup(r => r.IsInUseAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
-        var result = await handler.Handle(new DeleteBrandCommand(1), CancellationToken.None);
+        var result = await handler.Handle(new DeleteBrandCommand(1, "admin-1"), CancellationToken.None);
 
         Assert.Equal(DeleteBrandOutcome.InUse, result.Outcome);
         _brandRepository.Verify(r => r.Remove(It.IsAny<Brand>()), Times.Never);
@@ -45,7 +46,7 @@ public class DeleteBrandCommandHandlerTests
         _brandRepository.Setup(r => r.IsInUseAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
-        var result = await handler.Handle(new DeleteBrandCommand(1), CancellationToken.None);
+        var result = await handler.Handle(new DeleteBrandCommand(1, "admin-1"), CancellationToken.None);
 
         Assert.Equal(DeleteBrandOutcome.Deleted, result.Outcome);
         _brandRepository.Verify(r => r.Remove(brand), Times.Once);

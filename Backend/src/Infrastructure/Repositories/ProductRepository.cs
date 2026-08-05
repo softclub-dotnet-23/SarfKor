@@ -20,4 +20,19 @@ public sealed class ProductRepository(AppDbContext dbContext) : IProductReposito
         await dbContext.Products.Where(p => productIds.Contains(p.Id)).ToListAsync(cancellationToken);
 
     public void Add(Product product) => dbContext.Products.Add(product);
+
+    public async Task<IReadOnlyDictionary<int, int>> CountByBrandIdsAsync(IReadOnlyCollection<int> brandIds, CancellationToken cancellationToken)
+    {
+        var rows = await dbContext.Products
+            .Where(p => brandIds.Contains(p.BrandId))
+            .GroupBy(p => p.BrandId)
+            .Select(g => new { BrandId = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+        return rows.ToDictionary(r => r.BrandId, r => r.Count);
+    }
+
+    public Task<int> ReassignBrandAsync(int fromBrandId, int toBrandId, CancellationToken cancellationToken) =>
+        dbContext.Products
+            .Where(p => p.BrandId == fromBrandId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.BrandId, toBrandId), cancellationToken);
 }

@@ -8,9 +8,10 @@ namespace Application.Tests;
 public class DeleteTaxRateCommandHandlerTests
 {
     private readonly Mock<ITaxRateRepository> _taxRateRepository = new();
+    private readonly Mock<IAuditLogRepository> _auditLogRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    private DeleteTaxRateCommandHandler CreateHandler() => new(_taxRateRepository.Object, _unitOfWork.Object);
+    private DeleteTaxRateCommandHandler CreateHandler() => new(_taxRateRepository.Object, _auditLogRepository.Object, _unitOfWork.Object);
 
     [Fact]
     public async Task Handle_TaxRateNotFound_ReturnsNotFound()
@@ -18,7 +19,7 @@ public class DeleteTaxRateCommandHandlerTests
         _taxRateRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync((TaxRate?)null);
 
         var handler = CreateHandler();
-        var result = await handler.Handle(new DeleteTaxRateCommand(1), CancellationToken.None);
+        var result = await handler.Handle(new DeleteTaxRateCommand(1, "admin-1"), CancellationToken.None);
 
         Assert.Equal(DeleteTaxRateOutcome.NotFound, result.Outcome);
     }
@@ -31,7 +32,7 @@ public class DeleteTaxRateCommandHandlerTests
         _taxRateRepository.Setup(r => r.IsInUseAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
-        var result = await handler.Handle(new DeleteTaxRateCommand(1), CancellationToken.None);
+        var result = await handler.Handle(new DeleteTaxRateCommand(1, "admin-1"), CancellationToken.None);
 
         Assert.Equal(DeleteTaxRateOutcome.InUse, result.Outcome);
         _taxRateRepository.Verify(r => r.Remove(It.IsAny<TaxRate>()), Times.Never);
@@ -45,7 +46,7 @@ public class DeleteTaxRateCommandHandlerTests
         _taxRateRepository.Setup(r => r.IsInUseAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
-        var result = await handler.Handle(new DeleteTaxRateCommand(1), CancellationToken.None);
+        var result = await handler.Handle(new DeleteTaxRateCommand(1, "admin-1"), CancellationToken.None);
 
         Assert.Equal(DeleteTaxRateOutcome.Deleted, result.Outcome);
         _taxRateRepository.Verify(r => r.Remove(taxRate), Times.Once);

@@ -13,4 +13,8 @@ public interface IEmailSender
 
     /// <summary>Takes the raw 6-digit code, never the hash — sent right after self-registration.</summary>
     Task SendEmailConfirmationCodeAsync(string toEmail, string code, CancellationToken cancellationToken);
+
+    /// <summary>Takes the raw 6-digit code, never the hash — ADMIN_PROMPT.md §2.7's "second admin
+    /// account from an existing admin" invite, same mechanics as SendStoreOwnerInvitationEmailAsync.</summary>
+    Task SendAdminInvitationEmailAsync(string toEmail, string code, CancellationToken cancellationToken);
 }

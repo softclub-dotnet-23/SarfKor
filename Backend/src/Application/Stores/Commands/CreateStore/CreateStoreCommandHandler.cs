@@ -22,7 +22,8 @@ public sealed class CreateStoreCommandHandler(
             Location = new GeoLocation(command.Latitude, command.Longitude),
             // Pending until an Admin approves — hidden from consumer-facing scan/compare/offers
             // in the meantime, but the owner still gets full cabinet access immediately below.
-            Status = StoreStatus.Pending
+            Status = StoreStatus.PendingApproval,
+            ConnectedAt = DateTimeOffset.UtcNow
         };
 
         storeRepository.Add(store);

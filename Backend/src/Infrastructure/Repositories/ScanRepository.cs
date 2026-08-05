@@ -21,4 +21,11 @@ public sealed class ScanRepository(AppDbContext dbContext) : IScanRepository
             .Take(limit)
             .Select(g => new ProductScanSummary(g.Key, g.Count()))
             .ToListAsync(cancellationToken);
+
+    public Task<int> CountDistinctUsersInRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken) =>
+        dbContext.Scans
+            .Where(s => s.UserId != null && s.ScannedAt >= from && s.ScannedAt < to)
+            .Select(s => s.UserId)
+            .Distinct()
+            .CountAsync(cancellationToken);
 }

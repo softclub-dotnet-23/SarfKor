@@ -187,10 +187,14 @@ html.theme-wipe::view-transition-group(root) {
   color-scheme: dark;
 }
 
-/* Moderation panel (Admin role) — its own token set (near-black panels in
+/* Platform Admin console (Admin role — store/subscription/user operator, not
+   moderation, see ADMIN_PROMPT.md) — its own token set (near-black panels in
    dark mode) but shares .admin-shell's blue accent so the Admin surface reads
    as the same product as the StorePartner cabinet. Same .dark class drives
-   both so the site-wide theme toggle stays in sync everywhere. */
+   both so the site-wide theme toggle stays in sync everywhere. Status colors
+   are a fixed palette used consistently everywhere: --mod-ok (green) = active,
+   --mod-warn (amber) = needs attention, --mod-danger (red) = blocked/stopped,
+   plain --mod-faint/--mod-panel2 (grey, via Badge's "neutral" variant) = waiting. */
 .mod-shell {
   --mod-bg: #f5f5f6;
   --mod-panel: #ffffff;
@@ -204,10 +208,10 @@ html.theme-wipe::view-transition-group(root) {
   --mod-accent: #0284c7;
   --mod-accent2: #0284c7;
   --mod-accent-dim: rgba(2, 132, 199, 0.12);
-  --mod-ok: #0284c7;
-  --mod-ok-dim: rgba(2, 132, 199, 0.12);
-  --mod-warn: #6a6a72;
-  --mod-warn-dim: rgba(106, 106, 114, 0.12);
+  --mod-ok: #16a34a;
+  --mod-ok-dim: rgba(22, 163, 74, 0.12);
+  --mod-warn: #d97706;
+  --mod-warn-dim: rgba(217, 119, 6, 0.12);
   --mod-danger: #dc2626;
   --mod-danger-dim: rgba(220, 38, 38, 0.12);
   --mod-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
@@ -228,10 +232,10 @@ html.theme-wipe::view-transition-group(root) {
   --mod-accent: #38bdf8;
   --mod-accent2: #7dd3fc;
   --mod-accent-dim: rgba(56, 189, 248, 0.16);
-  --mod-ok: #38bdf8;
-  --mod-ok-dim: rgba(56, 189, 248, 0.16);
-  --mod-warn: #8c8c96;
-  --mod-warn-dim: rgba(140, 140, 150, 0.16);
+  --mod-ok: #4ade80;
+  --mod-ok-dim: rgba(74, 222, 128, 0.16);
+  --mod-warn: #fbbf24;
+  --mod-warn-dim: rgba(251, 191, 36, 0.16);
   --mod-danger: #f87171;
   --mod-danger-dim: rgba(248, 113, 113, 0.14);
   --mod-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);

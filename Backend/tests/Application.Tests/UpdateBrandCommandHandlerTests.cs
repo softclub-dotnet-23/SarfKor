@@ -8,9 +8,10 @@ namespace Application.Tests;
 public class UpdateBrandCommandHandlerTests
 {
     private readonly Mock<IBrandRepository> _brandRepository = new();
+    private readonly Mock<IAuditLogRepository> _auditLogRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    private UpdateBrandCommandHandler CreateHandler() => new(_brandRepository.Object, _unitOfWork.Object);
+    private UpdateBrandCommandHandler CreateHandler() => new(_brandRepository.Object, _auditLogRepository.Object, _unitOfWork.Object);
 
     [Fact]
     public async Task Handle_BrandNotFound_ReturnsNotFound()
@@ -18,7 +19,7 @@ public class UpdateBrandCommandHandlerTests
         _brandRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync((Brand?)null);
 
         var handler = CreateHandler();
-        var result = await handler.Handle(new UpdateBrandCommand(1, "New name"), CancellationToken.None);
+        var result = await handler.Handle(new UpdateBrandCommand(1, "New name", "admin-1"), CancellationToken.None);
 
         Assert.Equal(UpdateBrandOutcome.NotFound, result.Outcome);
     }
@@ -30,7 +31,7 @@ public class UpdateBrandCommandHandlerTests
         _brandRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(brand);
 
         var handler = CreateHandler();
-        var result = await handler.Handle(new UpdateBrandCommand(1, "New name"), CancellationToken.None);
+        var result = await handler.Handle(new UpdateBrandCommand(1, "New name", "admin-1"), CancellationToken.None);
 
         Assert.Equal(UpdateBrandOutcome.Updated, result.Outcome);
         Assert.Equal("New name", brand.Name);

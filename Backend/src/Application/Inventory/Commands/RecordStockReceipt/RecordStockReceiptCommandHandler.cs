@@ -20,6 +20,9 @@ public sealed class RecordStockReceiptCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new RecordStockReceiptResult(RecordStockReceiptOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new RecordStockReceiptResult(RecordStockReceiptOutcome.SubscriptionInactive, null);
+
         if (!await productRepository.ExistsAsync(command.ProductId, cancellationToken))
             return new RecordStockReceiptResult(RecordStockReceiptOutcome.ProductNotFound, null);
 

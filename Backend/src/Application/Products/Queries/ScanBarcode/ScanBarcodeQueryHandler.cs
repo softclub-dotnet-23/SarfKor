@@ -15,7 +15,13 @@ public sealed class ScanBarcodeQueryHandler(
         if (product is null)
             return null;
 
-        var priceEntries = await priceEntryRepository.GetLatestPerStoreAsync(product.Id, cancellationToken);
+        // Unverified entries (low-trust author, not yet corroborated by a second independent
+        // submission — see PriceEntry.IsVerified/TrustScoreFormula) never reach a public result;
+        // that store's price simply doesn't show for this product rather than falling back to a
+        // stale verified price, matching ADMIN_PROMPT.md §1 literally ("не отображается публично").
+        var priceEntries = (await priceEntryRepository.GetLatestPerStoreAsync(product.Id, cancellationToken))
+            .Where(p => p.IsVerified)
+            .ToList();
         var stores = await storeRepository.GetApprovedByIdsAsync(priceEntries.Select(p => p.StoreId).ToList(), cancellationToken);
         var storesById = stores.ToDictionary(s => s.Id);
 

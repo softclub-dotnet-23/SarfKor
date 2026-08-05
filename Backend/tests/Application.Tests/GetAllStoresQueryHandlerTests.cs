@@ -29,8 +29,8 @@ public class GetAllStoresQueryHandlerTests
     [Fact]
     public async Task Handle_ResolvesOwnerEmailsInOneBatchedCall()
     {
-        var store1 = new Store { Id = 1, OwnerUserId = "owner-1", Name = "A", Address = "Addr A", Location = new GeoLocation(0, 0), Status = StoreStatus.Approved };
-        var store2 = new Store { Id = 2, OwnerUserId = "owner-2", Name = "B", Address = "Addr B", Location = new GeoLocation(0, 0), Status = StoreStatus.Pending };
+        var store1 = new Store { Id = 1, OwnerUserId = "owner-1", Name = "A", Address = "Addr A", Location = new GeoLocation(0, 0), Status = StoreStatus.Active };
+        var store2 = new Store { Id = 2, OwnerUserId = "owner-2", Name = "B", Address = "Addr B", Location = new GeoLocation(0, 0), Status = StoreStatus.PendingApproval };
         _storeRepository.Setup(r => r.GetAllAsync(0, 50, It.IsAny<CancellationToken>())).ReturnsAsync([store1, store2]);
         _storeRepository.Setup(r => r.CountAllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(2);
         _authService

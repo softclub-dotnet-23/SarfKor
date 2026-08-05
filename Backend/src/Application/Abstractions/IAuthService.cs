@@ -53,7 +53,29 @@ public interface IAuthService
     /// change is exactly the moment a hijacked session should be killed), so the caller's own
     /// refresh token stops working too and the access token is left to expire naturally.</summary>
     Task<ChangePasswordServiceResult> ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken);
+
+    /// <summary>Search across the Identity store for ADMIN_PROMPT.md §2.3's user list — Search
+    /// matches email (case-insensitive, substring). Lives on IAuthService, not a repository, because
+    /// ApplicationUser is an Infrastructure/Identity type Application must not reference directly.</summary>
+    Task<(IReadOnlyList<AdminUserSummary> Users, int TotalCount)> SearchUsersAsync(int skip, int take, string? search, CancellationToken cancellationToken);
+
+    Task<AdminUserDetail?> GetUserDetailAsync(string userId, CancellationToken cancellationToken);
+
+    /// <summary>Sets Identity lockout far in the future (same mechanism the failed-login lockout in
+    /// LoginAsync already uses) AND revokes every refresh token — ADMIN_PROMPT.md §2.3: "не
+    /// полагайся только на проверку при логине". A still-valid access token (≤15 min old) is also
+    /// actively rejected — see the JwtBearerEvents.OnTokenValidated hook in Program.cs, which checks
+    /// BlockedAt on every authenticated request, not just at login/refresh.</summary>
+    Task<bool> BlockUserAsync(string userId, string reason, string performedByAdminUserId, CancellationToken cancellationToken);
+
+    Task<bool> UnblockUserAsync(string userId, CancellationToken cancellationToken);
 }
+
+public sealed record AdminUserSummary(string UserId, string? Email, DateTimeOffset CreatedAt, bool IsBlocked, IReadOnlyList<string> Roles);
+
+public sealed record AdminUserDetail(
+    string UserId, string? Email, DateTimeOffset CreatedAt, bool IsBlocked,
+    string? BlockedReason, DateTimeOffset? BlockedAt, string? BlockedByAdminUserId, IReadOnlyList<string> Roles);
 
 /// <summary>UserNotFound and IncorrectCurrentPassword are mutually exclusive with Succeeded and with
 /// each other; Errors carries Identity's password-policy messages when neither of those two applies

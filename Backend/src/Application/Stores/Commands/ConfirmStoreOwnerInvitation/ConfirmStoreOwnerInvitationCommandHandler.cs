@@ -49,8 +49,9 @@ public sealed class ConfirmStoreOwnerInvitationCommandHandler(
             Name = invitation.StoreName,
             Address = invitation.Address,
             Location = invitation.Location,
-            // Approved, not Pending — an Admin already vetted this store before sending the invite.
-            Status = StoreStatus.Approved
+            // Active, not PendingApproval — an Admin already vetted this store before sending the invite.
+            Status = StoreStatus.Active,
+            ConnectedAt = DateTimeOffset.UtcNow
         };
         storeRepository.Add(store);
 

@@ -6,6 +6,9 @@ export * as productsApi from './products'
 export * as salesApi from './sales'
 export * as inventoryApi from './inventory'
 export * as adminApi from './admin'
+export * as subscriptionsApi from './subscriptions'
+export * as adminUsersApi from './adminUsers'
+export * as metricsApi from './metrics'
 export * as catalogApi from './catalog'
 export * as pricingApi from './pricing'
 export * as meApi from './me'
@@ -49,13 +52,27 @@ export type {
   StoreEmployeeRole,
 } from './stores'
 export type {
-  PriceEntryDispute,
-  ReportDispute,
-  ProductSubmission,
-  Report,
+  StoreStatus,
+  SubscriptionStatus,
+  TaxRegime,
+  AdminStoreListItem,
+  AdminStoreSubscription,
+  AdminStoreDetail,
+  AdminStoreDiagnostics,
+  AdminStoreLocation,
+  AdminStoreEmployee,
   AuditLogEntry,
 } from './admin'
-export type { Brand, Category, TaxRate } from './catalog'
+export type {
+  SubscriptionPlan,
+  StoreSubscriptionListItem,
+  ExpiringSubscription,
+  SubscriptionPaymentMethod,
+  SubscriptionPayment,
+} from './subscriptions'
+export type { AdminUserListItem, UserStoreAttachment, AdminUserDetail, TrustScoreListItem, TrustScoreAdjustment } from './adminUsers'
+export type { PlanSubscriberCount, ProblemStore, SilentStore, NoSalesStore, PlatformMetrics, MetricsDay } from './metrics'
+export type { Brand, DuplicateBrand, DuplicateBrandGroup, Category, TaxRate } from './catalog'
 export type { UserProfile, ConsentType, UserConsent, SecurityEventType, SecurityEvent, MyStore, MyStoreRole } from './me'
 export type { Review } from './reviews'
 export type { Supplier } from './suppliers'

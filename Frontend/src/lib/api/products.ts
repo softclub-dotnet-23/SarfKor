@@ -91,23 +91,12 @@ export interface SubmitNewProductRequest {
   countryOfOrigin: string
 }
 
-// A StorePartner's submission is trusted and created directly -- the response already carries
-// productId, no self-approve call needed (backend: CreateDirectly = User.IsInRole("StorePartner")).
-// Any other authenticated caller instead gets a pending ProductSubmission (productSubmissionId,
-// no productId yet) that stays in the moderation queue for Admin, or can be self-approved via
-// selfApproveNewProduct below if the submitter turns out to also hold StorePartner.
+// Moderation is gone -- every submission (partner or plain user) publishes a Product immediately,
+// so the response always carries productId alongside the provenance-only productSubmissionId.
 export function submitNewProduct(req: SubmitNewProductRequest) {
   return apiFetch<{ outcome: string; productSubmissionId?: number; productId?: number }>('/api/products/submissions', {
     method: 'POST',
     body: req,
-  })
-}
-
-// Restricted to the submission's own submitter -- the backend rejects (403) an attempt to
-// self-approve someone else's pending submission.
-export function selfApproveNewProduct(productSubmissionId: number) {
-  return apiFetch<{ outcome: string; productId?: number }>(`/api/products/submissions/${productSubmissionId}/self-approve`, {
-    method: 'POST',
   })
 }
 

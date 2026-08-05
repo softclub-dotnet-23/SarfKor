@@ -1,9 +1,12 @@
+using System.Text.Json;
 using Application.Abstractions;
 using Application.Common;
+using Domain.Auditing;
+using Domain.Catalog;
 
 namespace Application.Catalog.Commands.UpdateCategory;
 
-public sealed class UpdateCategoryCommandHandler(ICategoryRepository categoryRepository, IUnitOfWork unitOfWork)
+public sealed class UpdateCategoryCommandHandler(ICategoryRepository categoryRepository, IAuditLogRepository auditLogRepository, IUnitOfWork unitOfWork)
     : ICommandHandler<UpdateCategoryCommand, UpdateCategoryResult>
 {
     public async Task<UpdateCategoryResult> Handle(UpdateCategoryCommand command, CancellationToken cancellationToken)
@@ -35,8 +38,26 @@ public sealed class UpdateCategoryCommandHandler(ICategoryRepository categoryRep
             }
         }
 
+        var before = JsonSerializer.Serialize(new { name = category.Name, parentCategoryId = category.ParentCategoryId, displayOrder = category.DisplayOrder, isHidden = category.IsHidden });
+
         category.Name = command.Name;
         category.ParentCategoryId = command.ParentCategoryId;
+        category.DisplayOrder = command.DisplayOrder;
+        category.IsHidden = command.IsHidden;
+
+        var after = JsonSerializer.Serialize(new { name = category.Name, parentCategoryId = category.ParentCategoryId, displayOrder = category.DisplayOrder, isHidden = category.IsHidden });
+
+        auditLogRepository.Add(new AuditLog
+        {
+            PerformedByUserId = command.PerformedByUserId,
+            Action = "Category.Updated",
+            EntityType = nameof(Category),
+            EntityId = category.Id,
+            IpAddress = command.PerformedByIpAddress,
+            BeforeStateJson = before,
+            AfterStateJson = after,
+            OccurredAt = DateTimeOffset.UtcNow
+        });
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

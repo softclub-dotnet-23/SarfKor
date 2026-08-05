@@ -48,6 +48,12 @@ public class ProcessSaleCommandHandlerTests
         _storeAccessAuthorizer
             .Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
+        // Store has no subscription row in these tests either way — IsOperationalAsync would treat
+        // that as operational for real, but the mock needs an explicit default since Moq otherwise
+        // returns false for every unconfigured bool-returning setup.
+        _storeAccessAuthorizer
+            .Setup(a => a.IsOperationalAsync(StoreId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         // No active promotions by default — individual tests opt in where relevant.
         _promotionRepository
@@ -124,6 +130,25 @@ public class ProcessSaleCommandHandlerTests
             CancellationToken.None);
 
         Assert.Equal(ProcessSaleOutcome.Forbidden, result.Outcome);
+    }
+
+    // Positive counterpart of the constructor's default IsOperationalAsync=true setup — access
+    // must actually close, not just "not be checked", when a store's subscription is inactive
+    // (ADMIN_PROMPT.md §2.1: "Suspended = кабинет и касса закрыты").
+    [Fact]
+    public async Task Handle_StoreNotOperational_ReturnsSubscriptionInactive()
+    {
+        _storeAccessAuthorizer
+            .Setup(a => a.IsOperationalAsync(StoreId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var handler = CreateHandler();
+
+        var result = await handler.Handle(
+            new ProcessSaleCommand(StoreId, OwnerId, "key-1", "TJS", [new ProcessSaleLine(1, 1)]),
+            CancellationToken.None);
+
+        Assert.Equal(ProcessSaleOutcome.SubscriptionInactive, result.Outcome);
     }
 
     [Fact]

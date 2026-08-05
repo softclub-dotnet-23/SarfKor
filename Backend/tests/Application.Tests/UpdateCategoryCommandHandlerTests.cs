@@ -8,9 +8,10 @@ namespace Application.Tests;
 public class UpdateCategoryCommandHandlerTests
 {
     private readonly Mock<ICategoryRepository> _categoryRepository = new();
+    private readonly Mock<IAuditLogRepository> _auditLogRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    private UpdateCategoryCommandHandler CreateHandler() => new(_categoryRepository.Object, _unitOfWork.Object);
+    private UpdateCategoryCommandHandler CreateHandler() => new(_categoryRepository.Object, _auditLogRepository.Object, _unitOfWork.Object);
 
     [Fact]
     public async Task Handle_CategoryNotFound_ReturnsNotFound()
@@ -18,7 +19,7 @@ public class UpdateCategoryCommandHandlerTests
         _categoryRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync((Category?)null);
 
         var handler = CreateHandler();
-        var result = await handler.Handle(new UpdateCategoryCommand(1, "Snacks", null), CancellationToken.None);
+        var result = await handler.Handle(new UpdateCategoryCommand(1, "Snacks", null, 0, false, "admin-1"), CancellationToken.None);
 
         Assert.Equal(UpdateCategoryOutcome.NotFound, result.Outcome);
     }
@@ -29,7 +30,7 @@ public class UpdateCategoryCommandHandlerTests
         _categoryRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(new Category { Name = "Snacks" });
 
         var handler = CreateHandler();
-        var result = await handler.Handle(new UpdateCategoryCommand(1, "Snacks", 1), CancellationToken.None);
+        var result = await handler.Handle(new UpdateCategoryCommand(1, "Snacks", 1, 0, false, "admin-1"), CancellationToken.None);
 
         Assert.Equal(UpdateCategoryOutcome.SelfReference, result.Outcome);
     }
@@ -41,7 +42,7 @@ public class UpdateCategoryCommandHandlerTests
         _categoryRepository.Setup(r => r.ExistsAsync(99, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
-        var result = await handler.Handle(new UpdateCategoryCommand(1, "Snacks", 99), CancellationToken.None);
+        var result = await handler.Handle(new UpdateCategoryCommand(1, "Snacks", 99, 0, false, "admin-1"), CancellationToken.None);
 
         Assert.Equal(UpdateCategoryOutcome.ParentCategoryNotFound, result.Outcome);
     }
@@ -54,7 +55,7 @@ public class UpdateCategoryCommandHandlerTests
         _categoryRepository.Setup(r => r.ExistsAsync(2, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
-        var result = await handler.Handle(new UpdateCategoryCommand(1, "New name", 2), CancellationToken.None);
+        var result = await handler.Handle(new UpdateCategoryCommand(1, "New name", 2, 0, false, "admin-1"), CancellationToken.None);
 
         Assert.Equal(UpdateCategoryOutcome.Updated, result.Outcome);
         Assert.Equal("New name", category.Name);

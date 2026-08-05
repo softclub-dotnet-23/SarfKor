@@ -8,10 +8,11 @@ import { apiFetch } from './client'
 export interface Brand {
   brandId: number
   name: string
+  productCount: number
 }
 
-export function getBrands() {
-  return apiFetch<{ brands: Brand[] }>('/api/catalog/brands', { auth: false })
+export function getBrands(search?: string) {
+  return apiFetch<{ brands: Brand[] }>('/api/catalog/brands', { auth: false, query: { search } })
 }
 
 export function createBrand(name: string) {
@@ -26,10 +27,34 @@ export function deleteBrand(brandId: number) {
   return apiFetch<{ outcome: string }>(`/api/catalog/brands/${brandId}`, { method: 'DELETE' })
 }
 
+export interface DuplicateBrand {
+  brandId: number
+  name: string
+  productCount: number
+}
+
+export interface DuplicateBrandGroup {
+  normalizedKey: string
+  brands: DuplicateBrand[]
+}
+
+export function getBrandDuplicateCandidates() {
+  return apiFetch<{ groups: DuplicateBrandGroup[] }>('/api/catalog/brands/duplicate-candidates')
+}
+
+export function mergeBrands(targetBrandId: number, sourceBrandIds: number[]) {
+  return apiFetch<{ outcome: string; productsMoved: number }>('/api/catalog/brands/merge', {
+    method: 'POST',
+    body: { targetBrandId, sourceBrandIds },
+  })
+}
+
 export interface Category {
   categoryId: number
   name: string
   parentCategoryId?: number
+  displayOrder: number
+  isHidden: boolean
 }
 
 export function getCategories() {
@@ -43,10 +68,10 @@ export function createCategory(name: string, parentCategoryId?: number) {
   })
 }
 
-export function updateCategory(categoryId: number, name: string, parentCategoryId?: number) {
+export function updateCategory(categoryId: number, name: string, parentCategoryId: number | undefined, displayOrder: number, isHidden: boolean) {
   return apiFetch<{ outcome: string }>(`/api/catalog/categories/${categoryId}`, {
     method: 'PUT',
-    body: { name, parentCategoryId },
+    body: { name, parentCategoryId, displayOrder, isHidden },
   })
 }
 
@@ -59,23 +84,27 @@ export interface TaxRate {
   name: string
   percentage: number
   categoryId?: number
+  effectiveFrom?: string
+  effectiveTo?: string
 }
 
 export function getTaxRates() {
   return apiFetch<{ taxRates: TaxRate[] }>('/api/catalog/tax-rates', { auth: false })
 }
 
-export function createTaxRate(name: string, percentage: number, categoryId?: number) {
+export function createTaxRate(name: string, percentage: number, categoryId?: number, effectiveFrom?: string, effectiveTo?: string) {
   return apiFetch<{ taxRateId: number }>('/api/catalog/tax-rates', {
     method: 'POST',
-    body: { name, percentage, categoryId },
+    body: { name, percentage, categoryId, effectiveFrom, effectiveTo },
   })
 }
 
-export function updateTaxRate(taxRateId: number, name: string, percentage: number, categoryId?: number) {
+export function updateTaxRate(
+  taxRateId: number, name: string, percentage: number, categoryId?: number, effectiveFrom?: string, effectiveTo?: string,
+) {
   return apiFetch<{ outcome: string }>(`/api/catalog/tax-rates/${taxRateId}`, {
     method: 'PUT',
-    body: { name, percentage, categoryId },
+    body: { name, percentage, categoryId, effectiveFrom, effectiveTo },
   })
 }
 

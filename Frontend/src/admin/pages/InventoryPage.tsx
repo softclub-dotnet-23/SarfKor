@@ -241,22 +241,9 @@ export function InventoryPage() {
         brandId: Number(submitBrandId),
         countryOfOrigin: submitCountry.trim(),
       })
-      // A StorePartner's submission (the only role that reaches this screen) is created directly
-      // by the backend — productId is already in this response, no self-approve round-trip
-      // needed. The productSubmissionId branch is only a fallback for the rare case where that
-      // isn't true (e.g. a non-StorePartner caller somehow reaching this code path).
-      let newProductId: number | undefined = submitResult.productId
-      if (!newProductId && submitResult.productSubmissionId) {
-        try {
-          const approveResult = await productsApi.selfApproveNewProduct(submitResult.productSubmissionId)
-          newProductId = approveResult.productId
-        } catch {
-          // The submission itself already succeeded either way — if self-approve fails for any
-          // reason (e.g. a duplicate barcode caught at moderation time), it just waits in the
-          // queue for Admin to look at instead of failing this whole action. newProductId stays
-          // undefined, so the receipt step below is skipped rather than opened with a bad id.
-        }
-      }
+      // Moderation is gone — every submission publishes a Product immediately, so productId is
+      // always present on success.
+      const newProductId: number | undefined = submitResult.productId
       setSubmitDone(true)
       setTimeout(() => {
         setSubmitOpen(false)
@@ -288,7 +275,7 @@ export function InventoryPage() {
     try {
       const res = await catalogApi.createCategory(newCategoryName.trim())
       if (res.outcome === 'Created' && res.categoryId) {
-        const created = { categoryId: res.categoryId, name: newCategoryName.trim() }
+        const created = { categoryId: res.categoryId, name: newCategoryName.trim(), displayOrder: 0, isHidden: false }
         setCategories((c) => [...c, created])
         setSubmitCategoryId(String(res.categoryId))
         setNewCategoryOpen(false)
@@ -309,7 +296,7 @@ export function InventoryPage() {
     setNewBrandError('')
     try {
       const res = await catalogApi.createBrand(newBrandName.trim())
-      const created = { brandId: res.brandId, name: newBrandName.trim() }
+      const created = { brandId: res.brandId, name: newBrandName.trim(), productCount: 0 }
       setBrands((b) => [...b, created])
       setSubmitBrandId(String(res.brandId))
       setNewBrandOpen(false)

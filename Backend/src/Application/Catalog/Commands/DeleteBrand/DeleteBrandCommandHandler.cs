@@ -1,9 +1,11 @@
 using Application.Abstractions;
 using Application.Common;
+using Domain.Auditing;
+using Domain.Catalog;
 
 namespace Application.Catalog.Commands.DeleteBrand;
 
-public sealed class DeleteBrandCommandHandler(IBrandRepository brandRepository, IUnitOfWork unitOfWork)
+public sealed class DeleteBrandCommandHandler(IBrandRepository brandRepository, IAuditLogRepository auditLogRepository, IUnitOfWork unitOfWork)
     : ICommandHandler<DeleteBrandCommand, DeleteBrandResult>
 {
     public async Task<DeleteBrandResult> Handle(DeleteBrandCommand command, CancellationToken cancellationToken)
@@ -16,6 +18,18 @@ public sealed class DeleteBrandCommandHandler(IBrandRepository brandRepository, 
             return new DeleteBrandResult(DeleteBrandOutcome.InUse);
 
         brandRepository.Remove(brand);
+
+        auditLogRepository.Add(new AuditLog
+        {
+            PerformedByUserId = command.PerformedByUserId,
+            Action = "Brand.Deleted",
+            EntityType = nameof(Brand),
+            EntityId = brand.Id,
+            Details = brand.Name,
+            IpAddress = command.PerformedByIpAddress,
+            OccurredAt = DateTimeOffset.UtcNow
+        });
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new DeleteBrandResult(DeleteBrandOutcome.Deleted);

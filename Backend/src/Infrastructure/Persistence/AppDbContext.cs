@@ -19,6 +19,7 @@ using Domain.Sales;
 using Domain.Security;
 using Domain.ShoppingLists;
 using Domain.Stores;
+using Domain.Subscriptions;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -45,13 +46,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<Favorite> Favorites => Set<Favorite>();
 
     public DbSet<Report> Reports => Set<Report>();
-    public DbSet<ReportDispute> ReportDisputes => Set<ReportDispute>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<ReviewReply> ReviewReplies => Set<ReviewReply>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<UserConsent> UserConsents => Set<UserConsent>();
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+    public DbSet<AdminInvitation> AdminInvitations => Set<AdminInvitation>();
 
     public DbSet<CostPrice> CostPrices => Set<CostPrice>();
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
@@ -79,7 +80,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<StoreCredit> StoreCredits => Set<StoreCredit>();
 
     public DbSet<PriceEntry> PriceEntries => Set<PriceEntry>();
-    public DbSet<PriceEntryDispute> PriceEntryDisputes => Set<PriceEntryDispute>();
 
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductSubmission> ProductSubmissions => Set<ProductSubmission>();
@@ -88,6 +88,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<ReceiptLineItem> ReceiptLineItems => Set<ReceiptLineItem>();
 
     public DbSet<ContributorTrustScore> ContributorTrustScores => Set<ContributorTrustScore>();
+    public DbSet<ContributorTrustScoreAdjustment> ContributorTrustScoreAdjustments => Set<ContributorTrustScoreAdjustment>();
+
+    public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+    public DbSet<StoreSubscription> StoreSubscriptions => Set<StoreSubscription>();
+    public DbSet<SubscriptionPayment> SubscriptionPayments => Set<SubscriptionPayment>();
 
     public DbSet<CashierShift> CashierShifts => Set<CashierShift>();
     public DbSet<Commission> Commissions => Set<Commission>();

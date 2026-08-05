@@ -53,6 +53,23 @@ public sealed class SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEm
             cancellationToken);
     }
 
+    public Task SendAdminInvitationEmailAsync(string toEmail, string code, CancellationToken cancellationToken)
+    {
+        var baseUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        var confirmLink = $"{baseUrl}/confirm-admin-invite?email={Uri.EscapeDataString(toEmail)}";
+
+        return SendAsync(
+            toEmail,
+            "Приглашение администратора — Sarfkor",
+            $"""
+            <p>Вас пригласили как администратора платформы Sarfkor.</p>
+            <p>Код подтверждения: <strong>{code}</strong></p>
+            <p><a href="{confirmLink}">Перейдите сюда</a>, введите код и задайте пароль, чтобы начать работу.</p>
+            <p>Код действителен в течение 20 минут. Если вы не ожидали этого письма, просто проигнорируйте его.</p>
+            """,
+            cancellationToken);
+    }
+
     public Task SendEmailConfirmationCodeAsync(string toEmail, string code, CancellationToken cancellationToken) =>
         SendAsync(
             toEmail,

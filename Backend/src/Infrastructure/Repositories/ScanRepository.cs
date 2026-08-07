@@ -9,18 +9,23 @@ public sealed class ScanRepository(AppDbContext dbContext) : IScanRepository
 {
     public void Add(Scan scan) => dbContext.Scans.Add(scan);
 
-    public async Task<IReadOnlyList<ProductScanSummary>> GetMostScannedAsync(int limit, CancellationToken cancellationToken)
-    {
-        // EF Core cannot translate positional-record constructors inside a GroupBy Select.
-        // Project to an anonymous type (which EF Core CAN translate to SQL), then materialize
-        // into the domain record in-memory after the database round-trip.
-        var rows = await dbContext.Scans
+    // Ordering by g.Count() on the grouping itself (before projecting into ProductScanSummary) is
+    // what makes this translatable — Npgsql/EF Core can push GROUP BY + ORDER BY COUNT(*) DESC +
+    // LIMIT down to SQL, but ordering by the *already-selected* DTO's TotalScans property (a plain
+    // record member, not an aggregate EF can see through) cannot be translated and threw a 500 on
+    // every call to this endpoint.
+    public async Task<IReadOnlyList<ProductScanSummary>> GetMostScannedAsync(int limit, CancellationToken cancellationToken) =>
+        await dbContext.Scans
             .GroupBy(s => s.ProductId)
-            .Select(g => new { ProductId = g.Key, TotalScans = g.Count() })
-            .OrderByDescending(x => x.TotalScans)
+            .OrderByDescending(g => g.Count())
             .Take(limit)
+            .Select(g => new ProductScanSummary(g.Key, g.Count()))
             .ToListAsync(cancellationToken);
 
-        return rows.Select(r => new ProductScanSummary(r.ProductId, r.TotalScans)).ToList();
-    }
+    public Task<int> CountDistinctUsersInRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken) =>
+        dbContext.Scans
+            .Where(s => s.UserId != null && s.ScannedAt >= from && s.ScannedAt < to)
+            .Select(s => s.UserId)
+            .Distinct()
+            .CountAsync(cancellationToken);
 }

@@ -71,4 +71,14 @@ public sealed class PriceEntryRepository(AppDbContext dbContext) : IPriceEntryRe
         dbContext.PriceEntries.FirstOrDefaultAsync(p => p.Id == priceEntryId, cancellationToken);
 
     public void Add(PriceEntry priceEntry) => dbContext.PriceEntries.Add(priceEntry);
+
+    public async Task<(int Total, int Verified)> CountByUserIdAsync(string userId, CancellationToken cancellationToken)
+    {
+        var total = await dbContext.PriceEntries.CountAsync(p => p.SubmittedByUserId == userId, cancellationToken);
+        var verified = await dbContext.PriceEntries.CountAsync(p => p.SubmittedByUserId == userId && p.IsVerified, cancellationToken);
+        return (total, verified);
+    }
+
+    public Task<int> CountInRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken) =>
+        dbContext.PriceEntries.CountAsync(p => p.RecordedAt >= from && p.RecordedAt < to, cancellationToken);
 }

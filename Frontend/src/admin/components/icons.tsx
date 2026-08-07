@@ -360,6 +360,31 @@ export function SendIcon(props: IconProps) {
   )
 }
 
+export function PanelLeftIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <line x1="9" y1="3" x2="9" y2="21" />
+    </svg>
+  )
+}
+
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  )
+}
+
+export function CommandIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 4a2 2 0 1 1 2 2v12a2 2 0 1 1-2-2h12a2 2 0 1 1-2 2V6a2 2 0 1 1 2-2Z" />
+    </svg>
+  )
+}
+
 export function PhoneIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

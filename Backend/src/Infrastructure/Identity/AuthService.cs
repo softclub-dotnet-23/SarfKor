@@ -27,7 +27,7 @@ public sealed class AuthService(
         if (existingUnconfirmed is not null && !existingUnconfirmed.EmailConfirmed && !emailPreVerified)
             return await ResendConfirmationCodeAsync(existingUnconfirmed, cancellationToken);
 
-        var user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = emailPreVerified };
+        var user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = emailPreVerified, CreatedAt = DateTimeOffset.UtcNow };
         var createResult = await userManager.CreateAsync(user, password);
         if (!createResult.Succeeded)
         {
@@ -255,14 +255,24 @@ public sealed class AuthService(
         return true;
     }
 
-    public async Task<bool> ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken)
+    public async Task<ChangePasswordServiceResult> ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken)
     {
-        var user = await userManager.FindByIdAsync(userId)
-                   ?? throw new InvalidOperationException($"User {userId} not found.");
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return new ChangePasswordServiceResult(false, true, false, Array.Empty<string>());
 
         var result = await userManager.ChangePasswordAsync(user, currentPassword, newPassword);
         if (!result.Succeeded)
-            return false;
+        {
+            var incorrectCurrent = result.Errors.Any(e => e.Code == "PasswordMismatch");
+            return new ChangePasswordServiceResult(false, false, incorrectCurrent, result.Errors.Select(e => e.Description).ToList());
+        }
+
+        // Same reasoning as ResetPasswordAsync: a password change is exactly the moment a
+        // hijacked session should be killed, even though here it's the legitimate owner
+        // triggering it. Their own refresh token dies too — the access token is left to expire
+        // naturally rather than forcing an immediate re-login mid-change.
+        await refreshTokenRepository.RevokeAllForUserAsync(user.Id, cancellationToken);
 
         securityEventRepository.Add(new SecurityEvent
         {
@@ -272,6 +282,76 @@ public sealed class AuthService(
             UserAgent = null,
             OccurredAt = DateTimeOffset.UtcNow
         });
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return new ChangePasswordServiceResult(true, false, false, Array.Empty<string>());
+    }
+
+    public async Task<(IReadOnlyList<AdminUserSummary> Users, int TotalCount)> SearchUsersAsync(
+        int skip, int take, string? search, CancellationToken cancellationToken)
+    {
+        var query = userManager.Users.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(u => u.Email != null && EF.Functions.ILike(u.Email, $"%{term}%"));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var page = await query.OrderByDescending(u => u.CreatedAt).Skip(skip).Take(take).ToListAsync(cancellationToken);
+
+        var summaries = new List<AdminUserSummary>();
+        foreach (var user in page)
+        {
+            var roles = await userManager.GetRolesAsync(user);
+            summaries.Add(new AdminUserSummary(user.Id, user.Email, user.CreatedAt, user.BlockedAt is not null, roles.ToList()));
+        }
+
+        return (summaries, totalCount);
+    }
+
+    public async Task<AdminUserDetail?> GetUserDetailAsync(string userId, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return null;
+
+        var roles = await userManager.GetRolesAsync(user);
+        return new AdminUserDetail(user.Id, user.Email, user.CreatedAt, user.BlockedAt is not null,
+            user.BlockedReason, user.BlockedAt, user.BlockedByAdminUserId, roles.ToList());
+    }
+
+    public async Task<bool> BlockUserAsync(string userId, string reason, string performedByAdminUserId, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return false;
+
+        if (!await userManager.GetLockoutEnabledAsync(user))
+            await userManager.SetLockoutEnabledAsync(user, true);
+        await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+
+        user.BlockedReason = reason;
+        user.BlockedAt = DateTimeOffset.UtcNow;
+        user.BlockedByAdminUserId = performedByAdminUserId;
+        await userManager.UpdateAsync(user);
+
+        await refreshTokenRepository.RevokeAllForUserAsync(user.Id, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> UnblockUserAsync(string userId, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return false;
+
+        await userManager.SetLockoutEndDateAsync(user, null);
+        user.BlockedReason = null;
+        user.BlockedAt = null;
+        user.BlockedByAdminUserId = null;
+        await userManager.UpdateAsync(user);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return true;

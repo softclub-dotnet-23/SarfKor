@@ -65,6 +65,7 @@ public sealed class AdminCreateStorePartnerCommandHandler(
             EntityType = nameof(StoreOwnerInvitation),
             EntityId = invitation.Id,
             Details = command.Email,
+            IpAddress = command.PerformedByIpAddress,
             OccurredAt = DateTimeOffset.UtcNow
         });
         await unitOfWork.SaveChangesAsync(cancellationToken);

@@ -20,10 +20,15 @@ public class RecordStockReceiptCommandHandlerTests
     private readonly Mock<IStockMovementRepository> _stockMovementRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    public RecordStockReceiptCommandHandlerTests() =>
+    public RecordStockReceiptCommandHandlerTests()
+    {
         _unitOfWork
             .Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<CancellationToken, Task>>(), It.IsAny<CancellationToken>()))
             .Returns<Func<CancellationToken, Task>, CancellationToken>((action, ct) => action(ct));
+        _storeAccessAuthorizer
+            .Setup(a => a.IsOperationalAsync(StoreId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+    }
 
     private RecordStockReceiptCommandHandler CreateHandler() => new(
         _storeRepository.Object,
@@ -55,6 +60,21 @@ public class RecordStockReceiptCommandHandlerTests
         var result = await handler.Handle(ValidCommand() with { PerformedByUserId = "someone-else" }, CancellationToken.None);
 
         Assert.Equal(RecordStockReceiptOutcome.Forbidden, result.Outcome);
+    }
+
+    // Positive counterpart of the constructor's default IsOperationalAsync=true setup — a
+    // Suspended-subscription store must not be able to receive stock either (ADMIN_PROMPT.md §2.1).
+    [Fact]
+    public async Task Handle_StoreNotOperational_ReturnsSubscriptionInactive()
+    {
+        _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(ValidCommand(), CancellationToken.None);
+
+        Assert.Equal(RecordStockReceiptOutcome.SubscriptionInactive, result.Outcome);
     }
 
     [Fact]

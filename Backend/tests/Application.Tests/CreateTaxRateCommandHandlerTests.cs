@@ -9,6 +9,7 @@ public class CreateTaxRateCommandHandlerTests
 {
     private readonly Mock<ITaxRateRepository> _taxRateRepository = new();
     private readonly Mock<ICategoryRepository> _categoryRepository = new();
+    private readonly Mock<IAuditLogRepository> _auditLogRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
     [Fact]
@@ -16,11 +17,12 @@ public class CreateTaxRateCommandHandlerTests
     {
         _taxRateRepository.Setup(r => r.Add(It.IsAny<TaxRate>())).Callback<TaxRate>(t => t.Id = 1);
 
-        var handler = new CreateTaxRateCommandHandler(_taxRateRepository.Object, _categoryRepository.Object, _unitOfWork.Object);
-        var result = await handler.Handle(new CreateTaxRateCommand("VAT", 15, null), CancellationToken.None);
+        var handler = new CreateTaxRateCommandHandler(_taxRateRepository.Object, _categoryRepository.Object, _auditLogRepository.Object, _unitOfWork.Object);
+        var result = await handler.Handle(new CreateTaxRateCommand("VAT", 15, null, null, null, "admin-1"), CancellationToken.None);
 
         Assert.Equal(CreateTaxRateOutcome.Created, result.Outcome);
         Assert.Equal(1, result.TaxRateId);
         _taxRateRepository.Verify(r => r.Add(It.Is<TaxRate>(t => t.Name == "VAT" && t.Percentage == 15)), Times.Once);
+        _auditLogRepository.Verify(r => r.Add(It.Is<Domain.Auditing.AuditLog>(a => a.Action == "TaxRate.Created" && a.PerformedByUserId == "admin-1")), Times.Once);
     }
 }

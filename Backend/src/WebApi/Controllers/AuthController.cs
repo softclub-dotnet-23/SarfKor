@@ -1,4 +1,5 @@
 using Application.Common;
+using Application.Identity.Commands.ConfirmAdminInvitation;
 using Application.Identity.Commands.ConfirmEmail;
 using Application.Identity.Commands.ForgotPassword;
 using Application.Identity.Commands.Login;
@@ -7,6 +8,7 @@ using Application.Identity.Commands.Register;
 using Application.Identity.Commands.ResetPassword;
 using Application.Stores.Commands.AcceptStoreEmployeeInvitation;
 using Application.Stores.Commands.ConfirmStoreOwnerInvitation;
+using Application.Stores.Queries.GetStoreEmployeeInvitationByToken;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -148,6 +150,34 @@ public sealed class AuthController : ControllerBase
         };
     }
 
+    // Public — no auth, so the /invite/{token} page can show who's inviting whom before the
+    // visitor commits to anything. Same rate-limit bucket as AcceptInvite: both sit on the same
+    // guessable-token attack surface.
+    [HttpGet("invite/{token}")]
+    [EnableRateLimiting("invite-accept")]
+    public async Task<IActionResult> GetInvite(
+        string token,
+        [FromServices] IQueryHandler<GetStoreEmployeeInvitationByTokenQuery, GetStoreEmployeeInvitationByTokenResult> handler,
+        [FromServices] IValidator<GetStoreEmployeeInvitationByTokenQuery> validator,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetStoreEmployeeInvitationByTokenQuery(token);
+        var validationResult = await validator.ValidateAsync(query, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(query, cancellationToken);
+        return result.Outcome switch
+        {
+            GetStoreEmployeeInvitationByTokenOutcome.Valid => Ok(result),
+            GetStoreEmployeeInvitationByTokenOutcome.NotFound => NotFound(new { outcome = "NotFound" }),
+            GetStoreEmployeeInvitationByTokenOutcome.Expired => Ok(new { outcome = "Expired" }),
+            GetStoreEmployeeInvitationByTokenOutcome.Accepted => Ok(new { outcome = "Accepted" }),
+            GetStoreEmployeeInvitationByTokenOutcome.Revoked => Ok(new { outcome = "Revoked" }),
+            _ => Problem()
+        };
+    }
+
     [HttpPost("accept-invite")]
     [EnableRateLimiting("invite-accept")]
     public async Task<IActionResult> AcceptInvite(
@@ -165,8 +195,12 @@ public sealed class AuthController : ControllerBase
         {
             AcceptStoreEmployeeInvitationOutcome.Accepted => Ok(result),
             AcceptStoreEmployeeInvitationOutcome.AccountAlreadyExisted => Ok(result),
-            AcceptStoreEmployeeInvitationOutcome.InvalidOrExpiredToken => BadRequest("Invalid or expired invitation link."),
-            AcceptStoreEmployeeInvitationOutcome.RegistrationFailed => BadRequest("Could not create the account — check password requirements."),
+            AcceptStoreEmployeeInvitationOutcome.NotFound => NotFound(new { outcome = "NotFound" }),
+            AcceptStoreEmployeeInvitationOutcome.Expired => BadRequest(new { outcome = "Expired" }),
+            AcceptStoreEmployeeInvitationOutcome.AlreadyAccepted => Conflict(new { outcome = "AlreadyAccepted" }),
+            AcceptStoreEmployeeInvitationOutcome.Revoked => Conflict(new { outcome = "Revoked" }),
+            AcceptStoreEmployeeInvitationOutcome.PasswordRequired => BadRequest(new { outcome = "PasswordRequired" }),
+            AcceptStoreEmployeeInvitationOutcome.RegistrationFailed => BadRequest(new { outcome = "RegistrationFailed" }),
             _ => Problem()
         };
     }
@@ -191,6 +225,32 @@ public sealed class AuthController : ControllerBase
             ConfirmStoreOwnerInvitationOutcome.TooManyAttempts => BadRequest("Too many attempts — ask the administrator to resend the invitation."),
             ConfirmStoreOwnerInvitationOutcome.EmailAlreadyRegistered => Conflict("This email already has an account."),
             ConfirmStoreOwnerInvitationOutcome.RegistrationFailed => BadRequest("Could not create the account — check password requirements."),
+            _ => Problem()
+        };
+    }
+
+    [HttpPost("confirm-admin-invite")]
+    [EnableRateLimiting("password-reset")]
+    public async Task<IActionResult> ConfirmAdminInvite(
+        ConfirmAdminInvitationRequest request,
+        [FromServices] ICommandHandler<ConfirmAdminInvitationCommand, ConfirmAdminInvitationResult> handler,
+        [FromServices] IValidator<ConfirmAdminInvitationCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var command = new ConfirmAdminInvitationCommand(request.Email, request.Code, request.Password);
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            ConfirmAdminInvitationOutcome.Confirmed => Ok(result.Auth),
+            ConfirmAdminInvitationOutcome.InvalidOrExpiredCode => BadRequest("Invalid or expired code."),
+            ConfirmAdminInvitationOutcome.TooManyAttempts => BadRequest("Too many attempts — ask an administrator to resend the invitation."),
+            ConfirmAdminInvitationOutcome.EmailAlreadyRegistered => Conflict("This email already has an account."),
+            ConfirmAdminInvitationOutcome.RegistrationFailed => BadRequest("Could not create the account — check password requirements."),
             _ => Problem()
         };
     }

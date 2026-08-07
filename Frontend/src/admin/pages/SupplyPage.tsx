@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode, type SVGProps } from 'react'
+import { useCallback, useEffect, useState, type ReactNode, type SVGProps } from 'react'
 import { Panel } from '../cabinet/components/primitives'
 import { Select } from '../components/Select'
 import { Loading } from '../components/Loading'
+import { FormModal, FormField } from '../components/FormModal'
+import { ProductPicker } from '../components/ProductPicker'
 import { TruckIcon, PlusIcon, TrashIcon, RefreshIcon, PhoneIcon, MailIcon, AlertIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { ApiError } from '../../lib/api/client'
+import type { ProductSearchItem } from '../../lib/api'
 import { createSupplier, getSuppliers, type Supplier } from '../../lib/api/suppliers'
 import {
   createPurchaseOrder,
@@ -151,10 +154,46 @@ function FieldError({ message }: { message: string }) {
 const inputClass =
   'w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none transition-colors placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]'
 
-const primaryButtonClass =
-  'flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 disabled:hover:shadow-none'
-
 /* ---------- Suppliers ---------- */
+
+function CreateSupplierModal({ open, onClose, storeId, onCreated }: { open: boolean; onClose: () => void; storeId: number; onCreated: () => Promise<void> }) {
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [nameError, setNameError] = useState('')
+
+  function handleClose() {
+    setName('')
+    setPhone('')
+    setEmail('')
+    setNameError('')
+    onClose()
+  }
+
+  async function submit() {
+    if (!name.trim()) {
+      setNameError('Укажите название')
+      throw new Error('Укажите название')
+    }
+    await createSupplier(storeId, name.trim(), phone.trim() || undefined, email.trim() || undefined)
+    await onCreated()
+    handleClose()
+  }
+
+  return (
+    <FormModal open={open} onClose={handleClose} title="Новый поставщик" isDirty={!!(name || phone || email)} onSubmit={submit} submitLabel="Добавить поставщика" scheme="admin">
+      <FormField label="Название" required error={nameError} scheme="admin">
+        <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+      </FormField>
+      <FormField label="Телефон" scheme="admin">
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Необязательно" className={inputClass} />
+      </FormField>
+      <FormField label="Email" scheme="admin">
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Необязательно" type="email" className={inputClass} />
+      </FormField>
+    </FormModal>
+  )
+}
 
 function SuppliersSection({
   storeId,
@@ -169,69 +208,29 @@ function SuppliersSection({
   error: string
   load: () => Promise<void>
 }) {
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [formError, setFormError] = useState('')
-
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault()
-    if (!name.trim() || submitting) return
-    setSubmitting(true)
-    setFormError('')
-    try {
-      await createSupplier(storeId, name.trim(), phone.trim() || undefined, email.trim() || undefined)
-      setName('')
-      setPhone('')
-      setEmail('')
-      await load()
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Не удалось создать поставщика')
-    } finally {
-      setSubmitting(false)
-    }
-  }
+  const [createOpen, setCreateOpen] = useState(false)
 
   return (
     <div className="flex flex-col gap-5">
       <Panel className="p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <TruckIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новый поставщик</span>
-        </div>
-        <form onSubmit={handleCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название *" className={inputClass} />
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Телефон" className={inputClass} />
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            type="email"
-            className={inputClass}
-          />
-          <button type="submit" disabled={submitting || !name.trim()} className={`${primaryButtonClass} sm:col-span-3`}>
-            <PlusIcon width={15} height={15} />
-            {submitting ? 'Создаём…' : 'Добавить поставщика'}
-          </button>
-        </form>
-        {formError && (
-          <div className="mt-3">
-            <FieldError message={formError} />
-          </div>
-        )}
-      </Panel>
-
-      <Panel className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Поставщики</span>
-          <button
-            onClick={load}
-            aria-label="Обновить"
-            className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
-          >
-            <RefreshIcon width={15} height={15} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-bold text-white"
+            >
+              <PlusIcon width={14} height={14} />
+              Добавить поставщика
+            </button>
+            <button
+              onClick={load}
+              aria-label="Обновить"
+              className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
+            >
+              <RefreshIcon width={15} height={15} />
+            </button>
+          </div>
         </div>
 
         {loading && <Loading />}
@@ -275,6 +274,8 @@ function SuppliersSection({
           </div>
         )}
       </Panel>
+
+      <CreateSupplierModal open={createOpen} onClose={() => setCreateOpen(false)} storeId={storeId} onCreated={load} />
     </div>
   )
 }
@@ -282,25 +283,146 @@ function SuppliersSection({
 /* ---------- Purchase orders ---------- */
 
 interface DraftLine {
-  productId: string
+  product: ProductSearchItem | null
   quantity: string
   unitCost: string
   currency: string
 }
 
 function emptyLine(): DraftLine {
-  return { productId: '', quantity: '1', unitCost: '', currency: 'TJS' }
+  return { product: null, quantity: '1', unitCost: '', currency: 'TJS' }
+}
+
+function CreateOrderModal({ open, onClose, storeId, suppliers, onCreated }: { open: boolean; onClose: () => void; storeId: number; suppliers: Supplier[]; onCreated: () => Promise<void> }) {
+  const [supplierId, setSupplierId] = useState('')
+  const [lines, setLines] = useState<DraftLine[]>([emptyLine()])
+  const [linesError, setLinesError] = useState('')
+
+  function updateLine(i: number, patch: Partial<DraftLine>) {
+    setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
+  }
+  function addLine() {
+    setLines((ls) => [...ls, emptyLine()])
+  }
+  function removeLine(i: number) {
+    setLines((ls) => (ls.length > 1 ? ls.filter((_, idx) => idx !== i) : ls))
+  }
+
+  function handleClose() {
+    setSupplierId('')
+    setLines([emptyLine()])
+    setLinesError('')
+    onClose()
+  }
+
+  async function submit() {
+    if (!supplierId) throw new Error('Выберите поставщика')
+
+    const parsedLines: PurchaseOrderLine[] = []
+    for (const l of lines) {
+      const productId = l.product?.productId
+      const quantity = Number(l.quantity)
+      const unitCost = Number(l.unitCost)
+      if (!productId || !quantity || quantity <= 0 || Number.isNaN(unitCost) || unitCost < 0 || !l.currency.trim()) {
+        setLinesError('Проверьте строки заказа — товар, количество и цена обязательны')
+        throw new Error('Проверьте строки заказа')
+      }
+      parsedLines.push({ productId, quantity, unitCost, currency: l.currency.trim() })
+    }
+    setLinesError('')
+
+    const result = await createPurchaseOrder(storeId, Number(supplierId), parsedLines)
+    if (result.outcome !== 'Created') {
+      throw new Error(result.outcome === 'Forbidden' ? 'Нет доступа к этому магазину' : 'Магазин не найден')
+    }
+    await onCreated()
+    handleClose()
+  }
+
+  return (
+    <FormModal open={open} onClose={handleClose} title="Новый заказ поставщику" isDirty={!!supplierId} onSubmit={submit} submitLabel="Создать заказ" scheme="admin" size="lg">
+      {suppliers.length === 0 ? (
+        <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">
+          Сначала добавьте хотя бы одного поставщика на вкладке «Поставщики».
+        </p>
+      ) : (
+        <>
+          <FormField label="Поставщик" required scheme="admin">
+            <Select
+              scheme="admin"
+              value={supplierId}
+              onChange={setSupplierId}
+              placeholder="Выберите поставщика"
+              options={suppliers.map((s) => ({ value: String(s.supplierId), label: s.name }))}
+            />
+          </FormField>
+
+          <FormField label="Позиции" error={linesError} scheme="admin">
+            <div className="flex flex-col gap-2">
+              {lines.map((line, i) => (
+                <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1fr_90px_auto]">
+                  <ProductPicker
+                    className="col-span-2 sm:col-span-1"
+                    value={line.product}
+                    onChange={(p) => updateLine(i, { product: p })}
+                    storeId={storeId}
+                    scheme="admin"
+                  />
+                  <input
+                    value={line.quantity}
+                    onChange={(e) => updateLine(i, { quantity: e.target.value })}
+                    placeholder="Кол-во"
+                    type="number"
+                    min={1}
+                    className={inputClass}
+                  />
+                  <input
+                    value={line.unitCost}
+                    onChange={(e) => updateLine(i, { unitCost: e.target.value })}
+                    placeholder="Цена за ед."
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className={inputClass}
+                  />
+                  <input
+                    value={line.currency}
+                    onChange={(e) => updateLine(i, { currency: e.target.value })}
+                    placeholder="Валюта"
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeLine(i)}
+                    disabled={lines.length === 1}
+                    aria-label="Удалить строку"
+                    className="grid h-full min-h-[42px] w-full place-items-center rounded-xl bg-[color:var(--admin-hover)] text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-danger)] disabled:opacity-40 sm:w-10"
+                  >
+                    <TrashIcon width={14} height={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addLine}
+              className="mt-2 flex w-fit items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
+            >
+              <PlusIcon width={13} height={13} />
+              Добавить позицию
+            </button>
+          </FormField>
+        </>
+      )}
+    </FormModal>
+  )
 }
 
 function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Supplier[] }) {
   const [orders, setOrders] = useState<PurchaseOrder[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  const [supplierId, setSupplierId] = useState('')
-  const [lines, setLines] = useState<DraftLine[]>([emptyLine()])
-  const [submitting, setSubmitting] = useState(false)
-  const [formError, setFormError] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
 
   const [busyId, setBusyId] = useState<number | null>(null)
   const [rowError, setRowError] = useState<{ id: number; message: string } | null>(null)
@@ -325,52 +447,6 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
   useEffect(() => {
     load()
   }, [load])
-
-  function updateLine(i: number, patch: Partial<DraftLine>) {
-    setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
-  }
-
-  function addLine() {
-    setLines((ls) => [...ls, emptyLine()])
-  }
-
-  function removeLine(i: number) {
-    setLines((ls) => (ls.length > 1 ? ls.filter((_, idx) => idx !== i) : ls))
-  }
-
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault()
-    if (submitting || !supplierId) return
-
-    const parsedLines: PurchaseOrderLine[] = []
-    for (const l of lines) {
-      const productId = Number(l.productId)
-      const quantity = Number(l.quantity)
-      const unitCost = Number(l.unitCost)
-      if (!productId || productId <= 0 || !quantity || quantity <= 0 || Number.isNaN(unitCost) || unitCost < 0 || !l.currency.trim()) {
-        setFormError('Проверьте строки заказа — товар, количество и цена обязательны')
-        return
-      }
-      parsedLines.push({ productId, quantity, unitCost, currency: l.currency.trim() })
-    }
-
-    setSubmitting(true)
-    setFormError('')
-    try {
-      const result = await createPurchaseOrder(storeId, Number(supplierId), parsedLines)
-      if (result.outcome !== 'Created') {
-        setFormError(result.outcome === 'Forbidden' ? 'Нет доступа к этому магазину' : 'Магазин не найден')
-        return
-      }
-      setLines([emptyLine()])
-      setSupplierId('')
-      await load()
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Не удалось создать заказ поставщику')
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   async function handleSubmitOrder(id: number) {
     setBusyId(id)
@@ -411,99 +487,24 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
   return (
     <div className="flex flex-col gap-5">
       <Panel className="p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <DocumentIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новый заказ поставщику</span>
-        </div>
-
-        {suppliers.length === 0 ? (
-          <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">
-            Сначала добавьте хотя бы одного поставщика на вкладке «Поставщики».
-          </p>
-        ) : (
-          <form onSubmit={handleCreate} className="flex flex-col gap-3">
-            <Select
-              value={supplierId}
-              onChange={setSupplierId}
-              placeholder="Выберите поставщика"
-              options={suppliers.map((s) => ({ value: String(s.supplierId), label: s.name }))}
-            />
-
-            <div className="flex flex-col gap-2">
-              {lines.map((line, i) => (
-                <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1fr_90px_auto]">
-                  <input
-                    value={line.productId}
-                    onChange={(e) => updateLine(i, { productId: e.target.value })}
-                    placeholder="ID товара"
-                    type="number"
-                    min={1}
-                    className={inputClass}
-                  />
-                  <input
-                    value={line.quantity}
-                    onChange={(e) => updateLine(i, { quantity: e.target.value })}
-                    placeholder="Кол-во"
-                    type="number"
-                    min={1}
-                    className={inputClass}
-                  />
-                  <input
-                    value={line.unitCost}
-                    onChange={(e) => updateLine(i, { unitCost: e.target.value })}
-                    placeholder="Цена за ед."
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    className={inputClass}
-                  />
-                  <input
-                    value={line.currency}
-                    onChange={(e) => updateLine(i, { currency: e.target.value })}
-                    placeholder="Валюта"
-                    className={inputClass}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeLine(i)}
-                    disabled={lines.length === 1}
-                    aria-label="Удалить строку"
-                    className="grid h-full min-h-[42px] w-full place-items-center rounded-xl bg-[color:var(--admin-hover)] text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-danger)] disabled:opacity-40 sm:w-10"
-                  >
-                    <TrashIcon width={14} height={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={addLine}
-              className="flex w-fit items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
-            >
-              <PlusIcon width={13} height={13} />
-              Добавить позицию
-            </button>
-
-            {formError && <FieldError message={formError} />}
-
-            <button type="submit" disabled={submitting || !supplierId} className={primaryButtonClass}>
-              {submitting ? 'Создаём…' : 'Создать заказ'}
-            </button>
-          </form>
-        )}
-      </Panel>
-
-      <Panel className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Заказы поставщикам</span>
-          <button
-            onClick={load}
-            aria-label="Обновить"
-            className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
-          >
-            <RefreshIcon width={15} height={15} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-bold text-white"
+            >
+              <PlusIcon width={14} height={14} />
+              Новый заказ
+            </button>
+            <button
+              onClick={load}
+              aria-label="Обновить"
+              className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
+            >
+              <RefreshIcon width={15} height={15} />
+            </button>
+          </div>
         </div>
 
         {loading && <Loading />}
@@ -562,23 +563,74 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
           </div>
         )}
       </Panel>
+
+      <CreateOrderModal open={createOpen} onClose={() => setCreateOpen(false)} storeId={storeId} suppliers={suppliers} onCreated={load} />
     </div>
   )
 }
 
 /* ---------- Stock transfers ---------- */
 
+function CreateTransferModal({ open, onClose, storeId, onCreated }: { open: boolean; onClose: () => void; storeId: number; onCreated: () => Promise<void> }) {
+  const [product, setProduct] = useState<ProductSearchItem | null>(null)
+  const [fromStoreId, setFromStoreId] = useState(String(storeId))
+  const [toStoreId, setToStoreId] = useState('')
+  const [quantity, setQuantity] = useState('1')
+  const [fieldError, setFieldError] = useState('')
+
+  function handleClose() {
+    setProduct(null)
+    setFromStoreId(String(storeId))
+    setToStoreId('')
+    setQuantity('1')
+    setFieldError('')
+    onClose()
+  }
+
+  async function submit() {
+    const pid = product?.productId
+    const from = Number(fromStoreId)
+    const to = Number(toStoreId)
+    const qty = Number(quantity)
+    if (!pid || !from || from <= 0 || !to || to <= 0 || !qty || qty <= 0) {
+      setFieldError('Заполните товар, оба магазина и количество (числами больше нуля)')
+      throw new Error('Проверьте поля формы')
+    }
+    setFieldError('')
+    const result = await initiateStockTransfer(pid, from, to, qty)
+    if (result.outcome !== 'Initiated') throw new Error(describeInitiateTransferOutcome(result.outcome))
+    await onCreated()
+    handleClose()
+  }
+
+  return (
+    <FormModal open={open} onClose={handleClose} title="Новое перемещение" isDirty={!!(product || toStoreId)} onSubmit={submit} submitLabel="Инициировать перемещение" scheme="admin">
+      <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
+        В бэкенде нет эндпоинта со списком ваших магазинов — если у вас несколько магазинов, введите ID магазина назначения вручную.
+      </p>
+      <FormField label="Товар" required scheme="admin">
+        <ProductPicker value={product} onChange={setProduct} storeId={storeId} scheme="admin" scanEnabled />
+      </FormField>
+      <div className="grid grid-cols-2 gap-2.5">
+        <FormField label="Из магазина" required scheme="admin">
+          <input value={fromStoreId} onChange={(e) => setFromStoreId(e.target.value)} placeholder="ID" type="number" min={1} className={inputClass} />
+        </FormField>
+        <FormField label="В магазин" required scheme="admin">
+          <input value={toStoreId} onChange={(e) => setToStoreId(e.target.value)} placeholder="ID" type="number" min={1} className={inputClass} />
+        </FormField>
+      </div>
+      <FormField label="Количество" required error={fieldError} scheme="admin">
+        <input value={quantity} onChange={(e) => setQuantity(e.target.value)} type="number" min={1} className={inputClass} />
+      </FormField>
+    </FormModal>
+  )
+}
+
 function TransfersSection({ storeId }: { storeId: number }) {
   const [transfers, setTransfers] = useState<StockTransfer[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  const [productId, setProductId] = useState('')
-  const [fromStoreId, setFromStoreId] = useState(String(storeId))
-  const [toStoreId, setToStoreId] = useState('')
-  const [quantity, setQuantity] = useState('1')
-  const [submitting, setSubmitting] = useState(false)
-  const [formError, setFormError] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
 
   const [busyId, setBusyId] = useState<number | null>(null)
   const [rowError, setRowError] = useState<{ id: number; message: string } | null>(null)
@@ -604,36 +656,6 @@ function TransfersSection({ storeId }: { storeId: number }) {
     load()
   }, [load])
 
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault()
-    if (submitting) return
-    const pid = Number(productId)
-    const from = Number(fromStoreId)
-    const to = Number(toStoreId)
-    const qty = Number(quantity)
-    if (!pid || pid <= 0 || !from || from <= 0 || !to || to <= 0 || !qty || qty <= 0) {
-      setFormError('Заполните товар, оба магазина и количество (числами больше нуля)')
-      return
-    }
-    setSubmitting(true)
-    setFormError('')
-    try {
-      const result = await initiateStockTransfer(pid, from, to, qty)
-      if (result.outcome !== 'Initiated') {
-        setFormError(describeInitiateTransferOutcome(result.outcome))
-        return
-      }
-      setProductId('')
-      setToStoreId('')
-      setQuantity('1')
-      await load()
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Не удалось инициировать перемещение')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   async function handleComplete(id: number) {
     setBusyId(id)
     setRowError(null)
@@ -654,68 +676,24 @@ function TransfersSection({ storeId }: { storeId: number }) {
   return (
     <div className="flex flex-col gap-5">
       <Panel className="p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <SwapIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Новое перемещение</span>
-        </div>
-        <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-          В бэкенде нет эндпоинта со списком ваших магазинов — если у вас несколько магазинов, введите ID
-          магазина назначения вручную.
-        </p>
-        <form onSubmit={handleCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-          <input
-            value={productId}
-            onChange={(e) => setProductId(e.target.value)}
-            placeholder="ID товара"
-            type="number"
-            min={1}
-            className={inputClass}
-          />
-          <input
-            value={fromStoreId}
-            onChange={(e) => setFromStoreId(e.target.value)}
-            placeholder="Из магазина (ID)"
-            type="number"
-            min={1}
-            className={inputClass}
-          />
-          <input
-            value={toStoreId}
-            onChange={(e) => setToStoreId(e.target.value)}
-            placeholder="В магазин (ID)"
-            type="number"
-            min={1}
-            className={inputClass}
-          />
-          <input
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            placeholder="Количество"
-            type="number"
-            min={1}
-            className={inputClass}
-          />
-          <button type="submit" disabled={submitting} className={`${primaryButtonClass} sm:col-span-4`}>
-            {submitting ? 'Инициируем…' : 'Инициировать перемещение'}
-          </button>
-        </form>
-        {formError && (
-          <div className="mt-3">
-            <FieldError message={formError} />
-          </div>
-        )}
-      </Panel>
-
-      <Panel className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Перемещения этого магазина</span>
-          <button
-            onClick={load}
-            aria-label="Обновить"
-            className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
-          >
-            <RefreshIcon width={15} height={15} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-bold text-white"
+            >
+              <PlusIcon width={14} height={14} />
+              Новое перемещение
+            </button>
+            <button
+              onClick={load}
+              aria-label="Обновить"
+              className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
+            >
+              <RefreshIcon width={15} height={15} />
+            </button>
+          </div>
         </div>
 
         {loading && <Loading />}
@@ -767,6 +745,8 @@ function TransfersSection({ storeId }: { storeId: number }) {
           </div>
         )}
       </Panel>
+
+      <CreateTransferModal open={createOpen} onClose={() => setCreateOpen(false)} storeId={storeId} onCreated={load} />
     </div>
   )
 }

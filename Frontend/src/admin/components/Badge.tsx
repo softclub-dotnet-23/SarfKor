@@ -2,10 +2,10 @@ import type { ReactNode } from 'react'
 
 // Promotes the ~70 raw-hex status pills scattered across admin pages
 // (#f87171/#34d399/#fbbf24 for danger/success/warning) onto the semantic
-// --admin-* tokens added alongside this component. 'mod' reuses the
-// moderation shell's existing --mod-ok/-warn/-danger, which are deliberately
-// calmer (warn is grey, not amber) — that's the platform-Admin surface's
-// existing restrained palette, not an oversight, so it's left as-is here.
+// --admin-* tokens added alongside this component. 'mod' reuses the platform
+// Admin console's --mod-ok/-warn/-danger — a fixed status palette used
+// everywhere on that surface: green=active, amber=needs attention
+// (expiring/overdue), red=blocked/stopped, neutral grey=waiting.
 const VARIANTS = {
   admin: {
     success: 'bg-[color:var(--admin-success-dim)] text-[color:var(--admin-success)]',

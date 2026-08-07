@@ -40,6 +40,7 @@ public sealed class StockController : ControllerBase
             RecordStockReceiptOutcome.StoreNotFound => NotFound("Store not found."),
             RecordStockReceiptOutcome.ProductNotFound => NotFound("Product not found."),
             RecordStockReceiptOutcome.Forbidden => Forbid(),
+            RecordStockReceiptOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — inventory operations are closed until the store's subscription is current."),
             _ => Problem()
         };
     }

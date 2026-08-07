@@ -7,6 +7,7 @@ import { Loading } from '../components/Loading'
 import { ErrorState } from '../components/ErrorState'
 import { Reveal } from '../components/Reveal'
 import { BarcodeScannerView } from '../components/BarcodeScannerView'
+import { ProductPicker } from '../components/ProductPicker'
 import { SearchIcon, PlusIcon, AlertIcon, TruckIcon, BarcodeIcon, CameraIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner'
@@ -16,11 +17,14 @@ import {
   storesApi,
   catalogApi,
   pricingApi,
+  suppliersApi,
   ApiError,
   type StockLevel,
   type ReorderAlert,
   type Category,
   type Brand,
+  type Supplier,
+  type ProductSearchItem,
 } from '../../lib/api'
 import { createReorderRule } from '../../lib/api/reorderRules'
 
@@ -106,12 +110,13 @@ export function InventoryPage() {
   const [priceDone, setPriceDone] = useState(false)
 
   const [ruleOpen, setRuleOpen] = useState(false)
-  const [ruleProductId, setRuleProductId] = useState('')
+  const [ruleProduct, setRuleProduct] = useState<ProductSearchItem | null>(null)
   const [ruleThreshold, setRuleThreshold] = useState('5')
   const [ruleReorderQty, setRuleReorderQty] = useState('20')
   const [ruleSupplierId, setRuleSupplierId] = useState('')
   const [ruleBusy, setRuleBusy] = useState(false)
   const [ruleError, setRuleError] = useState('')
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
 
   const load = useCallback(async () => {
     if (!storeId) return
@@ -156,6 +161,11 @@ export function InventoryPage() {
     catalogApi.getCategories().then((res) => setCategories(res.categories)).catch(() => {})
     catalogApi.getBrands().then((res) => setBrands(res.brands)).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!storeId) return
+    suppliersApi.getSuppliers(storeId).then((res) => setSuppliers(res.suppliers)).catch(() => {})
+  }, [storeId])
 
   const alertMap = useMemo(() => new Map(alerts.map((a) => [a.productId, a])), [alerts])
 
@@ -259,22 +269,9 @@ export function InventoryPage() {
         brandId: Number(submitBrandId),
         countryOfOrigin: submitCountry.trim(),
       })
-      // A StorePartner's submission (the only role that reaches this screen) is created directly
-      // by the backend — productId is already in this response, no self-approve round-trip
-      // needed. The productSubmissionId branch is only a fallback for the rare case where that
-      // isn't true (e.g. a non-StorePartner caller somehow reaching this code path).
-      let newProductId: number | undefined = submitResult.productId
-      if (!newProductId && submitResult.productSubmissionId) {
-        try {
-          const approveResult = await productsApi.selfApproveNewProduct(submitResult.productSubmissionId)
-          newProductId = approveResult.productId
-        } catch {
-          // The submission itself already succeeded either way — if self-approve fails for any
-          // reason (e.g. a duplicate barcode caught at moderation time), it just waits in the
-          // queue for Admin to look at instead of failing this whole action. newProductId stays
-          // undefined, so the receipt step below is skipped rather than opened with a bad id.
-        }
-      }
+      // Moderation is gone — every submission publishes a Product immediately, so productId is
+      // always present on success.
+      const newProductId: number | undefined = submitResult.productId
       setSubmitDone(true)
       setTimeout(() => {
         setSubmitOpen(false)
@@ -306,7 +303,7 @@ export function InventoryPage() {
     try {
       const res = await catalogApi.createCategory(newCategoryName.trim())
       if (res.outcome === 'Created' && res.categoryId) {
-        const created = { categoryId: res.categoryId, name: newCategoryName.trim() }
+        const created = { categoryId: res.categoryId, name: newCategoryName.trim(), displayOrder: 0, isHidden: false }
         setCategories((c) => [...c, created])
         setSubmitCategoryId(String(res.categoryId))
         setNewCategoryOpen(false)
@@ -327,7 +324,7 @@ export function InventoryPage() {
     setNewBrandError('')
     try {
       const res = await catalogApi.createBrand(newBrandName.trim())
-      const created = { brandId: res.brandId, name: newBrandName.trim() }
+      const created = { brandId: res.brandId, name: newBrandName.trim(), productCount: 0 }
       setBrands((b) => [...b, created])
       setSubmitBrandId(String(res.brandId))
       setNewBrandOpen(false)
@@ -413,10 +410,10 @@ export function InventoryPage() {
 
   async function confirmCreateRule() {
     if (!storeId || ruleBusy) return
-    const productId = Number(ruleProductId)
+    const productId = ruleProduct?.productId
     const thresholdQuantity = Number(ruleThreshold)
     const reorderQuantity = Number(ruleReorderQty)
-    if (!productId || productId <= 0 || !thresholdQuantity || thresholdQuantity < 0 || !reorderQuantity || reorderQuantity <= 0) {
+    if (!productId || !thresholdQuantity || thresholdQuantity < 0 || !reorderQuantity || reorderQuantity <= 0) {
       setRuleError('Проверьте товар, порог и количество пополнения')
       return
     }
@@ -430,7 +427,7 @@ export function InventoryPage() {
         return
       }
       setRuleOpen(false)
-      setRuleProductId('')
+      setRuleProduct(null)
       setRuleThreshold('5')
       setRuleReorderQty('20')
       setRuleSupplierId('')
@@ -864,14 +861,8 @@ export function InventoryPage() {
           </p>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">ID товара</span>
-            <input
-              type="number"
-              min={1}
-              value={ruleProductId}
-              onChange={(e) => setRuleProductId(e.target.value)}
-              className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
-            />
+            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Товар</span>
+            <ProductPicker value={ruleProduct} onChange={setRuleProduct} storeId={storeId ?? undefined} scheme="admin" scanEnabled />
           </label>
 
           <div className="grid grid-cols-2 gap-3">
@@ -898,13 +889,12 @@ export function InventoryPage() {
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">ID предпочитаемого поставщика (необязательно)</span>
-            <input
-              type="number"
-              min={1}
+            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Предпочитаемый поставщик (необязательно)</span>
+            <Select
               value={ruleSupplierId}
-              onChange={(e) => setRuleSupplierId(e.target.value)}
-              className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+              onChange={setRuleSupplierId}
+              placeholder="Без предпочтения"
+              options={suppliers.map((s) => ({ value: String(s.supplierId), label: s.name }))}
             />
           </label>
 
@@ -912,7 +902,7 @@ export function InventoryPage() {
 
           <button
             onClick={confirmCreateRule}
-            disabled={ruleBusy || !ruleProductId}
+            disabled={ruleBusy || !ruleProduct}
             className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
           >
             <PlusIcon width={16} height={16} />

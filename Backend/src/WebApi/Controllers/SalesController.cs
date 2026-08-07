@@ -44,6 +44,10 @@ public sealed class SalesController : ControllerBase
             ProcessSaleOutcome.Completed => Ok(result),
             ProcessSaleOutcome.StoreNotFound => NotFound("Store not found."),
             ProcessSaleOutcome.Forbidden => Forbid(),
+            // 402, not 409/403 — a distinct, unambiguous HTTP status the frontend can branch on
+            // directly (ADMIN_PROMPT.md §2.1: "явный код «подписка неактивна»") instead of string-
+            // matching a Conflict body like every other business-rule rejection here does.
+            ProcessSaleOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the register is closed until the store's subscription is current."),
             ProcessSaleOutcome.ProductNotFound => NotFound($"Product {result.FailedProductId} not found."),
             ProcessSaleOutcome.PriceNotFound => Conflict($"No price set for product {result.FailedProductId} at this store."),
             ProcessSaleOutcome.InsufficientStock => Conflict($"Insufficient stock for product {result.FailedProductId}."),

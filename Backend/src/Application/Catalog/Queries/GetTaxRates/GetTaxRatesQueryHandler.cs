@@ -8,6 +8,6 @@ public sealed class GetTaxRatesQueryHandler(ITaxRateRepository taxRateRepository
     public async Task<GetTaxRatesResult> Handle(GetTaxRatesQuery query, CancellationToken cancellationToken)
     {
         var taxRates = await taxRateRepository.GetAllAsync(cancellationToken);
-        return new GetTaxRatesResult(taxRates.Select(t => new TaxRateDto(t.Id, t.Name, t.Percentage, t.CategoryId)).ToList());
+        return new GetTaxRatesResult(taxRates.Select(t => new TaxRateDto(t.Id, t.Name, t.Percentage, t.CategoryId, t.EffectiveFrom, t.EffectiveTo)).ToList());
     }
 }

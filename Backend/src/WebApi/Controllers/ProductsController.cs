@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Application.Common;
-using Application.Products.Commands.ModerateNewProduct;
 using Application.Products.Commands.RecordScan;
 using Application.Products.Commands.SubmitNewProduct;
 using Application.Products.Queries.CompareStoresForShoppingList;
@@ -8,6 +7,7 @@ using Application.Products.Queries.GetMostScannedProducts;
 using Application.Products.Queries.GetProductById;
 using Application.Products.Queries.GetTopSellingProducts;
 using Application.Products.Queries.ScanBarcode;
+using Application.Products.Queries.SearchProducts;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -117,6 +117,29 @@ public sealed class ProductsController : ControllerBase
         return Ok(result);
     }
 
+    // Backs the shared entity picker (searchable product select) used across the StorePartner and
+    // Cashier cabinets instead of manual numeric product-ID entry — see SearchProductsQuery.
+    [HttpGet("search")]
+    [EnableRateLimiting("scan")]
+    public async Task<IActionResult> Search(
+        string? search,
+        int? categoryId,
+        int? storeId,
+        int? skip,
+        int? take,
+        [FromServices] IQueryHandler<SearchProductsQuery, SearchProductsResult> handler,
+        [FromServices] IValidator<SearchProductsQuery> validator,
+        CancellationToken cancellationToken)
+    {
+        var query = new SearchProductsQuery(search, categoryId, storeId, skip ?? 0, take ?? 20);
+
+        var validationResult = await validator.ValidateAsync(query, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        return Ok(await handler.Handle(query, cancellationToken));
+    }
+
     [HttpGet("compare-basket")]
     [EnableRateLimiting("scan")]
     public async Task<IActionResult> CompareBasket(
@@ -138,8 +161,8 @@ public sealed class ProductsController : ControllerBase
     }
 
     // Scanning an unrecognized barcode is the only way anyone finds out a product isn't in the
-    // catalog yet — this is the missing other half of that flow (ModerateNewProductCommand could
-    // approve/reject a submission, but nothing ever created one).
+    // catalog yet — this is that flow. Publishes immediately (ADMIN_PROMPT.md §1: no moderation
+    // queue), whether the submitter is a trusted StorePartner or an ordinary user.
     [HttpPost("submissions")]
     [Authorize]
     [EnableRateLimiting("contributions")]
@@ -164,47 +187,10 @@ public sealed class ProductsController : ControllerBase
         var result = await handler.Handle(command, cancellationToken);
         return result.Outcome switch
         {
-            SubmitNewProductOutcome.Submitted => Ok(result),
             SubmitNewProductOutcome.Created => Ok(result),
             SubmitNewProductOutcome.DuplicateBarcode => Conflict("A product with this barcode already exists."),
-            SubmitNewProductOutcome.DuplicatePendingSubmission => Conflict("A submission for this barcode is already pending moderation."),
             SubmitNewProductOutcome.CategoryNotFound => NotFound("Category not found."),
             SubmitNewProductOutcome.BrandNotFound => NotFound("Brand not found."),
-            _ => Problem()
-        };
-    }
-
-    // A StorePartner adding a product nobody's catalogued yet no longer needs to wait on an Admin —
-    // restricted to their own submission only (RequireOwnSubmission=true in the handler), so this
-    // can't be used to approve/reject someone else's pending item. Admin's own moderation endpoint
-    // (AdminController.ModerateNewProduct) is untouched and can still act on anyone's.
-    [HttpPost("submissions/{submissionId:int}/self-approve")]
-    [Authorize(Roles = "StorePartner")]
-    [EnableRateLimiting("contributions")]
-    public async Task<IActionResult> SelfApproveNewProduct(
-        int submissionId,
-        [FromServices] ICommandHandler<ModerateNewProductCommand, ModerateNewProductResult> handler,
-        [FromServices] IValidator<ModerateNewProductCommand> validator,
-        CancellationToken cancellationToken)
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userId is null)
-            return Unauthorized();
-
-        var command = new ModerateNewProductCommand(submissionId, Approve: true, userId, Reason: null, RequireOwnSubmission: true);
-
-        var validationResult = await validator.ValidateAsync(command, cancellationToken);
-        if (!validationResult.IsValid)
-            return this.ToValidationProblem(validationResult);
-
-        var result = await handler.Handle(command, cancellationToken);
-        return result.Outcome switch
-        {
-            ModerateNewProductOutcome.Approved => Ok(result),
-            ModerateNewProductOutcome.NotFound => NotFound(),
-            ModerateNewProductOutcome.Forbidden => Forbid(),
-            ModerateNewProductOutcome.AlreadyModerated => Conflict("This submission has already been moderated."),
-            ModerateNewProductOutcome.DuplicateBarcode => Conflict("A product with this barcode already exists — submission auto-rejected."),
             _ => Problem()
         };
     }

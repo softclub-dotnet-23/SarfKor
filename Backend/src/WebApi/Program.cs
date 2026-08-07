@@ -75,6 +75,13 @@ builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecu
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
+// Backs AdminMetricsController's short-lived summary cache (ADMIN_PROMPT.md §2.5).
+builder.Services.AddMemoryCache();
+builder.Services.Configure<Application.Subscriptions.SubscriptionOptions>(
+    builder.Configuration.GetSection(Application.Subscriptions.SubscriptionOptions.SectionName));
+builder.Services.Configure<Application.Stores.StoreEmployeeInvitationOptions>(
+    builder.Configuration.GetSection(Application.Stores.StoreEmployeeInvitationOptions.SectionName));
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -88,6 +95,24 @@ builder.Services
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
             ValidateLifetime = true
+        };
+        // ADMIN_PROMPT.md §2.3: "не полагайся только на проверку при логине" — an Admin block must
+        // take effect immediately, not just block future logins/refreshes. This runs on every
+        // authenticated request (one extra indexed PK lookup) and rejects a still-unexpired access
+        // token the moment ApplicationUser.BlockedAt is set, closing the up-to-15-minute gap a
+        // block-only-at-login/refresh check would otherwise leave open.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId is null) return;
+
+                var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+                var user = await userManager.FindByIdAsync(userId);
+                if (user?.BlockedAt is not null)
+                    context.Fail("This account has been blocked.");
+            }
         };
     });
 builder.Services.AddAuthorizationBuilder()
@@ -130,9 +155,16 @@ builder.Services.AddRateLimiter(options =>
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1) }));
 
-    // Принятие приглашения кассира — неаутентифицированный, создаёт аккаунт, токен угадываем по перебору.
+    // Принятие приглашения кассира и публичная проверка токена — неаутентифицированные, создают
+    // аккаунт / открывают контекст приглашения, токен угадываем по перебору.
     options.AddPolicy("invite-accept", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1) }));
+
+    // Повторная отправка письма-приглашения кассиру — аутентифицированное действие владельца, но
+    // само шлёт письмо, поэтому отдельный, более жёсткий лимит, чем обычные partner-write.
+    options.AddPolicy("invite-resend", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1) }));
 
     // Пользовательский контент (цены, жалобы, сверка чека) — против спама/накрутки.
@@ -163,6 +195,13 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("assistant", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 15, Window = TimeSpan.FromMinutes(5) }));
+
+    // Смена пароля / загрузка аватара — аутентифицированные, но чувствительные операции
+    // (перебор текущего пароля, спам загрузок на диск); партиционируется по пользователю,
+    // а не по IP, так как обе операции уже требуют валидного JWT.
+    options.AddPolicy("account-security", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
 });
 
 var app = builder.Build();
@@ -206,7 +245,7 @@ using (var scope = app.Services.CreateScope())
 
         if (adminUser is null)
         {
-            adminUser = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
+            adminUser = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true, CreatedAt = DateTimeOffset.UtcNow };
             var createResult = await userManager.CreateAsync(adminUser, adminPassword);
             if (!createResult.Succeeded)
             {
@@ -283,10 +322,10 @@ public sealed record CreatePromotionRequest(
 public sealed record RecordCommissionRequest(decimal Amount, string Currency);
 public sealed record LoginRequest(string Email, string Password);
 public sealed record UpdateUserProfileRequest(string? DisplayName, string? AvatarReference, string? PreferredLanguage);
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public sealed record RecordUserConsentRequest(Domain.Identity.ConsentType Type, bool IsGranted);
-public sealed record AddStoreEmployeeRequest(string EmployeeEmail, Domain.Stores.StoreEmployeeRole Role);
-public sealed record RaiseDisputeRequest(string Reason);
-public sealed record ResolveDisputeRequest(bool Uphold);
+public sealed record CreateStoreEmployeeInvitationRequest(string Email, Domain.Stores.StoreEmployeeRole Role);
+public sealed record ConfirmAdminInvitationRequest(string Email, string Code, string Password);
 public sealed record OpenCashierShiftRequest(int StoreId, decimal OpeningCash, string Currency);
 public sealed record CloseCashierShiftRequest(decimal ClosingCash);
 public sealed record ProcessReturnRequest(IReadOnlyList<Application.Sales.Commands.ProcessReturn.ProcessReturnLineInput> Lines, string Reason);
@@ -312,7 +351,6 @@ public sealed record CreatePriceAlertRequest(int ProductId, decimal TargetPrice,
 public sealed record RegisterDeviceTokenRequest(string Token, Domain.Notifications.DevicePlatform Platform);
 public sealed record CreateStoreRequest(string Name, string Address, double Latitude, double Longitude);
 public sealed record UpdateStoreRequest(string Name, string Address, double Latitude, double Longitude);
-public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public sealed record AdminCreateStorePartnerRequest(string Email, string StoreName, string Address, double Latitude, double Longitude);
 public sealed record UpdateStoreEmployeeRequest(decimal? MonthlySalaryAmount, string? MonthlySalaryCurrency, TimeOnly? ScheduleStart, TimeOnly? ScheduleEnd);
 public sealed record SetCostPriceRequest(int StoreId, int ProductId, decimal Amount, string Currency);
@@ -330,12 +368,30 @@ public sealed record VoidSaleRequest(string Reason);
 public sealed record RecordStockReceiptRequest(int StoreId, int ProductId, int Quantity, int? SupplierId);
 public sealed record ReportOutOfStockRequest(int ProductId, int? StoreId, string Description);
 public sealed record PublishExpiringOfferRequest(int StoreId, int ProductId, decimal OriginalPrice, decimal DiscountedPrice, string Currency, DateTimeOffset ExpiresAt);
-public sealed record ModerateNewProductRequest(bool Approve, string? Reason);
 public sealed record SubmitNewProductRequest(string Barcode, string Name, int CategoryId, int BrandId, string CountryOfOrigin);
-public sealed record ModerateReportRequest(bool Resolve, string? Reason);
 public sealed record UpdateBrandRequest(string Name);
-public sealed record UpdateCategoryRequest(string Name, int? ParentCategoryId);
-public sealed record UpdateTaxRateRequest(string Name, decimal Percentage, int? CategoryId);
+public sealed record UpdateCategoryRequest(string Name, int? ParentCategoryId, int DisplayOrder, bool IsHidden);
+public sealed record CreateTaxRateRequest(string Name, decimal Percentage, int? CategoryId, DateOnly? EffectiveFrom, DateOnly? EffectiveTo);
+public sealed record UpdateTaxRateRequest(string Name, decimal Percentage, int? CategoryId, DateOnly? EffectiveFrom, DateOnly? EffectiveTo);
+public sealed record MergeBrandsRequest(int TargetBrandId, IReadOnlyList<int> SourceBrandIds);
+public sealed record ChangeStoreStatusRequest(Domain.Stores.StoreStatus NewStatus, string Reason);
+public sealed record UpdateStoreTaxSettingsRequest(bool IsVatPayer, Domain.Stores.StoreTaxRegime TaxRegime);
+public sealed record InviteAdminRequest(string Email);
+public sealed record BlockUserRequest(string Reason);
+public sealed record UnblockUserRequest(string Reason);
+public sealed record AdjustTrustScoreRequest(double Delta, string Reason);
+public sealed record CreateSubscriptionPlanRequest(
+    string Name, string Code, decimal MonthlyPriceAmount, string MonthlyPriceCurrency,
+    int? MaxStores, int? MaxEmployees, IReadOnlyList<string>? Features);
+public sealed record UpdateSubscriptionPlanRequest(
+    string Name, decimal MonthlyPriceAmount, string MonthlyPriceCurrency,
+    int? MaxStores, int? MaxEmployees, IReadOnlyList<string>? Features, bool IsActive);
+public sealed record ChangeStoreSubscriptionPlanRequest(int NewSubscriptionPlanId);
+public sealed record CancelStoreSubscriptionRequest(string Reason);
+public sealed record RecordSubscriptionPaymentRequest(
+    decimal Amount, string Currency, DateOnly PeriodStart, DateOnly PeriodEnd,
+    Domain.Subscriptions.SubscriptionPaymentMethod Method, string? Comment);
+public sealed record ReverseSubscriptionPaymentRequest(string Reason);
 public sealed record CreateSupplierRequest(int StoreId, string Name, string? ContactPhone, string? ContactEmail);
 public sealed record UpdateSupplierRequest(string Name, string? ContactPhone, string? ContactEmail);
 public sealed record AssistantChatMessageRequest(string Role, string Content);

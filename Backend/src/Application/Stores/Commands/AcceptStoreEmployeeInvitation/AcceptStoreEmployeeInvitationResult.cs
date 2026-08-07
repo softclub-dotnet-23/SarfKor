@@ -6,7 +6,11 @@ public enum AcceptStoreEmployeeInvitationOutcome
 {
     Accepted,
     AccountAlreadyExisted,
-    InvalidOrExpiredToken,
+    NotFound,
+    Expired,
+    AlreadyAccepted,
+    Revoked,
+    PasswordRequired,
     RegistrationFailed
 }
 

@@ -1,4 +1,5 @@
 using Application.Abstractions;
+using Domain.Stores;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Configuration;
@@ -20,20 +21,42 @@ public sealed class SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEm
             """,
             cancellationToken);
 
-    public Task SendStoreEmployeeInviteEmailAsync(string toEmail, string storeName, string inviteToken, CancellationToken cancellationToken)
+    // Role/expiry/"ignore if unexpected" copy in both languages — see StoreEmployeeInvitation
+    // task's spec: "на языке приглашающего магазина" (in practice, the inviting owner's own
+    // UserProfile.PreferredLanguage, the closest concept this domain actually has to "магазина
+    // язык" — there is no separate per-store language setting).
+    private static readonly Dictionary<StoreEmployeeRole, (string Ru, string Tg)> RoleNames = new()
+    {
+        [StoreEmployeeRole.Cashier] = ("Кассир", "Кассир"),
+        [StoreEmployeeRole.Owner] = ("Владелец", "Соҳиб"),
+    };
+
+    public Task SendStoreEmployeeInviteEmailAsync(
+        string toEmail, string storeName, StoreEmployeeRole role, string inviteToken, int expiryDays, string language, CancellationToken cancellationToken)
     {
         var baseUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
-        var acceptLink = $"{baseUrl}/accept-invite?token={Uri.EscapeDataString(inviteToken)}";
+        var acceptLink = $"{baseUrl}/invite/{Uri.EscapeDataString(inviteToken)}";
+        var roleName = RoleNames.TryGetValue(role, out var names) ? (language == "tg" ? names.Tg : names.Ru) : role.ToString();
 
-        return SendAsync(
-            toEmail,
-            "Приглашение в команду — Sarfkor",
-            $"""
-            <p>Вас пригласили присоединиться к магазину «{storeName}» в Sarfkor.</p>
-            <p><a href="{acceptLink}">Нажмите здесь, чтобы задать пароль и начать работу</a></p>
-            <p>Ссылка действительна в течение 24 часов. Если вы не ожидали этого приглашения, просто проигнорируйте это письмо.</p>
-            """,
-            cancellationToken);
+        var (subject, body) = language == "tg"
+            ? (
+                "Даъват ба даста — Sarfkor",
+                $"""
+                <p>Шуморо даъват карданд, ки ба мағозаи «{storeName}» дар Sarfkor ҳамроҳ шавед — нақш: <strong>{roleName}</strong>.</p>
+                <p><a href="{acceptLink}">Инҷо зер кунед, то дохил шавед ва кор оғоз кунед</a></p>
+                <p>Истинод {expiryDays} рӯз эътибор дорад. Агар шумо ин даъватро интизор набудед, танҳо ин номаро нодида гиред.</p>
+                """
+              )
+            : (
+                "Приглашение в команду — Sarfkor",
+                $"""
+                <p>Вас пригласили присоединиться к магазину «{storeName}» в Sarfkor — роль: <strong>{roleName}</strong>.</p>
+                <p><a href="{acceptLink}">Нажмите здесь, чтобы войти и начать работу</a></p>
+                <p>Ссылка действительна {expiryDays} дн. Если вы не ожидали этого приглашения, просто проигнорируйте это письмо.</p>
+                """
+              );
+
+        return SendAsync(toEmail, subject, body, cancellationToken);
     }
 
     public Task SendStoreOwnerInvitationEmailAsync(string toEmail, string storeName, string code, CancellationToken cancellationToken)
@@ -46,6 +69,23 @@ public sealed class SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEm
             "Подтверждение владельца магазина — Sarfkor",
             $"""
             <p>Администратор Sarfkor добавил вас как владельца магазина «{storeName}».</p>
+            <p>Код подтверждения: <strong>{code}</strong></p>
+            <p><a href="{confirmLink}">Перейдите сюда</a>, введите код и задайте пароль, чтобы начать работу.</p>
+            <p>Код действителен в течение 20 минут. Если вы не ожидали этого письма, просто проигнорируйте его.</p>
+            """,
+            cancellationToken);
+    }
+
+    public Task SendAdminInvitationEmailAsync(string toEmail, string code, CancellationToken cancellationToken)
+    {
+        var baseUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        var confirmLink = $"{baseUrl}/confirm-admin-invite?email={Uri.EscapeDataString(toEmail)}";
+
+        return SendAsync(
+            toEmail,
+            "Приглашение администратора — Sarfkor",
+            $"""
+            <p>Вас пригласили как администратора платформы Sarfkor.</p>
             <p>Код подтверждения: <strong>{code}</strong></p>
             <p><a href="{confirmLink}">Перейдите сюда</a>, введите код и задайте пароль, чтобы начать работу.</p>
             <p>Код действителен в течение 20 минут. Если вы не ожидали этого письма, просто проигнорируйте его.</p>

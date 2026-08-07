@@ -94,8 +94,8 @@ export function AssistantPanel() {
   return (
     // .admin-shell scopes the --admin-* custom properties this component relies on (see
     // index.css) -- `contents` keeps the wrapper itself out of layout, so dropping this
-    // component into ModerationPage (which uses its own separate .mod-shell token set, not
-    // .admin-shell) still resolves colors correctly without affecting that page's own layout.
+    // component into AdminConsoleLayout (which uses its own separate .mod-shell token set,
+    // not .admin-shell) still resolves colors correctly without affecting that page's own layout.
     <div className="admin-shell contents">
       <button
         onClick={() => setOpen((v) => !v)}

@@ -1,3 +1,0 @@
-namespace Application.Pricing.Queries.GetPendingPriceEntryDisputes;
-
-public sealed record GetPendingPriceEntryDisputesQuery;

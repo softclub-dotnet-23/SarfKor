@@ -8,6 +8,9 @@ public sealed class GetCategoriesQueryHandler(ICategoryRepository categoryReposi
     public async Task<GetCategoriesResult> Handle(GetCategoriesQuery query, CancellationToken cancellationToken)
     {
         var categories = await categoryRepository.GetAllAsync(cancellationToken);
-        return new GetCategoriesResult(categories.Select(c => new CategoryDto(c.Id, c.Name, c.ParentCategoryId)).ToList());
+        return new GetCategoriesResult(categories
+            .OrderBy(c => c.DisplayOrder)
+            .Select(c => new CategoryDto(c.Id, c.Name, c.ParentCategoryId, c.DisplayOrder, c.IsHidden))
+            .ToList());
     }
 }

@@ -2,9 +2,10 @@ namespace Application.Identity.Commands.ChangePassword;
 
 public enum ChangePasswordOutcome
 {
-    Changed,
-    WrongCurrentPassword,
-    UserNotFound
+    Succeeded,
+    IncorrectCurrentPassword,
+    WeakPassword,
+    NotFound
 }
 
-public sealed record ChangePasswordResult(ChangePasswordOutcome Outcome);
+public sealed record ChangePasswordResult(ChangePasswordOutcome Outcome, IReadOnlyList<string> Errors);

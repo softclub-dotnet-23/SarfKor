@@ -3,10 +3,8 @@ using Application.Assistant;
 using Application.Assistant.Abstractions;
 using Application.Assistant.Tools;
 using Application.Common;
-using Application.Feedback.Queries.GetPendingReports;
 using Application.Inventory.Queries.GetReorderAlerts;
 using Application.Inventory.Queries.GetStockLevel;
-using Application.Products.Queries.GetPendingProductSubmissions;
 using Application.Products.Queries.GetTopSellingProducts;
 using Application.Sales.Queries.GetCashierAnomalyReport;
 using Application.Sales.Queries.GetDailySalesReport;
@@ -91,10 +89,8 @@ public class AssistantToolRoleGatingTests
     public void AdminTools_OnlyAvailableToAdmin()
     {
         var allStores = new GetAllStoresTool(Mock.Of<IQueryHandler<GetAllStoresQuery, GetAllStoresResult>>());
-        var pendingProducts = new GetPendingProductSubmissionsTool(Mock.Of<IQueryHandler<GetPendingProductSubmissionsQuery, GetPendingProductSubmissionsResult>>());
-        var pendingReports = new GetPendingReportsTool(Mock.Of<IQueryHandler<GetPendingReportsQuery, GetPendingReportsResult>>());
 
-        foreach (var tool in new IAssistantTool[] { allStores, pendingProducts, pendingReports })
+        foreach (var tool in new IAssistantTool[] { allStores })
         {
             Assert.True(tool.IsAvailableFor(Admin));
             Assert.False(tool.IsAvailableFor(Owner));

@@ -4,9 +4,11 @@ using Application.Catalog.Commands.CreateTaxRate;
 using Application.Catalog.Commands.DeleteBrand;
 using Application.Catalog.Commands.DeleteCategory;
 using Application.Catalog.Commands.DeleteTaxRate;
+using Application.Catalog.Commands.MergeBrands;
 using Application.Catalog.Commands.UpdateBrand;
 using Application.Catalog.Commands.UpdateCategory;
 using Application.Catalog.Commands.UpdateTaxRate;
+using Application.Catalog.Queries.GetBrandDuplicateCandidates;
 using Application.Catalog.Queries.GetBrands;
 using Application.Catalog.Queries.GetCategories;
 using Application.Catalog.Queries.GetTaxRates;
@@ -15,13 +17,14 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace WebApi.Controllers;
 
 // Catalog reference data (Brand/Category/TaxRate) — shared, platform-wide lookup tables that
 // Product/StockMovement already reference by FK. All lists are public — the frontend needs them
-// for dropdowns/browsing. Any StorePartner can add a new Brand/Category outright (no approval
-// queue — these aren't curated the way new Products are via ModerateNewProductCommand), but
+// for dropdowns/browsing. Any StorePartner can add a new Brand/Category outright (no moderation
+// queue at all anymore, ADMIN_PROMPT.md §1 — new Products publish immediately too), but
 // editing/deleting an existing one stays Admin-only since that can affect every other store
 // already referencing it, not just the caller's own.
 [ApiController]
@@ -52,9 +55,10 @@ public sealed class CatalogController : ControllerBase
 
     [HttpGet("brands")]
     public async Task<IActionResult> GetBrands(
+        string? search,
         [FromServices] IQueryHandler<GetBrandsQuery, GetBrandsResult> handler,
         CancellationToken cancellationToken) =>
-        Ok(await handler.Handle(new GetBrandsQuery(), cancellationToken));
+        Ok(await handler.Handle(new GetBrandsQuery(search), cancellationToken));
 
     [HttpPut("brands/{brandId:int}")]
     [Authorize("Admin")]
@@ -66,7 +70,11 @@ public sealed class CatalogController : ControllerBase
         [FromServices] IValidator<UpdateBrandCommand> validator,
         CancellationToken cancellationToken)
     {
-        var command = new UpdateBrandCommand(brandId, request.Name);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new UpdateBrandCommand(brandId, request.Name, userId, HttpContext.Connection.RemoteIpAddress?.ToString());
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -90,7 +98,11 @@ public sealed class CatalogController : ControllerBase
         [FromServices] IValidator<DeleteBrandCommand> validator,
         CancellationToken cancellationToken)
     {
-        var command = new DeleteBrandCommand(brandId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new DeleteBrandCommand(brandId, userId, HttpContext.Connection.RemoteIpAddress?.ToString());
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -144,7 +156,13 @@ public sealed class CatalogController : ControllerBase
         [FromServices] IValidator<UpdateCategoryCommand> validator,
         CancellationToken cancellationToken)
     {
-        var command = new UpdateCategoryCommand(categoryId, request.Name, request.ParentCategoryId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new UpdateCategoryCommand(
+            categoryId, request.Name, request.ParentCategoryId, request.DisplayOrder, request.IsHidden,
+            userId, HttpContext.Connection.RemoteIpAddress?.ToString());
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -170,7 +188,11 @@ public sealed class CatalogController : ControllerBase
         [FromServices] IValidator<DeleteCategoryCommand> validator,
         CancellationToken cancellationToken)
     {
-        var command = new DeleteCategoryCommand(categoryId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new DeleteCategoryCommand(categoryId, userId, HttpContext.Connection.RemoteIpAddress?.ToString());
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -190,11 +212,19 @@ public sealed class CatalogController : ControllerBase
     [Authorize("Admin")]
     [EnableRateLimiting("partner-write")]
     public async Task<IActionResult> CreateTaxRate(
-        CreateTaxRateCommand command,
+        CreateTaxRateRequest request,
         [FromServices] ICommandHandler<CreateTaxRateCommand, CreateTaxRateResult> handler,
         [FromServices] IValidator<CreateTaxRateCommand> validator,
         CancellationToken cancellationToken)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new CreateTaxRateCommand(
+            request.Name, request.Percentage, request.CategoryId, request.EffectiveFrom, request.EffectiveTo,
+            userId, HttpContext.Connection.RemoteIpAddress?.ToString());
+
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
             return this.ToValidationProblem(validationResult);
@@ -224,7 +254,13 @@ public sealed class CatalogController : ControllerBase
         [FromServices] IValidator<UpdateTaxRateCommand> validator,
         CancellationToken cancellationToken)
     {
-        var command = new UpdateTaxRateCommand(taxRateId, request.Name, request.Percentage, request.CategoryId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new UpdateTaxRateCommand(
+            taxRateId, request.Name, request.Percentage, request.CategoryId, request.EffectiveFrom, request.EffectiveTo,
+            userId, HttpContext.Connection.RemoteIpAddress?.ToString());
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -249,7 +285,11 @@ public sealed class CatalogController : ControllerBase
         [FromServices] IValidator<DeleteTaxRateCommand> validator,
         CancellationToken cancellationToken)
     {
-        var command = new DeleteTaxRateCommand(taxRateId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new DeleteTaxRateCommand(taxRateId, userId, HttpContext.Connection.RemoteIpAddress?.ToString());
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -261,6 +301,46 @@ public sealed class CatalogController : ControllerBase
             DeleteTaxRateOutcome.Deleted => Ok(result),
             DeleteTaxRateOutcome.NotFound => NotFound(),
             DeleteTaxRateOutcome.InUse => Conflict("This tax rate is still referenced by one or more products."),
+            _ => Problem()
+        };
+    }
+
+    // ADMIN_PROMPT.md §2.8: brand cleanup, not brand creation — see GetBrands' Search param and
+    // this pair for the "чистка дубликатов" workflow the class-level comment above already
+    // describes as the intended Admin brand management surface.
+    [HttpGet("brands/duplicate-candidates")]
+    [Authorize("Admin")]
+    public async Task<IActionResult> GetBrandDuplicateCandidates(
+        [FromServices] IQueryHandler<GetBrandDuplicateCandidatesQuery, GetBrandDuplicateCandidatesResult> handler,
+        CancellationToken cancellationToken) =>
+        Ok(await handler.Handle(new GetBrandDuplicateCandidatesQuery(), cancellationToken));
+
+    [HttpPost("brands/merge")]
+    [Authorize("Admin")]
+    [EnableRateLimiting("partner-write")]
+    public async Task<IActionResult> MergeBrands(
+        MergeBrandsRequest request,
+        [FromServices] ICommandHandler<MergeBrandsCommand, MergeBrandsResult> handler,
+        [FromServices] IValidator<MergeBrandsCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new MergeBrandsCommand(request.TargetBrandId, request.SourceBrandIds, userId, HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            MergeBrandsOutcome.Merged => Ok(result),
+            MergeBrandsOutcome.TargetNotFound => NotFound("Target brand not found."),
+            MergeBrandsOutcome.SourceNotFound => NotFound("One or more source brands not found."),
+            MergeBrandsOutcome.TargetInSourceList => Conflict("Target brand cannot also be one of the source brands."),
             _ => Problem()
         };
     }

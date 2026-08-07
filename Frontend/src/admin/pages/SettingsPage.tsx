@@ -8,6 +8,8 @@ import { SunIcon, MoonIcon } from '../../components/icons'
 import { CheckIcon } from '../components/icons'
 import { SuppliersSection } from './SuppliersSection'
 import { storesApi, meApi, ApiError } from '../../lib/api'
+import { useProfile } from '../../lib/useProfile'
+import { useAvatarUrl } from '../../lib/useAvatarUrl'
 
 const DAILY_GOAL_KEY = 'sarfkor-daily-goal'
 
@@ -50,6 +52,12 @@ function EyeToggle({ shown, onClick }: { shown: boolean; onClick: () => void }) 
 
 function AvatarSection() {
   const { user } = useAuth()
+  const { profile, reload } = useProfile()
+  const [avatarVersion, setAvatarVersion] = useState(0)
+  // GET /api/me/avatar requires a Bearer token (it's access-controlled, not a public static
+  // asset — see IEmailSender/avatar upload comments), so a plain <img src="..."> can't carry
+  // auth: this fetches the bytes once and hands back an object URL instead.
+  const persistedAvatarUrl = useAvatarUrl(!!profile?.avatarReference, avatarVersion)
   const fileRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -57,6 +65,7 @@ function AvatarSection() {
   const [errMsg, setErrMsg] = useState('')
 
   const initial = (user?.email ?? '?').charAt(0).toUpperCase()
+  const avatarUrl = preview ?? persistedAvatarUrl
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -68,6 +77,8 @@ function AvatarSection() {
     setStatus('idle')
     try {
       await meApi.uploadAvatar(file)
+      setAvatarVersion((v) => v + 1)
+      reload()
       setStatus('saved')
       setTimeout(() => setStatus('idle'), 2200)
     } catch (err) {
@@ -90,8 +101,8 @@ function AvatarSection() {
           className="group relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-full ring-1 ring-[color:var(--admin-border)] ring-offset-2 ring-offset-[color:var(--admin-card)] transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
           title="Загрузить фото"
         >
-          {preview ? (
-            <img src={preview} alt="Аватар" className="h-full w-full object-cover" />
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Аватар" className="h-full w-full object-cover" />
           ) : (
             <span className="flex h-full w-full items-center justify-center text-[24px] font-[500] text-[color:var(--admin-text)]" style={{ background: 'color-mix(in srgb, var(--admin-text) 10%, var(--admin-hover))' }}>
               {initial}
@@ -244,13 +255,9 @@ function PasswordSection() {
     if (next.length < 8) { setErrMsg('Новый пароль должен содержать минимум 8 символов'); setStatus('error'); return }
     setBusy(true); setStatus('idle')
     try {
-      const res = await meApi.changePassword(current, next)
-      if (res.outcome === 'Changed') {
-        setCurrent(''); setNext(''); setConfirm('')
-        setStatus('saved'); setTimeout(() => setStatus('idle'), 2500)
-      } else if (res.outcome === 'WrongCurrentPassword') {
-        setErrMsg('Неверный текущий пароль'); setStatus('error')
-      } else { setErrMsg('Не удалось сменить пароль'); setStatus('error') }
+      await meApi.changePassword(current, next)
+      setCurrent(''); setNext(''); setConfirm('')
+      setStatus('saved'); setTimeout(() => setStatus('idle'), 2500)
     } catch (err) {
       setErrMsg(err instanceof ApiError ? err.message : 'Не удалось сменить пароль')
       setStatus('error')

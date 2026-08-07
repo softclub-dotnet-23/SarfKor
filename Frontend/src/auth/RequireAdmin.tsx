@@ -1,7 +1,8 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 
-/** Gates the platform moderation screens behind the Admin role (CLAUDE.md §7 — moderation, not store ownership). */
+/** Gates the platform Admin console (stores/subscriptions/users/reference/audit — a platform
+ *  operator role, not store ownership or content moderation; see ADMIN_PROMPT.md). */
 export function RequireAdmin() {
   const { hasRole } = useAuth()
 

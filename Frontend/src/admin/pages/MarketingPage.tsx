@@ -3,10 +3,13 @@ import { Panel } from '../cabinet/components/primitives'
 import { Select } from '../components/Select'
 import { Badge } from '../components/Badge'
 import { Loading } from '../components/Loading'
+import { FormModal, FormField } from '../components/FormModal'
+import { ProductPicker } from '../components/ProductPicker'
+import { CategoryPicker } from '../components/CategoryPicker'
 import { TagIcon, PercentIcon, ClockIcon, AlertIcon, CheckIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { StarIcon } from '../../components/icons'
 import { useAuth } from '../../auth/AuthContext'
-import { ApiError } from '../../lib/api'
+import { ApiError, type Category, type ProductSearchItem } from '../../lib/api'
 import {
   createPromotion,
   getActivePromotions,
@@ -40,10 +43,6 @@ function fmtDate(iso: string) {
 
 function inputCls() {
   return 'w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none transition-colors placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]'
-}
-
-function labelCls() {
-  return 'text-[12px] font-medium text-[color:var(--admin-text-secondary)]'
 }
 
 function ReplyIcon(props: { width?: number; height?: number; className?: string }) {
@@ -145,21 +144,184 @@ function promoStatus(p: Promotion): { label: string; variant: 'accent' | 'neutra
   return { label: 'Активна', variant: 'success' }
 }
 
-function PromotionsSection({ storeId }: { storeId: number }) {
-  const [promotions, setPromotions] = useState<Promotion[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+function PromotionFormFields({
+  targetMode, setTargetMode, product, setProduct, category, setCategory,
+  discountType, setDiscountType, discountValue, setDiscountValue, startsAt, setStartsAt, endsAt, setEndsAt,
+  targetError, valueError, periodError,
+}: {
+  targetMode: 'product' | 'category'; setTargetMode: (v: 'product' | 'category') => void
+  product: ProductSearchItem | null; setProduct: (v: ProductSearchItem | null) => void
+  category: Category | null; setCategory: (v: Category | null) => void
+  discountType: PromotionDiscountType; setDiscountType: (v: PromotionDiscountType) => void
+  discountValue: string; setDiscountValue: (v: string) => void
+  startsAt: string; setStartsAt: (v: string) => void
+  endsAt: string; setEndsAt: (v: string) => void
+  targetError?: string; valueError?: string; periodError?: string
+}) {
+  return (
+    <>
+      <div className="mb-4 flex gap-2">
+        <button
+          type="button"
+          onClick={() => setTargetMode('product')}
+          className={`flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
+            targetMode === 'product'
+              ? 'bg-[color:var(--admin-accent)] text-white'
+              : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
+          }`}
+        >
+          По товару
+        </button>
+        <button
+          type="button"
+          onClick={() => setTargetMode('category')}
+          className={`flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
+            targetMode === 'category'
+              ? 'bg-[color:var(--admin-accent)] text-white'
+              : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
+          }`}
+        >
+          По категории
+        </button>
+      </div>
 
+      {targetMode === 'product' ? (
+        <FormField label="Товар" required error={targetError} scheme="admin">
+          <ProductPicker value={product} onChange={setProduct} scheme="admin" scanEnabled />
+        </FormField>
+      ) : (
+        <FormField label="Категория" required error={targetError} scheme="admin">
+          <CategoryPicker value={category} onChange={setCategory} scheme="admin" placeholder="Выберите категорию" />
+        </FormField>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormField label="Тип скидки" scheme="admin">
+          <Select
+            value={discountType}
+            onChange={(v) => setDiscountType(v as PromotionDiscountType)}
+            options={[
+              { value: 'PercentageOff', label: 'Процент от цены' },
+              { value: 'FixedAmountOff', label: 'Фиксированная сумма' },
+              { value: 'BuyOneGetOne', label: '1+1' },
+            ]}
+          />
+        </FormField>
+        <FormField label="Значение скидки" required error={valueError} scheme="admin">
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={discountValue}
+            onChange={(e) => setDiscountValue(e.target.value)}
+            placeholder={discountType === 'PercentageOff' ? '%' : 'Сумма'}
+            className={inputCls()}
+          />
+        </FormField>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormField label="Начало" required error={periodError} scheme="admin">
+          <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className={inputCls()} />
+        </FormField>
+        <FormField label="Окончание" scheme="admin">
+          <input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} className={inputCls()} />
+        </FormField>
+      </div>
+    </>
+  )
+}
+
+function CreatePromotionModal({ open, onClose, storeId, onCreated }: { open: boolean; onClose: () => void; storeId: number; onCreated: () => Promise<void> }) {
   const [targetMode, setTargetMode] = useState<'product' | 'category'>('product')
-  const [productId, setProductId] = useState('')
-  const [categoryId, setCategoryId] = useState('')
+  const [product, setProduct] = useState<ProductSearchItem | null>(null)
+  const [category, setCategory] = useState<Category | null>(null)
   const [discountType, setDiscountType] = useState<PromotionDiscountType>('PercentageOff')
   const [discountValue, setDiscountValue] = useState('')
   const [startsAt, setStartsAt] = useState('')
   const [endsAt, setEndsAt] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [createError, setCreateError] = useState('')
-  const [createSuccess, setCreateSuccess] = useState(false)
+  const [targetError, setTargetError] = useState('')
+  const [valueError, setValueError] = useState('')
+  const [periodError, setPeriodError] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setTargetMode('product')
+    setProduct(null)
+    setCategory(null)
+    setDiscountType('PercentageOff')
+    setDiscountValue('')
+    setStartsAt('')
+    setEndsAt('')
+    setTargetError('')
+    setValueError('')
+    setPeriodError('')
+  }, [open])
+
+  async function submit() {
+    setTargetError('')
+    setValueError('')
+    setPeriodError('')
+    const value = Number(discountValue)
+    let hasError = false
+    if (!value || value <= 0) {
+      setValueError('Укажите значение скидки')
+      hasError = true
+    }
+    if (!startsAt || !endsAt) {
+      setPeriodError('Укажите период действия акции')
+      hasError = true
+    }
+    const targetId = targetMode === 'product' ? product?.productId : category?.categoryId
+    if (!targetId) {
+      setTargetError(targetMode === 'product' ? 'Выберите товар' : 'Выберите категорию')
+      hasError = true
+    }
+    if (hasError) throw new Error('Проверьте поля формы')
+
+    const res = await createPromotion(storeId, {
+      productId: targetMode === 'product' ? targetId : undefined,
+      categoryId: targetMode === 'category' ? targetId : undefined,
+      discountType,
+      discountValue: value,
+      startsAt: new Date(startsAt).toISOString(),
+      endsAt: new Date(endsAt).toISOString(),
+    })
+    const msg = outcomeMessage(res.outcome)
+    if (msg) throw new Error(msg)
+    await onCreated()
+  }
+
+  return (
+    <FormModal
+      open={open}
+      onClose={onClose}
+      title="Новая акция"
+      isDirty={!!(product || category || discountValue || startsAt || endsAt)}
+      onSubmit={submit}
+      submitLabel="Создать акцию"
+      submitBusyLabel="Создаём…"
+      scheme="admin"
+    >
+      <PromotionFormFields
+        targetMode={targetMode} setTargetMode={setTargetMode}
+        product={product} setProduct={setProduct}
+        category={category} setCategory={setCategory}
+        discountType={discountType} setDiscountType={setDiscountType}
+        discountValue={discountValue} setDiscountValue={setDiscountValue}
+        startsAt={startsAt} setStartsAt={setStartsAt}
+        endsAt={endsAt} setEndsAt={setEndsAt}
+        targetError={targetError} valueError={valueError} periodError={periodError}
+      />
+    </FormModal>
+  )
+}
+
+function PromotionsSection({ storeId }: { storeId: number }) {
+  const [promotions, setPromotions] = useState<Promotion[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
 
   const load = useCallback(async () => {
     setError('')
@@ -177,188 +339,21 @@ function PromotionsSection({ storeId }: { storeId: number }) {
     load()
   }, [load])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (creating) return
-    const value = Number(discountValue)
-    if (!value || value <= 0) {
-      setCreateError('Укажите значение скидки')
-      return
-    }
-    if (!startsAt || !endsAt) {
-      setCreateError('Укажите период действия акции')
-      return
-    }
-    const targetId = targetMode === 'product' ? Number(productId) : Number(categoryId)
-    if (!targetId) {
-      setCreateError(targetMode === 'product' ? 'Укажите ID товара' : 'Укажите ID категории')
-      return
-    }
-    setCreating(true)
-    setCreateError('')
-    setCreateSuccess(false)
-    try {
-      const res = await createPromotion(storeId, {
-        productId: targetMode === 'product' ? targetId : undefined,
-        categoryId: targetMode === 'category' ? targetId : undefined,
-        discountType,
-        discountValue: value,
-        startsAt: new Date(startsAt).toISOString(),
-        endsAt: new Date(endsAt).toISOString(),
-      })
-      const msg = outcomeMessage(res.outcome)
-      if (msg) {
-        setCreateError(msg)
-        return
-      }
-      setCreateSuccess(true)
-      setProductId('')
-      setCategoryId('')
-      setDiscountValue('')
-      setStartsAt('')
-      setEndsAt('')
-      await load()
-      setTimeout(() => setCreateSuccess(false), 2000)
-    } catch (err) {
-      setCreateError(err instanceof ApiError ? err.message : 'Не удалось создать акцию')
-    } finally {
-      setCreating(false)
-    }
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <Panel className="p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <PercentIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Новая акция</span>
-        </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setTargetMode('product')}
-              className={`flex-1 rounded-[8px] px-4 py-2.5 text-[13px] font-[500] transition-colors ${
-                targetMode === 'product'
-                  ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
-                  : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
-              }`}
-            >
-              По товару
-            </button>
-            <button
-              type="button"
-              onClick={() => setTargetMode('category')}
-              className={`flex-1 rounded-[8px] px-4 py-2.5 text-[13px] font-[500] transition-colors ${
-                targetMode === 'category'
-                  ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
-                  : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
-              }`}
-            >
-              По категории
-            </button>
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
+            <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Активные акции</span>
           </div>
-
-          {targetMode === 'product' ? (
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls()}>ID товара</span>
-              <input
-                type="number"
-                min={1}
-                value={productId}
-                onChange={(e) => setProductId(e.target.value)}
-                placeholder="Например, 1024"
-                className={inputCls()}
-              />
-            </label>
-          ) : (
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls()}>ID категории</span>
-              <input
-                type="number"
-                min={1}
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                placeholder="Например, 5"
-                className={inputCls()}
-              />
-            </label>
-          )}
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls()}>Тип скидки</span>
-              <Select
-                value={discountType}
-                onChange={(v) => setDiscountType(v as PromotionDiscountType)}
-                options={[
-                  { value: 'PercentageOff', label: 'Процент от цены' },
-                  { value: 'FixedAmountOff', label: 'Фиксированная сумма' },
-                  { value: 'BuyOneGetOne', label: '1+1' },
-                ]}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls()}>Значение скидки</span>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={discountValue}
-                onChange={(e) => setDiscountValue(e.target.value)}
-                placeholder={discountType === 'PercentageOff' ? '%' : 'Сумма'}
-                className={inputCls()}
-              />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls()}>Начало</span>
-              <input
-                type="datetime-local"
-                value={startsAt}
-                onChange={(e) => setStartsAt(e.target.value)}
-                className={inputCls()}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls()}>Окончание</span>
-              <input
-                type="datetime-local"
-                value={endsAt}
-                onChange={(e) => setEndsAt(e.target.value)}
-                className={inputCls()}
-              />
-            </label>
-          </div>
-
-          {createError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{createError}</div>}
-
           <button
-            type="submit"
-            disabled={creating}
-            className="flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] active:scale-[0.99] disabled:opacity-40"
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
           >
-            {createSuccess ? (
-              <>
-                <CheckIcon width={16} height={16} /> Акция создана
-              </>
-            ) : creating ? (
-              'Создаём…'
-            ) : (
-              <>
-                <PlusIcon width={16} height={16} /> Создать акцию
-              </>
-            )}
+            <PlusIcon width={14} height={14} />
+            Создать акцию
           </button>
-        </form>
-      </Panel>
-
-      <Panel className="p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Активные акции</span>
         </div>
         {loading ? (
           <Loading label="Загружаем акции…" />
@@ -396,6 +391,8 @@ function PromotionsSection({ storeId }: { storeId: number }) {
           </div>
         )}
       </Panel>
+
+      <CreatePromotionModal open={createOpen} onClose={() => setCreateOpen(false)} storeId={storeId} onCreated={async () => { await load(); setCreateOpen(false) }} />
     </div>
   )
 }
@@ -405,22 +402,165 @@ function PromotionsSection({ storeId }: { storeId: number }) {
 // ---------------------------------------------------------------------------
 
 interface ItemRow {
-  productId: string
+  product: ProductSearchItem | null
   quantity: string
+}
+
+function BundleFormFields({
+  name, setName, bundlePrice, setBundlePrice, currency, setCurrency, items, updateItem, addItemRow, removeItemRow,
+  nameError, priceError, itemsError,
+}: {
+  name: string; setName: (v: string) => void
+  bundlePrice: string; setBundlePrice: (v: string) => void
+  currency: string; setCurrency: (v: string) => void
+  items: ItemRow[]
+  updateItem: (index: number, patch: Partial<ItemRow>) => void
+  addItemRow: () => void
+  removeItemRow: (index: number) => void
+  nameError?: string; priceError?: string; itemsError?: string
+}) {
+  return (
+    <>
+      <FormField label="Название набора" required error={nameError} scheme="admin">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Например, «Завтрак набор»" className={inputCls()} />
+      </FormField>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormField label="Цена набора" required error={priceError} scheme="admin">
+          <input type="number" min={0} step="0.01" value={bundlePrice} onChange={(e) => setBundlePrice(e.target.value)} placeholder="0.00" className={inputCls()} />
+        </FormField>
+        <FormField label="Валюта" scheme="admin">
+          <input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} maxLength={3} placeholder="TJS" className={inputCls()} />
+        </FormField>
+      </div>
+
+      <FormField label="Состав набора" error={itemsError} scheme="admin">
+        <div className="flex flex-col gap-2">
+          {items.map((row, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <ProductPicker className="flex-1" value={row.product} onChange={(p) => updateItem(i, { product: p })} scheme="admin" />
+              <input
+                type="number"
+                min={1}
+                value={row.quantity}
+                onChange={(e) => updateItem(i, { quantity: e.target.value })}
+                placeholder="Кол-во"
+                className={`${inputCls()} max-w-[110px]`}
+              />
+              <button
+                type="button"
+                onClick={() => removeItemRow(i)}
+                disabled={items.length <= 1}
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[color:var(--admin-hover)] text-[color:var(--admin-danger)] disabled:opacity-30"
+              >
+                <TrashIcon width={15} height={15} />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addItemRow}
+            className="mt-1 flex items-center justify-center gap-1.5 self-start rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
+          >
+            <PlusIcon width={13} height={13} />
+            Добавить товар
+          </button>
+        </div>
+      </FormField>
+    </>
+  )
+}
+
+function CreateBundleModal({ open, onClose, storeId, onCreated }: { open: boolean; onClose: () => void; storeId: number; onCreated: () => Promise<void> }) {
+  const [name, setName] = useState('')
+  const [bundlePrice, setBundlePrice] = useState('')
+  const [currency, setCurrency] = useState('TJS')
+  const [items, setItems] = useState<ItemRow[]>([{ product: null, quantity: '1' }])
+  const [nameError, setNameError] = useState('')
+  const [priceError, setPriceError] = useState('')
+  const [itemsError, setItemsError] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setName('')
+    setBundlePrice('')
+    setCurrency('TJS')
+    setItems([{ product: null, quantity: '1' }])
+    setNameError('')
+    setPriceError('')
+    setItemsError('')
+  }, [open])
+
+  function updateItem(index: number, patch: Partial<ItemRow>) {
+    setItems((rows) => rows.map((r, i) => (i === index ? { ...r, ...patch } : r)))
+  }
+
+  function addItemRow() {
+    setItems((rows) => [...rows, { product: null, quantity: '1' }])
+  }
+
+  function removeItemRow(index: number) {
+    setItems((rows) => (rows.length <= 1 ? rows : rows.filter((_, i) => i !== index)))
+  }
+
+  async function submit() {
+    setNameError('')
+    setPriceError('')
+    setItemsError('')
+    const trimmedName = name.trim()
+    const price = Number(bundlePrice)
+    let hasError = false
+    if (!trimmedName) {
+      setNameError('Укажите название набора')
+      hasError = true
+    }
+    if (!price || price <= 0) {
+      setPriceError('Укажите цену набора')
+      hasError = true
+    }
+    const parsedItems: BundleItem[] = items
+      .filter((r) => r.product)
+      .map((r) => ({ productId: r.product!.productId, quantity: Math.max(1, Number(r.quantity) || 1) }))
+    if (parsedItems.length === 0) {
+      setItemsError('Добавьте хотя бы один товар в набор')
+      hasError = true
+    }
+    if (hasError) throw new Error('Проверьте поля формы')
+
+    const res = await createProductBundle(storeId, trimmedName, price, currency.trim() || 'TJS', parsedItems)
+    const msg = outcomeMessage(res.outcome)
+    if (msg) throw new Error(msg)
+    await onCreated()
+  }
+
+  return (
+    <FormModal
+      open={open}
+      onClose={onClose}
+      title="Новый набор товаров"
+      isDirty={!!(name || bundlePrice || items.some((r) => r.product))}
+      onSubmit={submit}
+      submitLabel="Создать набор"
+      submitBusyLabel="Создаём…"
+      scheme="admin"
+      size="lg"
+    >
+      <BundleFormFields
+        name={name} setName={setName}
+        bundlePrice={bundlePrice} setBundlePrice={setBundlePrice}
+        currency={currency} setCurrency={setCurrency}
+        items={items} updateItem={updateItem} addItemRow={addItemRow} removeItemRow={removeItemRow}
+        nameError={nameError} priceError={priceError} itemsError={itemsError}
+      />
+    </FormModal>
+  )
 }
 
 function BundlesSection({ storeId }: { storeId: number }) {
   const [bundles, setBundles] = useState<ProductBundle[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  const [name, setName] = useState('')
-  const [bundlePrice, setBundlePrice] = useState('')
-  const [currency, setCurrency] = useState('TJS')
-  const [items, setItems] = useState<ItemRow[]>([{ productId: '', quantity: '1' }])
-  const [creating, setCreating] = useState(false)
-  const [createError, setCreateError] = useState('')
-  const [createSuccess, setCreateSuccess] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
 
   const load = useCallback(async () => {
     setError('')
@@ -438,170 +578,21 @@ function BundlesSection({ storeId }: { storeId: number }) {
     load()
   }, [load])
 
-  function updateItem(index: number, patch: Partial<ItemRow>) {
-    setItems((rows) => rows.map((r, i) => (i === index ? { ...r, ...patch } : r)))
-  }
-
-  function addItemRow() {
-    setItems((rows) => [...rows, { productId: '', quantity: '1' }])
-  }
-
-  function removeItemRow(index: number) {
-    setItems((rows) => (rows.length <= 1 ? rows : rows.filter((_, i) => i !== index)))
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (creating) return
-    const trimmedName = name.trim()
-    const price = Number(bundlePrice)
-    if (!trimmedName) {
-      setCreateError('Укажите название набора')
-      return
-    }
-    if (!price || price <= 0) {
-      setCreateError('Укажите цену набора')
-      return
-    }
-    const parsedItems: BundleItem[] = items
-      .filter((r) => Number(r.productId) > 0)
-      .map((r) => ({ productId: Number(r.productId), quantity: Math.max(1, Number(r.quantity) || 1) }))
-    if (parsedItems.length === 0) {
-      setCreateError('Добавьте хотя бы один товар в набор')
-      return
-    }
-    setCreating(true)
-    setCreateError('')
-    setCreateSuccess(false)
-    try {
-      const res = await createProductBundle(storeId, trimmedName, price, currency.trim() || 'TJS', parsedItems)
-      const msg = outcomeMessage(res.outcome)
-      if (msg) {
-        setCreateError(msg)
-        return
-      }
-      setCreateSuccess(true)
-      setName('')
-      setBundlePrice('')
-      setItems([{ productId: '', quantity: '1' }])
-      await load()
-      setTimeout(() => setCreateSuccess(false), 2000)
-    } catch (err) {
-      setCreateError(err instanceof ApiError ? err.message : 'Не удалось создать набор')
-    } finally {
-      setCreating(false)
-    }
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <Panel className="p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Новый набор товаров</span>
-        </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls()}>Название набора</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Например, «Завтрак набор»"
-              className={inputCls()}
-            />
-          </label>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls()}>Цена набора</span>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={bundlePrice}
-                onChange={(e) => setBundlePrice(e.target.value)}
-                placeholder="0.00"
-                className={inputCls()}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls()}>Валюта</span>
-              <input
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-                maxLength={3}
-                placeholder="TJS"
-                className={inputCls()}
-              />
-            </label>
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
+            <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Наборы товаров магазина</span>
           </div>
-
-          <div className="flex flex-col gap-2">
-            <span className={labelCls()}>Состав набора</span>
-            {items.map((row, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  value={row.productId}
-                  onChange={(e) => updateItem(i, { productId: e.target.value })}
-                  placeholder="ID товара"
-                  className={inputCls()}
-                />
-                <input
-                  type="number"
-                  min={1}
-                  value={row.quantity}
-                  onChange={(e) => updateItem(i, { quantity: e.target.value })}
-                  placeholder="Кол-во"
-                  className={`${inputCls()} max-w-[110px]`}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeItemRow(i)}
-                  disabled={items.length <= 1}
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-[8px] bg-[color:var(--admin-hover)] text-[color:var(--admin-danger)] transition-colors hover:bg-[color:var(--admin-danger-dim)] disabled:opacity-30"
-                >
-                  <TrashIcon width={15} height={15} />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addItemRow}
-              className="mt-1 flex items-center justify-center gap-1.5 self-start rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
-            >
-              <PlusIcon width={13} height={13} />
-              Добавить товар
-            </button>
-          </div>
-
-          {createError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{createError}</div>}
-
           <button
-            type="submit"
-            disabled={creating}
-            className="flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] active:scale-[0.99] disabled:opacity-40"
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
           >
-            {createSuccess ? (
-              <>
-                <CheckIcon width={16} height={16} /> Набор создан
-              </>
-            ) : creating ? (
-              'Создаём…'
-            ) : (
-              <>
-                <PlusIcon width={16} height={16} /> Создать набор
-              </>
-            )}
+            <PlusIcon width={14} height={14} />
+            Новый набор
           </button>
-        </form>
-      </Panel>
-
-      <Panel className="p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Наборы товаров магазина</span>
         </div>
         {loading ? (
           <Loading label="Загружаем наборы…" />
@@ -637,6 +628,8 @@ function BundlesSection({ storeId }: { storeId: number }) {
           </div>
         )}
       </Panel>
+
+      <CreateBundleModal open={createOpen} onClose={() => setCreateOpen(false)} storeId={storeId} onCreated={async () => { await load(); setCreateOpen(false) }} />
     </div>
   )
 }
@@ -657,19 +650,123 @@ function timeRemaining(expiresAt: string): { label: string; expired: boolean } {
   return { label: `Осталось ${minutes} мин.`, expired: false }
 }
 
-function OffersSection({ storeId }: { storeId: number }) {
-  const [offers, setOffers] = useState<ExpiringOffer[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+function OfferFormFields({
+  product, setProduct, originalPrice, setOriginalPrice, discountedPrice, setDiscountedPrice,
+  currency, setCurrency, expiresAt, setExpiresAt, productError, priceError, expiryError,
+}: {
+  product: ProductSearchItem | null; setProduct: (v: ProductSearchItem | null) => void
+  originalPrice: string; setOriginalPrice: (v: string) => void
+  discountedPrice: string; setDiscountedPrice: (v: string) => void
+  currency: string; setCurrency: (v: string) => void
+  expiresAt: string; setExpiresAt: (v: string) => void
+  productError?: string; priceError?: string; expiryError?: string
+}) {
+  return (
+    <>
+      <FormField label="Товар" required error={productError} scheme="admin">
+        <ProductPicker value={product} onChange={setProduct} scheme="admin" scanEnabled />
+      </FormField>
 
-  const [productId, setProductId] = useState('')
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <FormField label="Исходная цена" required error={priceError} scheme="admin">
+          <input type="number" min={0} step="0.01" value={originalPrice} onChange={(e) => setOriginalPrice(e.target.value)} placeholder="0.00" className={inputCls()} />
+        </FormField>
+        <FormField label="Цена со скидкой" scheme="admin">
+          <input type="number" min={0} step="0.01" value={discountedPrice} onChange={(e) => setDiscountedPrice(e.target.value)} placeholder="0.00" className={inputCls()} />
+        </FormField>
+        <FormField label="Валюта" scheme="admin">
+          <input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} maxLength={3} placeholder="TJS" className={inputCls()} />
+        </FormField>
+      </div>
+
+      <FormField label="Истекает" required error={expiryError} scheme="admin">
+        <input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className={inputCls()} />
+      </FormField>
+    </>
+  )
+}
+
+function PublishOfferModal({ open, onClose, storeId, onCreated }: { open: boolean; onClose: () => void; storeId: number; onCreated: () => Promise<void> }) {
+  const [product, setProduct] = useState<ProductSearchItem | null>(null)
   const [originalPrice, setOriginalPrice] = useState('')
   const [discountedPrice, setDiscountedPrice] = useState('')
   const [currency, setCurrency] = useState('TJS')
   const [expiresAt, setExpiresAt] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [createError, setCreateError] = useState('')
-  const [createSuccess, setCreateSuccess] = useState(false)
+  const [productError, setProductError] = useState('')
+  const [priceError, setPriceError] = useState('')
+  const [expiryError, setExpiryError] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setProduct(null)
+    setOriginalPrice('')
+    setDiscountedPrice('')
+    setCurrency('TJS')
+    setExpiresAt('')
+    setProductError('')
+    setPriceError('')
+    setExpiryError('')
+  }, [open])
+
+  async function submit() {
+    setProductError('')
+    setPriceError('')
+    setExpiryError('')
+    const pid = product?.productId
+    const original = Number(originalPrice)
+    const discounted = Number(discountedPrice)
+    let hasError = false
+    if (!pid) {
+      setProductError('Выберите товар')
+      hasError = true
+    }
+    if (!original || original <= 0 || !discounted || discounted <= 0) {
+      setPriceError('Укажите корректные цены')
+      hasError = true
+    } else if (discounted >= original) {
+      setPriceError('Цена со скидкой должна быть меньше исходной')
+      hasError = true
+    }
+    if (!expiresAt) {
+      setExpiryError('Укажите срок действия предложения')
+      hasError = true
+    }
+    if (hasError || !pid) throw new Error('Проверьте поля формы')
+
+    const res = await publishExpiringOffer(storeId, pid, original, discounted, currency.trim() || 'TJS', new Date(expiresAt).toISOString())
+    const msg = outcomeMessage(res.outcome)
+    if (msg) throw new Error(msg)
+    await onCreated()
+  }
+
+  return (
+    <FormModal
+      open={open}
+      onClose={onClose}
+      title="Опубликовать «скоро истекает»"
+      isDirty={!!(product || originalPrice || discountedPrice || expiresAt)}
+      onSubmit={submit}
+      submitLabel="Опубликовать"
+      submitBusyLabel="Публикуем…"
+      scheme="admin"
+    >
+      <OfferFormFields
+        product={product} setProduct={setProduct}
+        originalPrice={originalPrice} setOriginalPrice={setOriginalPrice}
+        discountedPrice={discountedPrice} setDiscountedPrice={setDiscountedPrice}
+        currency={currency} setCurrency={setCurrency}
+        expiresAt={expiresAt} setExpiresAt={setExpiresAt}
+        productError={productError} priceError={priceError} expiryError={expiryError}
+      />
+    </FormModal>
+  )
+}
+
+function OffersSection({ storeId }: { storeId: number }) {
+  const [offers, setOffers] = useState<ExpiringOffer[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
 
   const load = useCallback(async () => {
     setError('')
@@ -687,152 +784,21 @@ function OffersSection({ storeId }: { storeId: number }) {
     load()
   }, [load])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (creating) return
-    const pid = Number(productId)
-    const original = Number(originalPrice)
-    const discounted = Number(discountedPrice)
-    if (!pid) {
-      setCreateError('Укажите ID товара')
-      return
-    }
-    if (!original || original <= 0 || !discounted || discounted <= 0) {
-      setCreateError('Укажите корректные цены')
-      return
-    }
-    if (discounted >= original) {
-      setCreateError('Цена со скидкой должна быть меньше исходной')
-      return
-    }
-    if (!expiresAt) {
-      setCreateError('Укажите срок действия предложения')
-      return
-    }
-    setCreating(true)
-    setCreateError('')
-    setCreateSuccess(false)
-    try {
-      const res = await publishExpiringOffer(
-        storeId,
-        pid,
-        original,
-        discounted,
-        currency.trim() || 'TJS',
-        new Date(expiresAt).toISOString(),
-      )
-      const msg = outcomeMessage(res.outcome)
-      if (msg) {
-        setCreateError(msg)
-        return
-      }
-      setCreateSuccess(true)
-      setProductId('')
-      setOriginalPrice('')
-      setDiscountedPrice('')
-      setExpiresAt('')
-      await load()
-      setTimeout(() => setCreateSuccess(false), 2000)
-    } catch (err) {
-      setCreateError(err instanceof ApiError ? err.message : 'Не удалось опубликовать предложение')
-    } finally {
-      setCreating(false)
-    }
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <Panel className="p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <ClockIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Опубликовать «скоро истекает»</span>
-        </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls()}>ID товара</span>
-            <input
-              type="number"
-              min={1}
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-              placeholder="Например, 1024"
-              className={inputCls()}
-            />
-          </label>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls()}>Исходная цена</span>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={originalPrice}
-                onChange={(e) => setOriginalPrice(e.target.value)}
-                placeholder="0.00"
-                className={inputCls()}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls()}>Цена со скидкой</span>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={discountedPrice}
-                onChange={(e) => setDiscountedPrice(e.target.value)}
-                placeholder="0.00"
-                className={inputCls()}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls()}>Валюта</span>
-              <input
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-                maxLength={3}
-                placeholder="TJS"
-                className={inputCls()}
-              />
-            </label>
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
+            <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Предложения этого магазина</span>
           </div>
-
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls()}>Истекает</span>
-            <input
-              type="datetime-local"
-              value={expiresAt}
-              onChange={(e) => setExpiresAt(e.target.value)}
-              className={inputCls()}
-            />
-          </label>
-
-          {createError && <div className="text-[12px] font-medium text-[color:var(--admin-danger)]">{createError}</div>}
-
           <button
-            type="submit"
-            disabled={creating}
-            className="flex items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] active:scale-[0.99] disabled:opacity-40"
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
           >
-            {createSuccess ? (
-              <>
-                <CheckIcon width={16} height={16} /> Опубликовано
-              </>
-            ) : creating ? (
-              'Публикуем…'
-            ) : (
-              <>
-                <PlusIcon width={16} height={16} /> Опубликовать
-              </>
-            )}
+            <PlusIcon width={14} height={14} />
+            Опубликовать
           </button>
-        </form>
-      </Panel>
-
-      <Panel className="p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <AlertIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-          <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Предложения этого магазина</span>
         </div>
         {loading ? (
           <Loading label="Загружаем предложения…" />
@@ -872,6 +838,8 @@ function OffersSection({ storeId }: { storeId: number }) {
           </div>
         )}
       </Panel>
+
+      <PublishOfferModal open={createOpen} onClose={() => setCreateOpen(false)} storeId={storeId} onCreated={async () => { await load(); setCreateOpen(false) }} />
     </div>
   )
 }
@@ -881,7 +849,7 @@ function OffersSection({ storeId }: { storeId: number }) {
 // ---------------------------------------------------------------------------
 
 function RepliesSection() {
-  const [productIdInput, setProductIdInput] = useState('')
+  const [product, setProduct] = useState<ProductSearchItem | null>(null)
   const [reviews, setReviews] = useState<Review[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -893,9 +861,9 @@ function RepliesSection() {
   const [replyError, setReplyError] = useState('')
   const [repliedIds, setRepliedIds] = useState<Set<number>>(new Set())
 
-  async function handleLookup(e: React.FormEvent) {
-    e.preventDefault()
-    const pid = Number(productIdInput)
+  async function handleLookup(picked: ProductSearchItem | null) {
+    setProduct(picked)
+    const pid = picked?.productId
     if (!pid || loading) return
     setLoading(true)
     setError('')
@@ -951,26 +919,10 @@ function RepliesSection() {
           <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Найти отзывы по товару</span>
         </div>
         <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-          В бэкенде нет эндпоинта «все отзывы моего магазина» — отзывы можно посмотреть только по ID конкретного
-          товара.
+          В бэкенде нет эндпоинта «все отзывы моего магазина» — отзывы можно посмотреть только по конкретному товару.
         </p>
-        <form onSubmit={handleLookup} className="flex flex-col gap-3 sm:flex-row">
-          <input
-            type="number"
-            min={1}
-            value={productIdInput}
-            onChange={(e) => setProductIdInput(e.target.value)}
-            placeholder="ID товара"
-            className={`${inputCls()} sm:max-w-[220px]`}
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="shrink-0 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] disabled:opacity-40"
-          >
-            {loading ? 'Ищем…' : 'Показать отзывы'}
-          </button>
-        </form>
+        <ProductPicker value={product} onChange={handleLookup} scheme="admin" className="sm:max-w-[360px]" />
+        {loading && <p className="mt-2 text-[12px] text-[color:var(--admin-text-tertiary)]">Ищем отзывы…</p>}
       </Panel>
 
       {searched && (

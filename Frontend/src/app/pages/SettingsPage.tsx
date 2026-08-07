@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { meApi, type ConsentType } from '../../lib/api'
+import { meApi, ApiError, type ConsentType } from '../../lib/api'
 import { Button, EmptyState, ErrorState, LINE, Reveal, SectionTitle, Skeleton, Spinner, TXT, useAsync } from '../ui'
 
 /* Exactly the four the backend defines (ConsentType in lib/api/me.ts) — no more,
@@ -39,18 +39,12 @@ function ChangePasswordSection() {
     setSaving(true)
     setMsg(null)
     try {
-      const res = await meApi.changePassword(current, next)
-      if (res.outcome === 'Changed') {
-        setMsg({ text: 'Пароль изменён', ok: true })
-        setCurrent('')
-        setNext('')
-      } else if (res.outcome === 'WrongCurrentPassword') {
-        setMsg({ text: 'Неверный текущий пароль', ok: false })
-      } else {
-        setMsg({ text: 'Не удалось изменить пароль', ok: false })
-      }
-    } catch {
-      setMsg({ text: 'Не удалось связаться с сервером', ok: false })
+      await meApi.changePassword(current, next)
+      setMsg({ text: 'Пароль изменён', ok: true })
+      setCurrent('')
+      setNext('')
+    } catch (err) {
+      setMsg({ text: err instanceof ApiError ? err.message : 'Не удалось связаться с сервером', ok: false })
     } finally {
       setSaving(false)
     }

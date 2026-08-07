@@ -19,10 +19,10 @@ public class ProductSubmissionConfiguration : IEntityTypeConfiguration<ProductSu
             .WithMany()
             .HasForeignKey(x => x.CategoryId)
             .OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<ApplicationUser>()
+        builder.HasOne<Product>()
             .WithMany()
-            .HasForeignKey(x => x.ModeratedByAdminUserId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .HasForeignKey(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(x => x.SubmittedByUserId)

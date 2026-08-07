@@ -15,10 +15,6 @@ public class ReportConfiguration : IEntityTypeConfiguration<Report>
             .WithMany()
             .HasForeignKey(x => x.ProductId)
             .OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<ApplicationUser>()
-            .WithMany()
-            .HasForeignKey(x => x.ResolvedByAdminUserId)
-            .OnDelete(DeleteBehavior.SetNull);
         builder.HasOne<Store>()
             .WithMany()
             .HasForeignKey(x => x.StoreId)

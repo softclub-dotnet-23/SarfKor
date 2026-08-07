@@ -1,0 +1,3 @@
+namespace Application.Subscriptions.Queries.GetPastDueSubscriptions;
+
+public sealed record GetPastDueSubscriptionsQuery;

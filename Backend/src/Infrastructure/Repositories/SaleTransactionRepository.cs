@@ -51,4 +51,30 @@ public sealed class SaleTransactionRepository(AppDbContext dbContext) : ISaleTra
     }
 
     public void Add(SaleTransaction saleTransaction) => dbContext.SaleTransactions.Add(saleTransaction);
+
+    public Task<DateTimeOffset?> GetLastSaleAtAsync(int storeId, CancellationToken cancellationToken) =>
+        dbContext.SaleTransactions
+            .Where(s => s.StoreId == storeId)
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => (DateTimeOffset?)s.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyDictionary<int, DateTimeOffset>> GetLastSaleAtByStoreIdsAsync(IReadOnlyCollection<int> storeIds, CancellationToken cancellationToken)
+    {
+        var rows = await dbContext.SaleTransactions
+            .Where(s => storeIds.Contains(s.StoreId))
+            .GroupBy(s => s.StoreId)
+            .Select(g => new { StoreId = g.Key, LastSaleAt = g.Max(s => s.CreatedAt) })
+            .ToListAsync(cancellationToken);
+        return rows.ToDictionary(r => r.StoreId, r => r.LastSaleAt);
+    }
+
+    public Task<int> CountAcrossPlatformInRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken) =>
+        dbContext.SaleTransactions.CountAsync(s => s.Status == SaleStatus.Completed && s.CreatedAt >= from && s.CreatedAt < to, cancellationToken);
+
+    public async Task<IReadOnlyList<DateTimeOffset>> GetCreatedAtAcrossPlatformInRangeAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken) =>
+        await dbContext.SaleTransactions
+            .Where(s => s.Status == SaleStatus.Completed && s.CreatedAt >= from && s.CreatedAt < to)
+            .Select(s => s.CreatedAt)
+            .ToListAsync(cancellationToken);
 }

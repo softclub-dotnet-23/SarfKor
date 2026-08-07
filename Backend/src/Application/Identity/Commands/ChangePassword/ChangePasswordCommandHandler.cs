@@ -3,21 +3,21 @@ using Application.Common;
 
 namespace Application.Identity.Commands.ChangePassword;
 
-public sealed class ChangePasswordCommandHandler(
-    IAuthService authService) : ICommandHandler<ChangePasswordCommand, ChangePasswordResult>
+public sealed class ChangePasswordCommandHandler(IAuthService authService) : ICommandHandler<ChangePasswordCommand, ChangePasswordResult>
 {
     public async Task<ChangePasswordResult> Handle(ChangePasswordCommand command, CancellationToken cancellationToken)
     {
-        bool changed;
-        try
-        {
-            changed = await authService.ChangePasswordAsync(command.UserId, command.CurrentPassword, command.NewPassword, cancellationToken);
-        }
-        catch (InvalidOperationException)
-        {
-            return new ChangePasswordResult(ChangePasswordOutcome.UserNotFound);
-        }
+        var result = await authService.ChangePasswordAsync(command.UserId, command.CurrentPassword, command.NewPassword, cancellationToken);
 
-        return new ChangePasswordResult(changed ? ChangePasswordOutcome.Changed : ChangePasswordOutcome.WrongCurrentPassword);
+        if (result.UserNotFound)
+            return new ChangePasswordResult(ChangePasswordOutcome.NotFound, Array.Empty<string>());
+
+        if (result.IncorrectCurrentPassword)
+            return new ChangePasswordResult(ChangePasswordOutcome.IncorrectCurrentPassword, Array.Empty<string>());
+
+        if (!result.Succeeded)
+            return new ChangePasswordResult(ChangePasswordOutcome.WeakPassword, result.Errors);
+
+        return new ChangePasswordResult(ChangePasswordOutcome.Succeeded, Array.Empty<string>());
     }
 }

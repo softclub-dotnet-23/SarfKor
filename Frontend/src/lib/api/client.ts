@@ -170,6 +170,30 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   return text ? (JSON.parse(text) as T) : (undefined as T)
 }
 
+/**
+ * Fetches a binary resource (currently just the caller's own avatar) with the same auth-header +
+ * one-retry-on-401 handling as apiFetch, but returning a Blob instead of parsed JSON — an <img src>
+ * can't carry an Authorization header itself, so callers turn this into an object URL instead.
+ * Returns null for any non-2xx response (404 "no avatar set" and network failure look the same to
+ * the caller: nothing to show).
+ */
+export async function apiFetchBlob(path: string): Promise<Blob | null> {
+  const doFetch = () => {
+    const headers: Record<string, string> = {}
+    const tokens = getTokens()
+    if (tokens) headers['Authorization'] = `Bearer ${tokens.accessToken}`
+    return fetch(buildUrl(path), { headers })
+  }
+
+  let res = await doFetch()
+  if (res.status === 401 && getTokens()) {
+    const refreshed = await refreshTokens()
+    if (refreshed) res = await doFetch()
+  }
+  if (!res.ok) return null
+  return res.blob()
+}
+
 export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
   const headers: Record<string, string> = {}
   const tokens = getTokens()

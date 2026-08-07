@@ -6,6 +6,11 @@ using Domain.ValueObjects;
 
 namespace Application.Products.Commands.SubmitNewProduct;
 
+// ADMIN_PROMPT.md §1: no moderation queue at all anymore — every submission publishes a Product
+// immediately, whether it came from a trusted StorePartner (CreateDirectly=true, the original fast
+// path) or an ordinary user (CreateDirectly=false). ProductSubmission survives purely as a
+// provenance record ("who introduced this to the catalog"), always linked to the Product it
+// created via ProductId, never a separate pending state anyone waits on.
 public sealed class SubmitNewProductCommandHandler(
     IProductRepository productRepository,
     IProductSubmissionRepository productSubmissionRepository,
@@ -26,43 +31,16 @@ public sealed class SubmitNewProductCommandHandler(
         if (!await brandRepository.ExistsAsync(command.BrandId, cancellationToken))
             return new SubmitNewProductResult(SubmitNewProductOutcome.BrandNotFound, null);
 
-        // A StorePartner adding a product they actually stock is trusted the same way they're
-        // trusted to add prices/stock for it — no moderation queue at all, unlike the consumer
-        // crowdsource path below, which still needs a trust mechanism for arbitrary internet input.
-        if (command.CreateDirectly)
+        var product = new Product
         {
-            var directProduct = new Product
-            {
-                Barcode = new Barcode(command.Barcode),
-                Name = command.Name,
-                CategoryId = command.CategoryId,
-                BrandId = command.BrandId,
-                CountryOfOrigin = command.CountryOfOrigin
-            };
-
-            productRepository.Add(directProduct);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-
-            auditLogRepository.Add(new AuditLog
-            {
-                PerformedByUserId = command.SubmittedByUserId,
-                Action = "Product.CreatedByPartner",
-                EntityType = nameof(Product),
-                EntityId = directProduct.Id,
-                Details = command.Barcode,
-                OccurredAt = DateTimeOffset.UtcNow
-            });
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-
-            return new SubmitNewProductResult(SubmitNewProductOutcome.Created, null, directProduct.Id);
-        }
-
-        // Two shoppers scanning the same unrecognized barcode is the expected case, not the
-        // exception — without this check every one of them would create their own duplicate
-        // submission for the same product.
-        var existingPending = await productSubmissionRepository.GetPendingByBarcodeAsync(command.Barcode, cancellationToken);
-        if (existingPending is not null)
-            return new SubmitNewProductResult(SubmitNewProductOutcome.DuplicatePendingSubmission, null);
+            Barcode = new Barcode(command.Barcode),
+            Name = command.Name,
+            CategoryId = command.CategoryId,
+            BrandId = command.BrandId,
+            CountryOfOrigin = command.CountryOfOrigin
+        };
+        productRepository.Add(product);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         var submission = new ProductSubmission
         {
@@ -72,13 +50,23 @@ public sealed class SubmitNewProductCommandHandler(
             BrandId = command.BrandId,
             CountryOfOrigin = command.CountryOfOrigin,
             SubmittedByUserId = command.SubmittedByUserId,
-            Status = ProductSubmissionStatus.Pending,
+            ProductId = product.Id,
             CreatedAt = DateTimeOffset.UtcNow
         };
-
         productSubmissionRepository.Add(submission);
+
+        auditLogRepository.Add(new AuditLog
+        {
+            PerformedByUserId = command.SubmittedByUserId,
+            Action = command.CreateDirectly ? "Product.CreatedByPartner" : "Product.CreatedByUser",
+            EntityType = nameof(Product),
+            EntityId = product.Id,
+            Details = command.Barcode,
+            OccurredAt = DateTimeOffset.UtcNow
+        });
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new SubmitNewProductResult(SubmitNewProductOutcome.Submitted, submission.Id);
+        return new SubmitNewProductResult(SubmitNewProductOutcome.Created, submission.Id, product.Id);
     }
 }

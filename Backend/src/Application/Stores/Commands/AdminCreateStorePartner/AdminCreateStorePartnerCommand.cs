@@ -6,4 +6,5 @@ public sealed record AdminCreateStorePartnerCommand(
     string StoreName,
     string Address,
     double Latitude,
-    double Longitude);
+    double Longitude,
+    string? PerformedByIpAddress = null);

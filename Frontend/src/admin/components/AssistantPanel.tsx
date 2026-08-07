@@ -93,14 +93,14 @@ export function AssistantPanel() {
 
   return (
     // .admin-shell scopes the --admin-* custom properties this component relies on (see
-    // index.css) -- `contents` keeps the wrapper itself out of layout, so dropping this
-    // component into AdminConsoleLayout (which uses its own separate .mod-shell token set,
-    // not .admin-shell) still resolves colors correctly without affecting that page's own layout.
+    // index.css) -- `contents` keeps the wrapper itself out of layout. Redundant when nested
+    // inside a page that already has .admin-shell higher up, but this component is also used
+    // standalone, so it re-declares its own scope rather than assuming one exists above it.
     <div className="admin-shell contents">
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? 'Закрыть ассистента' : 'Открыть ассистента'}
-        className="fixed bottom-6 right-6 z-50 grid h-14 w-14 place-items-center rounded-full bg-[color:var(--admin-accent)] text-white shadow-[0_10px_30px_-6px_rgba(0,0,0,0.35)] transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-6 right-6 z-50 grid h-14 w-14 place-items-center rounded-full bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)] shadow-[0_10px_30px_-6px_rgba(0,0,0,0.35)] transition-transform hover:scale-105 active:scale-95"
       >
         {open ? <XIcon width={22} height={22} /> : <ChatIcon width={22} height={22} />}
       </button>
@@ -145,7 +145,7 @@ export function AssistantPanel() {
                     <div
                       className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${
                         m.role === 'user'
-                          ? 'bg-[color:var(--admin-accent)] text-white'
+                          ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
                           : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text)]'
                       }`}
                     >
@@ -172,7 +172,7 @@ export function AssistantPanel() {
                     <button
                       onClick={handleConfirm}
                       disabled={confirmBusy}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] py-2 text-[12.5px] font-bold text-[color:var(--admin-accent-fg)] disabled:opacity-50"
                     >
                       <CheckIcon width={13} height={13} />
                       {confirmBusy ? 'Подтверждаем…' : 'Подтвердить'}
@@ -212,7 +212,7 @@ export function AssistantPanel() {
                 type="submit"
                 disabled={busy || !input.trim()}
                 aria-label="Отправить"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[color:var(--admin-accent)] text-white disabled:opacity-40"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)] disabled:opacity-40"
               >
                 <SendIcon width={16} height={16} />
               </button>

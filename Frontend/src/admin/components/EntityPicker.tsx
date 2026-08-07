@@ -6,9 +6,9 @@ import { lockBodyScroll, unlockBodyScroll } from '../../lib/scrollLock'
 import { Loading } from './Loading'
 import { SearchIcon, XIcon, ChevronDownIcon, AlertIcon } from './icons'
 
-// Same scheme split as every other shared component here ('admin' for the StorePartner/Cashier
-// cabinets, 'mod' for the platform Admin console) — see Select.tsx, this component's closest
-// sibling, for the pattern this borrows its trigger/panel classes from almost verbatim.
+// Single 'admin' scheme, shared by the StorePartner/Cashier cabinets and the platform Admin
+// console — see Select.tsx, this component's closest sibling, for the pattern this borrows
+// its trigger/panel classes from almost verbatim.
 const SCHEMES = {
   admin: {
     trigger: 'border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] text-[color:var(--admin-text)] focus-visible:border-[color:var(--admin-accent)]',
@@ -24,25 +24,8 @@ const SCHEMES = {
     danger: 'text-[color:var(--admin-danger)]',
     chip: 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]',
     border: 'border-[color:var(--admin-border)]',
-    retryBtn: 'bg-[color:var(--admin-accent)]',
+    retryBtn: 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
     sheetBg: 'bg-[color:var(--admin-card)]',
-  },
-  mod: {
-    trigger: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] text-[color:var(--mod-text)] focus-visible:border-[color:var(--mod-accent)]',
-    placeholder: 'text-[color:var(--mod-faint)]',
-    chevron: 'text-[color:var(--mod-faint)]',
-    panel: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel)] shadow-[var(--mod-shadow)]',
-    searchField: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] text-[color:var(--mod-text)] placeholder:text-[color:var(--mod-faint)] focus:border-[color:var(--mod-accent)]',
-    option: 'text-[color:var(--mod-text)]',
-    optionActive: 'bg-[color:var(--mod-accent-dim)]',
-    optionSelected: 'bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]',
-    faint: 'text-[color:var(--mod-faint)]',
-    accent: 'text-[color:var(--mod-accent2)]',
-    danger: 'text-[color:var(--mod-danger)]',
-    chip: 'bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]',
-    border: 'border-[color:var(--mod-border)]',
-    retryBtn: 'bg-[color:var(--mod-accent)]',
-    sheetBg: 'bg-[color:var(--mod-panel)]',
   },
 } as const
 
@@ -298,7 +281,7 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
           <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
             <AlertIcon width={22} height={22} className={c.danger} />
             <p className={`text-[13px] ${c.faint}`}>{error}</p>
-            <button type="button" onClick={() => loadPage(query, 0, false)} className={`rounded-lg px-3.5 py-2 text-[12.5px] font-semibold text-white ${c.retryBtn}`}>
+            <button type="button" onClick={() => loadPage(query, 0, false)} className={`rounded-lg px-3.5 py-2 text-[12.5px] font-semibold ${c.retryBtn}`}>
               Повторить
             </button>
           </div>
@@ -367,7 +350,7 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
                   tabIndex={-1}
                   onClick={(e) => removeChip(e, getId(v))}
                   aria-label={`Убрать ${getLabel(v)}`}
-                  className="grid h-4 w-4 shrink-0 place-items-center rounded-full hover:bg-black/10"
+                  className="grid h-4 w-4 shrink-0 place-items-center rounded-full hover:bg-[color:var(--admin-hover)]"
                 >
                   <XIcon width={10} height={10} />
                 </span>
@@ -375,7 +358,7 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
             ))}
         </div>
         {hasValue && (
-          <span role="button" tabIndex={-1} onClick={clearValue} aria-label="Очистить" className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${c.faint} hover:bg-black/5`}>
+          <span role="button" tabIndex={-1} onClick={clearValue} aria-label="Очистить" className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${c.faint} hover:bg-[color:var(--admin-hover)]`}>
             <XIcon width={13} height={13} />
           </span>
         )}
@@ -405,7 +388,7 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: '100%' }}
                 transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-                className={`${scheme === 'admin' ? 'admin-shell' : 'mod-shell'} fixed inset-0 z-100 flex flex-col ${c.sheetBg}`}
+                className={`${'admin-shell'} fixed inset-0 z-100 flex flex-col ${c.sheetBg}`}
                 role="dialog"
                 aria-modal="true"
                 aria-label={ariaLabel}

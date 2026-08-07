@@ -10,11 +10,6 @@ const SCHEMES = {
     title: 'text-[color:var(--admin-text)]',
     body: 'text-[color:var(--admin-text-tertiary)]',
   },
-  mod: {
-    icon: 'bg-[color:var(--mod-ok-dim)] text-[color:var(--mod-ok)]',
-    title: 'text-[color:var(--mod-text)]',
-    body: 'text-[color:var(--mod-muted)]',
-  },
 } as const
 
 export function EmptyState({

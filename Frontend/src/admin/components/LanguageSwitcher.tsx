@@ -12,12 +12,6 @@ const SCHEMES = {
     optionSelected: 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]',
     option: 'text-[color:var(--admin-text)] hover:bg-[color:var(--admin-hover)]',
   },
-  mod: {
-    trigger: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] text-[color:var(--mod-text)]',
-    panel: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel)] shadow-[var(--mod-shadow-lift)]',
-    optionSelected: 'bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]',
-    option: 'text-[color:var(--mod-text)] hover:bg-[color:var(--mod-panel2)]',
-  },
 } as const
 
 /** Same control, same place in the header, in both cabinets — Admin's original and StorePartner's

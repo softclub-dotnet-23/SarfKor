@@ -2,16 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card } from '../components/Card'
 import { Loading } from '../components/Loading'
-import { ErrorState } from '../components/ErrorState'
+import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { EmptyState } from '../components/EmptyState'
 import { Select } from '../components/Select'
 import { Badge } from '../components/Badge'
 import { DateField } from '../components/DateField'
 import { FormModal, FormField } from '../components/FormModal'
-import { ChevronDownIcon, TagIcon, PercentIcon, SearchIcon, EditIcon, TrashIcon, GridIcon, PlusIcon } from '../components/icons'
+import { AddButton } from '../components/Button'
+import { ChevronDownIcon, TagIcon, PercentIcon, SearchIcon, EditIcon, TrashIcon, GridIcon } from '../components/icons'
 import {
   catalogApi,
-  ApiError,
   type Category,
   type Brand,
   type DuplicateBrandGroup,
@@ -46,32 +46,32 @@ function CategoryFormFields({
 }) {
   return (
     <>
-      <FormField label="Название" required scheme="mod">
+      <FormField label="Название" required scheme="admin">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+          className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
         />
       </FormField>
-      <FormField label="Родительская категория" scheme="mod">
+      <FormField label="Родительская категория" scheme="admin">
         <Select
-          scheme="mod"
+          scheme="admin"
           value={parentId}
           onChange={setParentId}
           placeholder="Без родителя (верхний уровень)"
           options={all.filter((c) => c.categoryId !== excludeId).map((c) => ({ value: String(c.categoryId), label: c.name }))}
         />
       </FormField>
-      <FormField label="Порядок" scheme="mod">
+      <FormField label="Порядок" scheme="admin">
         <input
           value={displayOrder}
           onChange={(e) => setDisplayOrder(e.target.value.replace(/[^0-9]/g, ''))}
           type="number"
-          className="w-24 rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+          className="w-24 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
         />
       </FormField>
-      <label className="flex items-center gap-2 text-[12.5px] font-semibold text-[color:var(--mod-text)]">
-        <input type="checkbox" checked={isHidden} onChange={(e) => setIsHidden(e.target.checked)} className="h-3.5 w-3.5 accent-[color:var(--mod-accent)]" />
+      <label className="flex items-center gap-2 text-[12.5px] font-semibold text-[color:var(--admin-text)]">
+        <input type="checkbox" checked={isHidden} onChange={(e) => setIsHidden(e.target.checked)} className="h-3.5 w-3.5 accent-[color:var(--admin-accent)]" />
         Скрыта из каталога
       </label>
     </>
@@ -102,8 +102,8 @@ function CreateCategoryModal({ open, onClose, all, onCreated }: { open: boolean;
   }
 
   return (
-    <FormModal open={open} onClose={handleClose} title="Новая категория" isDirty={!!name || !!parentId} onSubmit={submit} submitLabel="Добавить" scheme="mod">
-      <FormField label="Название" required error={nameError} scheme="mod">
+    <FormModal open={open} onClose={handleClose} title="Новая категория" isDirty={!!name || !!parentId} onSubmit={submit} submitLabel="Добавить" scheme="admin">
+      <FormField label="Название" required error={nameError} scheme="admin">
         <input
           value={name}
           onChange={(e) => {
@@ -111,11 +111,11 @@ function CreateCategoryModal({ open, onClose, all, onCreated }: { open: boolean;
             setNameError('')
           }}
           placeholder="Например, «Молочные продукты»"
-          className="w-full rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+          className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
         />
       </FormField>
-      <FormField label="Родительская категория" scheme="mod">
-        <Select scheme="mod" value={parentId} onChange={setParentId} placeholder="Без родителя (верхний уровень)" options={all.map((c) => ({ value: String(c.categoryId), label: c.name }))} />
+      <FormField label="Родительская категория" scheme="admin">
+        <Select scheme="admin" value={parentId} onChange={setParentId} placeholder="Без родителя (верхний уровень)" options={all.map((c) => ({ value: String(c.categoryId), label: c.name }))} />
       </FormField>
     </FormModal>
   )
@@ -160,12 +160,13 @@ function EditCategoryModal({ category, all, onClose, onSaved }: { category: Cate
       }
       await onSaved()
     } catch (err) {
-      window.alert(err instanceof ApiError ? err.message : 'Не удалось удалить категорию')
+      console.error('Failed to delete category:', err)
+      window.alert('Не удалось удалить категорию')
     }
   }
 
   return (
-    <FormModal open={!!category} onClose={onClose} title="Изменить категорию" isDirty submitLabel="Сохранить" scheme="mod" onSubmit={submit}>
+    <FormModal open={!!category} onClose={onClose} title="Изменить категорию" isDirty submitLabel="Сохранить" scheme="admin" onSubmit={submit}>
       {category && (
         <>
           <CategoryFormFields
@@ -176,7 +177,7 @@ function EditCategoryModal({ category, all, onClose, onSaved }: { category: Cate
           <button
             type="button"
             onClick={handleDelete}
-            className="mt-4 w-full rounded-xl border border-[color:var(--mod-danger)] px-4 py-2.5 text-[12.5px] font-bold text-[color:var(--mod-danger)]"
+            className="mt-4 w-full rounded-xl border border-[color:var(--admin-danger)] px-4 py-2.5 text-[12.5px] font-bold text-[color:var(--admin-danger)]"
           >
             Удалить категорию
           </button>
@@ -197,19 +198,19 @@ function CategoryNode({ node, depth, byParent, onEdit }: {
 
   return (
     <div>
-      <div className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-[color:var(--mod-panel2)]" style={{ paddingLeft: 8 + depth * 20 }}>
+      <div className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-[color:var(--admin-hover)]" style={{ paddingLeft: 8 + depth * 20 }}>
         {children.length > 0 ? (
-          <button onClick={() => setExpanded((v) => !v)} className="grid h-5 w-5 shrink-0 place-items-center text-[color:var(--mod-faint)]">
+          <button onClick={() => setExpanded((v) => !v)} className="grid h-5 w-5 shrink-0 place-items-center text-[color:var(--admin-text-tertiary)]">
             <ChevronDownIcon width={11} height={11} className={expanded ? '' : '-rotate-90'} />
           </button>
         ) : (
           <span className="w-5 shrink-0" />
         )}
-        <span className={`flex-1 truncate text-[12.5px] ${node.isHidden ? 'text-[color:var(--mod-faint)] line-through' : 'text-[color:var(--mod-text)]'} ${depth === 0 ? 'font-bold' : 'font-medium'}`}>
+        <span className={`flex-1 truncate text-[12.5px] ${node.isHidden ? 'text-[color:var(--admin-text-tertiary)] line-through' : 'text-[color:var(--admin-text)]'} ${depth === 0 ? 'font-bold' : 'font-medium'}`}>
           {node.name}
         </span>
-        {node.isHidden && <Badge scheme="mod" variant="neutral" size="sm">скрыта</Badge>}
-        <button onClick={() => onEdit(node)} className="grid h-6 w-6 shrink-0 place-items-center rounded text-[color:var(--mod-faint)] hover:text-[color:var(--mod-text)]">
+        {node.isHidden && <Badge scheme="admin" variant="neutral" size="sm">скрыта</Badge>}
+        <button onClick={() => onEdit(node)} className="grid h-6 w-6 shrink-0 place-items-center rounded text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text)]">
           <EditIcon width={13} height={13} />
         </button>
       </div>
@@ -223,6 +224,7 @@ function CategoryNode({ node, depth, byParent, onEdit }: {
 function CategoriesSection() {
   const [categories, setCategories] = useState<Category[] | null>(null)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
 
@@ -231,7 +233,9 @@ function CategoriesSection() {
     try {
       setCategories((await catalogApi.getCategories()).categories)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить категории')
+      console.error('Failed to load categories:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить категории')
     }
   }, [])
 
@@ -255,19 +259,13 @@ function CategoriesSection() {
   return (
     <div>
       <div className="mb-4 flex justify-end">
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-[color:var(--mod-accent)] px-4 py-2.5 text-[13px] font-bold text-white transition-transform hover:brightness-110 active:scale-95"
-        >
-          <PlusIcon width={15} height={15} />
-          Добавить категорию
-        </button>
+        <AddButton onClick={() => setCreateOpen(true)}>Добавить категорию</AddButton>
       </div>
 
-      <Card scheme="mod" className="p-3">
-        {categories === null && !error && <Loading scheme="mod" />}
-        {error && <ErrorState scheme="mod" message={error} onRetry={load} />}
-        {categories && roots.length === 0 && <EmptyState scheme="mod" title="Категорий нет" />}
+      <Card scheme="admin" className="p-3">
+        {categories === null && !error && <Loading scheme="admin" />}
+        {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
+        {categories && roots.length === 0 && <EmptyState scheme="admin" title="Категорий нет" />}
         {roots.map((r) => (
           <CategoryNode key={r.categoryId} node={r} depth={0} byParent={byParent} onEdit={setEditingCategory} />
         ))}
@@ -285,8 +283,10 @@ function BrandsSection() {
   const [brands, setBrands] = useState<Brand[] | null>(null)
   const [search, setSearch] = useState('')
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
   const [duplicates, setDuplicates] = useState<DuplicateBrandGroup[] | null>(null)
   const [dupError, setDupError] = useState('')
+  const [dupErrorKind, setDupErrorKind] = useState<ErrorKind>('unknown')
   const [renamingId, setRenamingId] = useState<number | null>(null)
   const [renameValue, setRenameValue] = useState('')
 
@@ -295,7 +295,9 @@ function BrandsSection() {
     try {
       setBrands((await catalogApi.getBrands(term || undefined)).brands)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить бренды')
+      console.error('Failed to load brands:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить бренды')
     }
   }, [])
 
@@ -304,7 +306,9 @@ function BrandsSection() {
     try {
       setDuplicates((await catalogApi.getBrandDuplicateCandidates()).groups)
     } catch (err) {
-      setDupError(err instanceof ApiError ? err.message : 'Не удалось найти дубликаты')
+      console.error('Failed to load duplicate brand candidates:', err)
+      setDupErrorKind(classifyError(err))
+      setDupError('Не удалось найти дубликаты')
     }
   }, [])
 
@@ -323,20 +327,22 @@ function BrandsSection() {
       setRenamingId(null)
       await load(search)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось переименовать бренд')
+      console.error('Failed to rename brand:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось переименовать бренд')
     }
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <Card scheme="mod" className="p-5">
-        <div className="mb-3 flex items-center gap-2 text-[13.5px] font-bold text-[color:var(--mod-text)]">
+      <Card scheme="admin" className="p-5">
+        <div className="mb-3 flex items-center gap-2 text-[13.5px] font-bold text-[color:var(--admin-text)]">
           <TagIcon width={16} height={16} />
           Похожие бренды — объединение дубликатов
         </div>
-        {duplicates === null && !dupError && <Loading scheme="mod" />}
-        {dupError && <ErrorState scheme="mod" message={dupError} onRetry={loadDuplicates} />}
-        {duplicates && duplicates.length === 0 && <p className="text-[12.5px] text-[color:var(--mod-faint)]">Явных дубликатов не найдено.</p>}
+        {duplicates === null && !dupError && <Loading scheme="admin" />}
+        {dupError && <ErrorState scheme="admin" message={dupError} kind={dupErrorKind} onRetry={loadDuplicates} />}
+        {duplicates && duplicates.length === 0 && <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">Явных дубликатов не найдено.</p>}
         {duplicates && duplicates.length > 0 && (
           <div className="flex flex-col gap-3">
             {duplicates.map((g) => (
@@ -348,45 +354,45 @@ function BrandsSection() {
 
       <div>
         <div className="relative mb-3 max-w-md">
-          <SearchIcon width={15} height={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--mod-faint)]" />
+          <SearchIcon width={15} height={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--admin-text-tertiary)]" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск бренда…"
-            className="w-full rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] py-2.5 pl-9 pr-3.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+            className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2.5 pl-9 pr-3.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
           />
         </div>
-        <Card scheme="mod" className="overflow-hidden">
-          {brands === null && !error && <Loading scheme="mod" />}
-          {error && <ErrorState scheme="mod" message={error} onRetry={() => load(search)} />}
-          {brands && brands.length === 0 && <EmptyState scheme="mod" title="Брендов не найдено" />}
+        <Card scheme="admin" className="overflow-hidden">
+          {brands === null && !error && <Loading scheme="admin" />}
+          {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={() => load(search)} />}
+          {brands && brands.length === 0 && <EmptyState scheme="admin" title="Брендов не найдено" />}
           {brands && brands.length > 0 && (
             <div className="flex flex-col">
               {brands.map((b) => (
-                <div key={b.brandId} className="flex items-center justify-between gap-2 border-b border-[color:var(--mod-border)] px-4 py-2.5 last:border-0">
+                <div key={b.brandId} className="flex items-center justify-between gap-2 border-b border-[color:var(--admin-border)] px-4 py-2.5 last:border-0">
                   {renamingId === b.brandId ? (
                     <div className="flex flex-1 gap-2">
                       <input
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
                         autoFocus
-                        className="flex-1 rounded-lg border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+                        className="flex-1 rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
                       />
-                      <button onClick={() => handleRename(b.brandId)} className="rounded-lg bg-[color:var(--mod-accent)] px-3 py-1.5 text-[11.5px] font-bold text-white">
+                      <button onClick={() => handleRename(b.brandId)} className="rounded-lg bg-[color:var(--admin-accent)] px-3 py-1.5 text-[11.5px] font-bold text-[color:var(--admin-accent-fg)]">
                         ОК
                       </button>
-                      <button onClick={() => setRenamingId(null)} className="rounded-lg border border-[color:var(--mod-border)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--mod-text)]">
+                      <button onClick={() => setRenamingId(null)} className="rounded-lg border border-[color:var(--admin-border)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text)]">
                         Отмена
                       </button>
                     </div>
                   ) : (
                     <>
-                      <span className="text-[13px] font-semibold text-[color:var(--mod-text)]">{b.name}</span>
+                      <span className="text-[13px] font-semibold text-[color:var(--admin-text)]">{b.name}</span>
                       <div className="flex shrink-0 items-center gap-3">
-                        <span className="font-[JetBrains_Mono,monospace] text-[11.5px] text-[color:var(--mod-faint)]">{b.productCount} товаров</span>
+                        <span className="font-[JetBrains_Mono,monospace] text-[11.5px] text-[color:var(--admin-text-tertiary)]">{b.productCount} товаров</span>
                         <button
                           onClick={() => { setRenamingId(b.brandId); setRenameValue(b.name) }}
-                          className="grid h-7 w-7 place-items-center rounded text-[color:var(--mod-faint)] hover:text-[color:var(--mod-text)]"
+                          className="grid h-7 w-7 place-items-center rounded text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text)]"
                         >
                           <EditIcon width={13} height={13} />
                         </button>
@@ -419,29 +425,30 @@ function DuplicateGroupRow({ group, onMerged }: { group: DuplicateBrandGroup; on
       await catalogApi.mergeBrands(Number(targetId), sourceIds)
       onMerged()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось объединить бренды')
+      console.error('Failed to merge brands:', err)
+      setError('Не удалось объединить бренды')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="rounded-xl bg-[color:var(--mod-panel2)] p-3.5">
+    <div className="rounded-xl bg-[color:var(--admin-hover)] p-3.5">
       <div className="mb-2 flex flex-wrap gap-1.5">
         {group.brands.map((b) => (
-          <label key={b.brandId} className="flex items-center gap-1.5 rounded-full border border-[color:var(--mod-border)] bg-[color:var(--mod-panel)] px-2.5 py-1 text-[12px]">
-            <input type="radio" name={group.normalizedKey} checked={String(b.brandId) === targetId} onChange={() => setTargetId(String(b.brandId))} className="accent-[color:var(--mod-accent)]" />
-            <span className="font-semibold text-[color:var(--mod-text)]">{b.name}</span>
-            <span className="text-[color:var(--mod-faint)]">({b.productCount})</span>
+          <label key={b.brandId} className="flex items-center gap-1.5 rounded-full border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-2.5 py-1 text-[12px]">
+            <input type="radio" name={group.normalizedKey} checked={String(b.brandId) === targetId} onChange={() => setTargetId(String(b.brandId))} className="accent-[color:var(--admin-accent)]" />
+            <span className="font-semibold text-[color:var(--admin-text)]">{b.name}</span>
+            <span className="text-[color:var(--admin-text-tertiary)]">({b.productCount})</span>
           </label>
         ))}
       </div>
-      {error && <p className="mb-2 text-[11.5px] font-medium text-[color:var(--mod-danger)]">{error}</p>}
+      {error && <p className="mb-2 text-[11.5px] font-medium text-[color:var(--admin-danger)]">{error}</p>}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11.5px] text-[color:var(--mod-faint)]">
+        <span className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">
           Все {totalProducts} товаров перейдут выбранному бренду, остальные {group.brands.length - 1} исчезнут.
         </span>
-        <button onClick={handleMerge} disabled={busy} className="shrink-0 rounded-lg bg-[color:var(--mod-accent)] px-3.5 py-1.5 text-[11.5px] font-bold text-white disabled:opacity-50">
+        <button onClick={handleMerge} disabled={busy} className="shrink-0 rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-1.5 text-[11.5px] font-bold text-[color:var(--admin-accent-fg)] disabled:opacity-50">
           {busy ? 'Секунду…' : 'Объединить'}
         </button>
       </div>
@@ -470,15 +477,15 @@ function TaxRateFormFields({
 }) {
   return (
     <>
-      <FormField label="Название" required error={nameError} scheme="mod">
+      <FormField label="Название" required error={nameError} scheme="admin">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Например, «НДС»"
-          className="w-full rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+          className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
         />
       </FormField>
-      <FormField label="Ставка, %" required error={percentageError} scheme="mod">
+      <FormField label="Ставка, %" required error={percentageError} scheme="admin">
         <input
           value={percentage}
           onChange={(e) => setPercentage(e.target.value)}
@@ -486,13 +493,13 @@ function TaxRateFormFields({
           min={0}
           max={100}
           step="0.01"
-          className="w-32 rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+          className="w-32 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
         />
       </FormField>
-      <FormField label="Категория" scheme="mod">
-        <Select scheme="mod" value={categoryId} onChange={setCategoryId} placeholder="Все категории" options={categories.map((c) => ({ value: String(c.categoryId), label: c.name }))} />
+      <FormField label="Категория" scheme="admin">
+        <Select scheme="admin" value={categoryId} onChange={setCategoryId} placeholder="Все категории" options={categories.map((c) => ({ value: String(c.categoryId), label: c.name }))} />
       </FormField>
-      <FormField label="Действует" scheme="mod">
+      <FormField label="Действует" scheme="admin">
         <div className="flex gap-2">
           <DateField value={effectiveFrom} onChange={setEffectiveFrom} title="Действует с" outputFormat="dateOnly" />
           <DateField value={effectiveTo} onChange={setEffectiveTo} title="Действует по" outputFormat="dateOnly" />
@@ -544,7 +551,7 @@ function CreateTaxRateModal({ open, onClose, categories, onCreated }: { open: bo
   }
 
   return (
-    <FormModal open={open} onClose={handleClose} title="Новая налоговая ставка" isDirty={!!(name || percentage || categoryId || effectiveFrom || effectiveTo)} onSubmit={submit} submitLabel="Добавить" scheme="mod">
+    <FormModal open={open} onClose={handleClose} title="Новая налоговая ставка" isDirty={!!(name || percentage || categoryId || effectiveFrom || effectiveTo)} onSubmit={submit} submitLabel="Добавить" scheme="admin">
       <TaxRateFormFields
         name={name} setName={setName} percentage={percentage} setPercentage={setPercentage}
         categoryId={categoryId} setCategoryId={setCategoryId} effectiveFrom={effectiveFrom} setEffectiveFrom={setEffectiveFrom}
@@ -558,6 +565,7 @@ function TaxRatesSection() {
   const [rates, setRates] = useState<TaxRate[] | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
@@ -568,7 +576,9 @@ function TaxRatesSection() {
       setRates(taxRes.taxRates)
       setCategories(catRes.categories)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить налоговые ставки')
+      console.error('Failed to load tax rates:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить налоговые ставки')
     }
   }, [])
 
@@ -583,7 +593,8 @@ function TaxRatesSection() {
       await catalogApi.deleteTaxRate(taxRateId)
       await load()
     } catch (err) {
-      setDeleteError(err instanceof ApiError ? err.message : 'Не удалось удалить ставку')
+      console.error('Failed to delete tax rate:', err)
+      setDeleteError('Не удалось удалить ставку')
     }
   }
 
@@ -592,25 +603,19 @@ function TaxRatesSection() {
   return (
     <div>
       <div className="mb-4 flex justify-end">
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-[color:var(--mod-accent)] px-4 py-2.5 text-[13px] font-bold text-white transition-transform hover:brightness-110 active:scale-95"
-        >
-          <PlusIcon width={15} height={15} />
-          Добавить ставку
-        </button>
+        <AddButton onClick={() => setCreateOpen(true)}>Добавить ставку</AddButton>
       </div>
-      {deleteError && <p className="mb-3 text-[12px] font-medium text-[color:var(--mod-danger)]">{deleteError}</p>}
+      {deleteError && <p className="mb-3 text-[12px] font-medium text-[color:var(--admin-danger)]">{deleteError}</p>}
 
-      <Card scheme="mod" className="overflow-hidden">
-        {rates === null && !error && <Loading scheme="mod" />}
-        {error && <ErrorState scheme="mod" message={error} onRetry={load} />}
-        {rates && rates.length === 0 && <EmptyState scheme="mod" icon={<PercentIcon width={22} height={22} />} title="Ставок пока нет" />}
+      <Card scheme="admin" className="overflow-hidden">
+        {rates === null && !error && <Loading scheme="admin" />}
+        {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
+        {rates && rates.length === 0 && <EmptyState scheme="admin" icon={<PercentIcon width={22} height={22} />} title="Ставок пока нет" />}
         {rates && rates.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[13px]">
               <thead>
-                <tr className="border-b border-[color:var(--mod-border)] text-left text-[11px] font-bold uppercase tracking-wide text-[color:var(--mod-faint)]">
+                <tr className="border-b border-[color:var(--admin-border)] text-left text-[11px] font-bold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
                   <th className="px-4 py-3">Название</th>
                   <th className="px-4 py-3">Ставка</th>
                   <th className="px-4 py-3">Категория</th>
@@ -620,15 +625,15 @@ function TaxRatesSection() {
               </thead>
               <tbody>
                 {rates.map((t) => (
-                  <tr key={t.taxRateId} className="border-b border-[color:var(--mod-border)] last:border-0">
-                    <td className="px-4 py-3 font-semibold text-[color:var(--mod-text)]">{t.name}</td>
-                    <td className="px-4 py-3 font-[JetBrains_Mono,monospace] font-bold text-[color:var(--mod-accent2)]">{t.percentage}%</td>
-                    <td className="px-4 py-3 text-[color:var(--mod-muted)]">{categoryName(t.categoryId) ?? 'Все категории'}</td>
-                    <td className="px-4 py-3 font-[JetBrains_Mono,monospace] text-[11.5px] text-[color:var(--mod-faint)]">
+                  <tr key={t.taxRateId} className="border-b border-[color:var(--admin-border)] last:border-0">
+                    <td className="px-4 py-3 font-semibold text-[color:var(--admin-text)]">{t.name}</td>
+                    <td className="px-4 py-3 font-[JetBrains_Mono,monospace] font-bold text-[color:var(--admin-accent)]">{t.percentage}%</td>
+                    <td className="px-4 py-3 text-[color:var(--admin-text-secondary)]">{categoryName(t.categoryId) ?? 'Все категории'}</td>
+                    <td className="px-4 py-3 font-[JetBrains_Mono,monospace] text-[11.5px] text-[color:var(--admin-text-tertiary)]">
                       {t.effectiveFrom || t.effectiveTo ? `${fmtDate(t.effectiveFrom)} – ${fmtDate(t.effectiveTo)}` : 'бессрочно'}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => handleDelete(t.taxRateId, t.name)} className="grid h-7 w-7 place-items-center rounded text-[color:var(--mod-faint)] hover:text-[color:var(--mod-danger)]">
+                      <button onClick={() => handleDelete(t.taxRateId, t.name)} className="grid h-7 w-7 place-items-center rounded text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-danger)]">
                         <TrashIcon width={13} height={13} />
                       </button>
                     </td>
@@ -654,7 +659,7 @@ export function AdminReferencePage() {
 
   return (
     <div style={{ animation: 'mod-fade-in .3s ease' }}>
-      <div className="mb-4 flex gap-1 rounded-lg bg-[color:var(--mod-panel2)] p-1" style={{ width: 'fit-content' }}>
+      <div className="mb-4 flex gap-1 rounded-lg bg-[color:var(--admin-hover)] p-1" style={{ width: 'fit-content' }}>
         {(
           [
             ['categories', 'Категории', GridIcon],
@@ -666,7 +671,7 @@ export function AdminReferencePage() {
             key={id}
             onClick={() => setParams(id === 'categories' ? {} : { tab: id })}
             className={`flex items-center gap-1.5 rounded-md px-4 py-2 text-[12.5px] font-bold transition-colors ${
-              tab === id ? 'bg-[color:var(--mod-accent)] text-white' : 'text-[color:var(--mod-muted)] hover:text-[color:var(--mod-text)]'
+              tab === id ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]' : 'text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]'
             }`}
           >
             <Icon width={14} height={14} />

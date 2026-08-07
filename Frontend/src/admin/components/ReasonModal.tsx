@@ -49,13 +49,13 @@ export function ReasonModal({
   }
 
   return (
-    <AdminModal open={open} onClose={handleClose} title={title} scheme="mod">
-      {description && <p className="mb-4 text-[13px] leading-relaxed text-[color:var(--mod-muted)]">{description}</p>}
-      <label className="mb-1.5 block text-[11.5px] font-semibold uppercase tracking-wide text-[color:var(--mod-faint)]">
-        Причина <span className="text-[color:var(--mod-danger)]">*</span>
+    <AdminModal open={open} onClose={handleClose} title={title} scheme="admin">
+      {description && <p className="mb-4 text-[13px] leading-relaxed text-[color:var(--admin-text-secondary)]">{description}</p>}
+      <label className="mb-1.5 block text-[11.5px] font-semibold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
+        Причина <span className="text-[color:var(--admin-danger)]">*</span>
       </label>
       <Textarea
-        scheme="mod"
+        scheme="admin"
         rows={3}
         autoFocus
         value={reason}
@@ -63,20 +63,20 @@ export function ReasonModal({
         placeholder="Обязательно для аудит-лога…"
         className="mb-1"
       />
-      {error && <p className="mb-2 text-[12px] font-medium text-[color:var(--mod-danger)]">{error}</p>}
+      {error && <p className="mb-2 text-[12px] font-medium text-[color:var(--admin-danger)]">{error}</p>}
       <div className="mt-4 flex justify-end gap-2">
         <button
           onClick={handleClose}
           disabled={busy}
-          className="rounded-xl border border-[color:var(--mod-border)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--mod-text)] transition-colors hover:bg-[color:var(--mod-panel2)] disabled:opacity-50"
+          className="rounded-xl border border-[color:var(--admin-border)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--admin-text)] transition-colors hover:bg-[color:var(--admin-hover)] disabled:opacity-50"
         >
           Отмена
         </button>
         <button
           onClick={handleConfirm}
           disabled={busy || !reason.trim()}
-          className={`rounded-xl px-4 py-2.5 text-[13px] font-bold text-white transition-transform hover:brightness-110 active:scale-95 disabled:opacity-50 ${
-            danger ? 'bg-[color:var(--mod-danger)]' : 'bg-[color:var(--mod-accent)]'
+          className={`rounded-xl px-4 py-2.5 text-[13px] font-bold transition-transform hover:brightness-110 active:scale-95 disabled:opacity-50 ${
+            danger ? 'bg-[color:var(--admin-danger)] text-[color:var(--admin-danger-fg)]' : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
           }`}
         >
           {busy ? 'Секунду…' : confirmLabel}

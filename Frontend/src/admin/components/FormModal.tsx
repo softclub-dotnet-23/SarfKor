@@ -5,8 +5,8 @@ import { lockBodyScroll, unlockBodyScroll } from '../../lib/scrollLock'
 import { useT } from '../../i18n/translations'
 import { XIcon } from './icons'
 
-// Same scheme split as every other shared component here: 'admin' for the StorePartner cabinet,
-// 'mod' for the platform-Admin console.
+// Same 'admin' scheme as every other shared component here — the StorePartner cabinet and
+// the platform-Admin console read the same --admin-* token set.
 const SCHEMES = {
   admin: {
     shell: 'admin-shell',
@@ -15,18 +15,8 @@ const SCHEMES = {
     close: 'text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]',
     border: 'border-[color:var(--admin-border)]',
     cancelBtn: 'border border-[color:var(--admin-border)] text-[color:var(--admin-text)] hover:bg-[color:var(--admin-hover)]',
-    submitBtn: 'bg-[color:var(--admin-accent)] text-white',
+    submitBtn: 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
     error: 'text-[color:var(--admin-danger)]',
-  },
-  mod: {
-    shell: 'mod-shell',
-    panel: 'bg-[color:var(--mod-panel)] ring-1 ring-[color:var(--mod-border)]',
-    title: 'text-[color:var(--mod-text)]',
-    close: 'text-[color:var(--mod-faint)] hover:bg-[color:var(--mod-panel2)]',
-    border: 'border-[color:var(--mod-border)]',
-    cancelBtn: 'border border-[color:var(--mod-border)] text-[color:var(--mod-text)] hover:bg-[color:var(--mod-panel2)]',
-    submitBtn: 'bg-[color:var(--mod-accent)] text-white',
-    error: 'text-[color:var(--mod-danger)]',
   },
 } as const
 
@@ -65,7 +55,7 @@ export function FormModal({
   submitLabel,
   submitBusyLabel,
   cancelLabel,
-  scheme = 'mod',
+  scheme = 'admin',
   size = 'md',
   children,
 }: FormModalProps) {
@@ -206,7 +196,7 @@ export function FormField({
   error,
   required,
   children,
-  scheme = 'mod',
+  scheme = 'admin',
 }: {
   label: string
   error?: string
@@ -214,7 +204,7 @@ export function FormField({
   children: ReactNode
   scheme?: keyof typeof SCHEMES
 }) {
-  const faintClass = scheme === 'mod' ? 'text-[color:var(--mod-faint)]' : 'text-[color:var(--admin-text-tertiary)]'
+  const faintClass = 'text-[color:var(--admin-text-tertiary)]'
   const errorClass = SCHEMES[scheme].error
   return (
     <div className="mb-4 last:mb-0">

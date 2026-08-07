@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useLanguage, type Language } from './LanguageProvider'
 
 // Single shared dictionary for every authenticated cabinet (platform Admin, StorePartner,
@@ -56,6 +57,12 @@ const RU = {
   'common.save': 'Сохранить',
   'common.saving': 'Секунду…',
   'common.retry': 'Повторить',
+  'common.routeCrashed': 'Не удалось показать этот раздел. Попробуйте ещё раз.',
+  'common.errorForbidden': 'Нет доступа',
+  'common.errorNotFound': 'Не найдено',
+  'common.errorServer': 'Ошибка сервера. Мы уже знаем и разбираемся.',
+  'common.errorNetwork': 'Нет соединения с сервером. Проверьте интернет.',
+  'common.errorUnknown': 'Что-то пошло не так',
   'common.clear': 'Очистить',
   'common.close': 'Закрыть',
   'common.search': 'Найти…',
@@ -138,6 +145,7 @@ const RU = {
   'partner.staff.employedSince': 'с {date}',
   'partner.staff.you': 'Вы',
   'partner.staff.loadEmployeesError': 'Не удалось загрузить список сотрудников',
+  'partner.staff.loadShiftsError': 'Не удалось загрузить смены кассиров',
   'partner.staff.noStoreAccess': 'Нет доступа к сотрудникам этого магазина',
   'partner.staff.storeNotFound': 'Магазин не найден',
   'partner.staff.storeNotSelected': 'Магазин не выбран',
@@ -265,6 +273,14 @@ const TG: Record<Key, string> = {
   'common.save': 'Захира кардан',
   'common.saving': 'Як лаҳза…',
   'common.retry': 'Такрор кардан',
+  // Best-effort, not verified by a native speaker — see delivery report.
+  'common.routeCrashed': 'Ин бахш кушода нашуд. Лутфан такрор кунед.',
+  // Best-effort, not verified by a native speaker — see delivery report.
+  'common.errorForbidden': 'Дастрасӣ нест',
+  'common.errorNotFound': 'Ёфт нашуд',
+  'common.errorServer': 'Хатогии сервер. Мо аллакай хабардорем.',
+  'common.errorNetwork': 'Пайваст ба сервер нест. Интернетро тафтиш кунед.',
+  'common.errorUnknown': 'Хатогӣ рух дод',
   'common.clear': 'Пок кардан',
   'common.close': 'Пӯшидан',
   'common.search': 'Ҷустуҷӯ…',
@@ -345,6 +361,8 @@ const TG: Record<Key, string> = {
   'partner.staff.employedSince': 'аз {date}',
   'partner.staff.you': 'Шумо',
   'partner.staff.loadEmployeesError': 'Рӯйхати кормандон бор нашуд',
+  // Best-effort, not verified by a native speaker — see delivery report.
+  'partner.staff.loadShiftsError': 'Сменаҳои кассир бор нашуданд',
   'partner.staff.noStoreAccess': 'Ба кормандони ин мағоза дастрасӣ нест',
   'partner.staff.storeNotFound': 'Мағоза ёфт нашуд',
   'partner.staff.storeNotSelected': 'Мағоза интихоб нашудааст',
@@ -429,10 +447,18 @@ const DICTIONARIES: Record<Language, Record<Key, string>> = { ru: RU, tg: TG }
 
 export function useT() {
   const { language } = useLanguage()
-  const dict = DICTIONARIES[language]
-  return function t(key: Key, params?: Record<string, string | number>): string {
-    const template = dict[key] ?? RU[key] ?? key
-    if (!params) return template
-    return Object.entries(params).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, String(v)), template)
-  }
+  // Stable across renders (only changes when the language actually does) -- returning a fresh
+  // closure every render silently breaks any caller that lists `t` in a useCallback/useEffect/
+  // useMemo dependency array: the dependency looks "changed" on every render even though nothing
+  // did, which for a callback that itself calls setState is an infinite loop, not just a wasted
+  // render (see StaffPage's employee-list fetch, which crashed the whole page this way).
+  return useCallback(
+    (key: Key, params?: Record<string, string | number>): string => {
+      const dict = DICTIONARIES[language]
+      const template = dict[key] ?? RU[key] ?? key
+      if (!params) return template
+      return Object.entries(params).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, String(v)), template)
+    },
+    [language],
+  )
 }

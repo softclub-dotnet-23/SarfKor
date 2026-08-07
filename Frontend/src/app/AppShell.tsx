@@ -8,7 +8,8 @@ import { useProfile, ProfileProvider } from '../lib/useProfile'
 import { useAvatarUrl } from '../lib/useAvatarUrl'
 import { SunIcon, MoonIcon } from '../components/icons'
 import { notificationsApi, type Notification } from '../lib/api'
-import { AppStyles, EASE, LINE, TXT } from './ui'
+import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
+import { AppStyles, EASE, LINE, TXT, ErrorState } from './ui'
 
 /**
  * Shell for the consumer half of the product.
@@ -149,8 +150,8 @@ function AppNotificationBell({ direction = 'up' }: { direction?: 'up' | 'down' }
         <BellIcon />
         {unread > 0 && (
           <span
-            className="absolute right-0.5 top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-[2px] text-[7.5px] font-bold leading-none text-white"
-            style={{ background: 'var(--app-text-primary)' }}
+            className="absolute right-0.5 top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-[2px] text-[7.5px] font-bold leading-none"
+            style={{ background: 'var(--app-text-primary)', color: 'var(--bg-app)' }}
           >
             {unread > 9 ? '9+' : unread}
           </span>
@@ -361,7 +362,9 @@ function AppShellInner() {
             transition={{ duration: 0.4, ease: EASE }}
             className="mx-auto w-full max-w-[880px] px-6 py-10 sm:px-9 lg:px-14 lg:py-16"
           >
-            <Outlet />
+            <RouteErrorBoundary key={location.pathname} fallback={(retry) => <ErrorState message="Не удалось показать эту страницу." onRetry={retry} />}>
+              <Outlet />
+            </RouteErrorBoundary>
           </motion.div>
         </main>
       </div>

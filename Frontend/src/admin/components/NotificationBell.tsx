@@ -103,7 +103,7 @@ export function NotificationBell({ collapsed }: { collapsed: boolean }) {
       >
         <BellIcon />
         {unread > 0 && (
-          <span className="absolute right-1.5 top-1.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-[color:var(--admin-danger)] px-[3px] text-[8px] font-bold leading-none text-white">
+          <span className="absolute right-1.5 top-1.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-[color:var(--admin-danger)] px-[3px] text-[8px] font-bold leading-none text-[color:var(--admin-danger-fg)]">
             {unread > 9 ? '9+' : unread}
           </span>
         )}

@@ -7,8 +7,6 @@ export interface SelectOption {
   label: string
 }
 
-// Two call sites (ModerationPage) live under .mod-shell's separate token set
-// instead of .admin-shell's — everything else in the admin cabinet uses 'admin'.
 const SCHEMES = {
   admin: {
     trigger:
@@ -19,15 +17,6 @@ const SCHEMES = {
     option: 'text-[color:var(--admin-text)] hover:bg-[color:var(--admin-hover)]',
     optionSelected: 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]',
     empty: 'text-[color:var(--admin-text-tertiary)]',
-  },
-  mod: {
-    trigger: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] text-[color:var(--mod-text)] focus-visible:border-[color:var(--mod-accent)]',
-    placeholder: 'text-[color:var(--mod-faint)]',
-    chevron: 'text-[color:var(--mod-faint)]',
-    panel: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel)] shadow-[var(--mod-shadow)]',
-    option: 'text-[color:var(--mod-text)] hover:bg-[color:var(--mod-panel2)]',
-    optionSelected: 'bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]',
-    empty: 'text-[color:var(--mod-faint)]',
   },
 } as const
 

@@ -9,7 +9,6 @@ import type { ReactNode } from 'react'
 // reinventing a light-mode variant.
 const ACCENT = {
   admin: { success: 'var(--admin-success)', danger: 'var(--admin-danger)', neutral: 'var(--admin-accent)' },
-  mod: { success: 'var(--mod-ok)', danger: 'var(--mod-danger)', neutral: 'var(--mod-accent)' },
 } as const
 
 interface ToastProps {

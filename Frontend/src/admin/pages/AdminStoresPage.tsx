@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card } from '../components/Card'
 import { Loading } from '../components/Loading'
-import { ErrorState } from '../components/ErrorState'
+import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { EmptyState } from '../components/EmptyState'
 import { Select } from '../components/Select'
 import { Pagination } from '../components/Pagination'
@@ -13,7 +13,6 @@ import { SearchIcon, StoreIcon, AlertIcon } from '../components/icons'
 import {
   adminApi,
   metricsApi,
-  ApiError,
   type AdminStoreListItem,
   type StoreStatus,
   type SubscriptionStatus,
@@ -51,13 +50,16 @@ const TAKE = 25
 function FlaggedStoresView({ flag, onOpenStore }: { flag: string; onOpenStore: (id: number) => void }) {
   const [metrics, setMetrics] = useState<PlatformMetrics | null>(null)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async () => {
     setError('')
     try {
       setMetrics(await metricsApi.getPlatformMetrics())
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить список')
+      console.error('Failed to load flagged stores:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить список')
     }
   }, [])
 
@@ -65,8 +67,8 @@ function FlaggedStoresView({ flag, onOpenStore }: { flag: string; onOpenStore: (
     load()
   }, [load])
 
-  if (metrics === null && !error) return <Loading scheme="mod" />
-  if (error) return <ErrorState scheme="mod" message={error} onRetry={load} />
+  if (metrics === null && !error) return <Loading scheme="admin" />
+  if (error) return <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />
   if (!metrics) return null
 
   const rows =
@@ -77,23 +79,23 @@ function FlaggedStoresView({ flag, onOpenStore }: { flag: string; onOpenStore: (
         : metrics.storesWithNoSales.map((s) => ({ id: s.storeId, name: s.storeName, meta: `подключён ${new Date(s.connectedAt).toLocaleDateString('ru-RU')}` }))
 
   return (
-    <Card scheme="mod" className="p-5">
-      <div className="mb-4 flex items-center gap-2 text-[13.5px] font-bold text-[color:var(--mod-text)]">
-        <AlertIcon width={16} height={16} className="text-[color:var(--mod-warn)]" />
+    <Card scheme="admin" className="p-5">
+      <div className="mb-4 flex items-center gap-2 text-[13.5px] font-bold text-[color:var(--admin-text)]">
+        <AlertIcon width={16} height={16} className="text-[color:var(--admin-warning)]" />
         {FLAG_LABEL[flag] ?? flag}
       </div>
       {rows.length === 0 ? (
-        <EmptyState scheme="mod" title="Пусто" body="Сейчас магазинов в этом списке нет." />
+        <EmptyState scheme="admin" title="Пусто" body="Сейчас магазинов в этом списке нет." />
       ) : (
         <div className="flex flex-col gap-1">
           {rows.map((r) => (
             <button
               key={r.id}
               onClick={() => onOpenStore(r.id)}
-              className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[color:var(--mod-panel2)]"
+              className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[color:var(--admin-hover)]"
             >
-              <span className="truncate text-[13px] font-semibold text-[color:var(--mod-text)]">{r.name}</span>
-              <span className="shrink-0 text-[11.5px] text-[color:var(--mod-faint)]">{r.meta}</span>
+              <span className="truncate text-[13px] font-semibold text-[color:var(--admin-text)]">{r.name}</span>
+              <span className="shrink-0 text-[11.5px] text-[color:var(--admin-text-tertiary)]">{r.meta}</span>
             </button>
           ))}
         </div>
@@ -117,6 +119,7 @@ export function AdminStoresPage() {
   const [stores, setStores] = useState<AdminStoreListItem[] | null>(null)
   const [totalCount, setTotalCount] = useState(0)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async () => {
     setError('')
@@ -133,7 +136,9 @@ export function AdminStoresPage() {
       setStores(res.stores)
       setTotalCount(res.totalCount)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить список магазинов')
+      console.error('Failed to load stores list:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить список магазинов')
     }
   }, [skip, status, subscriptionStatus, connectedFrom, connectedTo, search])
 
@@ -166,7 +171,7 @@ export function AdminStoresPage() {
     <div style={{ animation: 'mod-fade-in .3s ease' }}>
       {flag && (
         <div className="mb-4">
-          <button onClick={() => updateParam('flag', '')} className="mb-3 text-[12px] font-semibold text-[color:var(--mod-muted)] hover:text-[color:var(--mod-text)] hover:underline">
+          <button onClick={() => updateParam('flag', '')} className="mb-3 text-[12px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)] hover:underline">
             ← Все магазины
           </button>
           <FlaggedStoresView flag={flag} onOpenStore={openStore} />
@@ -183,17 +188,17 @@ export function AdminStoresPage() {
               }}
               className="relative flex-1 min-w-[220px]"
             >
-              <SearchIcon width={15} height={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--mod-faint)]" />
+              <SearchIcon width={15} height={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--admin-text-tertiary)]" />
               <input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onBlur={() => updateParam('search', searchInput.trim())}
                 placeholder="Название, адрес или email владельца…"
-                className="w-full rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] py-2.5 pl-9 pr-3.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+                className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2.5 pl-9 pr-3.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
               />
             </form>
             <Select
-              scheme="mod"
+              scheme="admin"
               className="min-w-[190px]"
               value={status}
               onChange={(v) => updateParam('status', v)}
@@ -201,7 +206,7 @@ export function AdminStoresPage() {
               options={STATUS_OPTIONS}
             />
             <Select
-              scheme="mod"
+              scheme="admin"
               className="min-w-[190px]"
               value={subscriptionStatus}
               onChange={(v) => updateParam('subscriptionStatus', v)}
@@ -212,17 +217,17 @@ export function AdminStoresPage() {
             <DateField value={connectedTo} onChange={(iso) => updateParam('connectedTo', iso)} title="Подключён по" />
           </div>
 
-          <Card scheme="mod" className="overflow-hidden">
-            {stores === null && !error && <Loading scheme="mod" />}
-            {error && <ErrorState scheme="mod" message={error} onRetry={load} />}
+          <Card scheme="admin" className="overflow-hidden">
+            {stores === null && !error && <Loading scheme="admin" />}
+            {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
             {stores && stores.length === 0 && (
-              <EmptyState scheme="mod" icon={<StoreIcon width={22} height={22} />} title="Магазинов не найдено" body="Измените фильтры или поисковый запрос." />
+              <EmptyState scheme="admin" icon={<StoreIcon width={22} height={22} />} title="Магазинов не найдено" body="Измените фильтры или поисковый запрос." />
             )}
             {stores && stores.length > 0 && (
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-[13px]">
                   <thead>
-                    <tr className="border-b border-[color:var(--mod-border)] text-left text-[11px] font-bold uppercase tracking-wide text-[color:var(--mod-faint)]">
+                    <tr className="border-b border-[color:var(--admin-border)] text-left text-[11px] font-bold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
                       <th className="px-4 py-3 font-bold">Магазин</th>
                       <th className="px-4 py-3 font-bold">Владелец</th>
                       <th className="px-4 py-3 font-bold">Статус</th>
@@ -234,13 +239,13 @@ export function AdminStoresPage() {
                       <tr
                         key={s.storeId}
                         onClick={() => openStore(s.storeId)}
-                        className="cursor-pointer border-b border-[color:var(--mod-border)] transition-colors last:border-0 hover:bg-[color:var(--mod-panel2)]"
+                        className="cursor-pointer border-b border-[color:var(--admin-border)] transition-colors last:border-0 hover:bg-[color:var(--admin-hover)]"
                       >
                         <td className="px-4 py-3">
-                          <div className="font-semibold text-[color:var(--mod-text)]">{s.name}</div>
-                          <div className="truncate text-[11.5px] text-[color:var(--mod-faint)]">{s.address}</div>
+                          <div className="font-semibold text-[color:var(--admin-text)]">{s.name}</div>
+                          <div className="truncate text-[11.5px] text-[color:var(--admin-text-tertiary)]">{s.address}</div>
                         </td>
-                        <td className="px-4 py-3 text-[color:var(--mod-muted)]">{s.ownerEmail ?? '—'}</td>
+                        <td className="px-4 py-3 text-[color:var(--admin-text-secondary)]">{s.ownerEmail ?? '—'}</td>
                         <td className="px-4 py-3">
                           <StoreStatusBadge status={s.status} size="sm" />
                         </td>
@@ -248,10 +253,10 @@ export function AdminStoresPage() {
                           {s.subscriptionStatus ? (
                             <div className="flex items-center gap-1.5">
                               <SubscriptionStatusBadge status={s.subscriptionStatus} size="sm" />
-                              <span className="text-[11.5px] text-[color:var(--mod-faint)]">{s.subscriptionPlanName}</span>
+                              <span className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">{s.subscriptionPlanName}</span>
                             </div>
                           ) : (
-                            <span className="text-[color:var(--mod-faint)]">—</span>
+                            <span className="text-[color:var(--admin-text-tertiary)]">—</span>
                           )}
                         </td>
                       </tr>

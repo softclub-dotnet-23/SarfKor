@@ -20,18 +20,6 @@ const SCHEMES = {
     border: 'border-[color:var(--admin-border)]',
     sheetBg: 'bg-[color:var(--admin-card)]',
   },
-  mod: {
-    trigger: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] text-[color:var(--mod-text)] focus-visible:border-[color:var(--mod-accent)]',
-    placeholder: 'text-[color:var(--mod-faint)]',
-    chevron: 'text-[color:var(--mod-faint)]',
-    panel: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel)] shadow-[var(--mod-shadow)]',
-    searchField: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] text-[color:var(--mod-text)] placeholder:text-[color:var(--mod-faint)] focus:border-[color:var(--mod-accent)]',
-    row: 'text-[color:var(--mod-text)] hover:bg-[color:var(--mod-panel2)]',
-    rowSelected: 'bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]',
-    faint: 'text-[color:var(--mod-faint)]',
-    border: 'border-[color:var(--mod-border)]',
-    sheetBg: 'bg-[color:var(--mod-panel)]',
-  },
 } as const
 
 interface CategoryPickerProps {
@@ -249,7 +237,7 @@ export function CategoryPicker({ value, onChange, scheme = 'admin', placeholder 
               onChange(null)
             }}
             aria-label="Очистить"
-            className={clsx('grid h-6 w-6 shrink-0 place-items-center rounded-full hover:bg-black/5', t.faint)}
+            className={clsx('grid h-6 w-6 shrink-0 place-items-center rounded-full hover:bg-[color:var(--admin-hover)]', t.faint)}
           >
             <XIcon width={13} height={13} />
           </span>
@@ -280,7 +268,7 @@ export function CategoryPicker({ value, onChange, scheme = 'admin', placeholder 
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: '100%' }}
                 transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-                className={clsx(scheme === 'admin' ? 'admin-shell' : 'mod-shell', 'fixed inset-0 z-100 flex flex-col', t.sheetBg)}
+                className={clsx('admin-shell', 'fixed inset-0 z-100 flex flex-col', t.sheetBg)}
                 role="dialog"
                 aria-modal="true"
                 aria-label="Выбор категории"

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode, type SVGProps } from 
 import { Panel } from '../cabinet/components/primitives'
 import { Select } from '../components/Select'
 import { Loading } from '../components/Loading'
+import { AddButton } from '../components/Button'
 import { FormModal, FormField } from '../components/FormModal'
 import { ProductPicker } from '../components/ProductPicker'
 import { TruckIcon, PlusIcon, TrashIcon, RefreshIcon, PhoneIcon, MailIcon, AlertIcon } from '../components/icons'
@@ -216,13 +217,7 @@ function SuppliersSection({
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Поставщики</span>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-bold text-white"
-            >
-              <PlusIcon width={14} height={14} />
-              Добавить поставщика
-            </button>
+            <AddButton onClick={() => setCreateOpen(true)}>Добавить поставщика</AddButton>
             <button
               onClick={load}
               aria-label="Обновить"
@@ -250,7 +245,9 @@ function SuppliersSection({
               <div key={s.supplierId} className="flex flex-col gap-2 rounded-[14px] bg-[color:var(--admin-hover)] p-3.5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">{s.name}</div>
-                  <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">ID {s.supplierId}</div>
+                  {(s.contactPhone || s.contactEmail) && (
+                    <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">{s.contactPhone || s.contactEmail}</div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1 text-[12px] text-[color:var(--admin-text-secondary)] sm:items-end">
                   {s.contactPhone && (
@@ -490,13 +487,7 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Заказы поставщикам</span>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-bold text-white"
-            >
-              <PlusIcon width={14} height={14} />
-              Новый заказ
-            </button>
+            <AddButton onClick={() => setCreateOpen(true)}>Новый заказ</AddButton>
             <button
               onClick={load}
               aria-label="Обновить"
@@ -679,13 +670,7 @@ function TransfersSection({ storeId }: { storeId: number }) {
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Перемещения этого магазина</span>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-bold text-white"
-            >
-              <PlusIcon width={14} height={14} />
-              Новое перемещение
-            </button>
+            <AddButton onClick={() => setCreateOpen(true)}>Новое перемещение</AddButton>
             <button
               onClick={load}
               aria-label="Обновить"

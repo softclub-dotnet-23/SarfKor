@@ -151,9 +151,17 @@ html.theme-wipe::view-transition-group(root) {
 /* ─────────────────────────────────────────────────────────────────────────────
    AUTHENTICATED SURFACES — film-dark monochrome identity
    Inherits the landing's black/white/glass vocabulary: no brand hue, no blue.
-   Two token sets share the same --admin-* namespace (StorePartner cabinet +
-   Admin moderation) so a single <CabinetShell> class drives both.
-   ───────────────────────────────────────────────────────────────────────────── */
+   One token set, one .admin-shell class, shared by every logged-in cabinet —
+   StorePartner (CabinetShell), Cashier (CashierShell), and the platform Admin
+   console (AdminConsoleLayout). Previously the Admin console had its own
+   parallel mod-prefixed namespace (.mod-shell, --mod-ok etc) that only ever
+   aliased back to these same values; it was dropped because the alias
+   silently broke when .mod-shell stopped being nested under an .admin-shell
+   ancestor, leaving every mod-prefixed custom property unresolved (computed
+   as invalid) on that console — which in turn made Chrome's own auto-dark-
+   mode heuristics kick in and repaint the whole page in its auto-generated
+   amber/orange tint. Reusing .admin-shell directly removes the class of bug,
+   not just this instance of it. */
 
 /* Light mode — a proper warm-neutral light, not a generic gray template */
 .admin-shell {
@@ -172,8 +180,17 @@ html.theme-wipe::view-transition-group(root) {
   --admin-accent-soft: rgba(0, 0, 0, 0.07);
   --admin-success: #16a34a;
   --admin-success-dim: rgba(22, 163, 74, 0.10);
+  /* Text that sits ON a solid --admin-success/-danger button/pill -- this base green measures
+     ~3.3:1 against white (fails WCAG AA for normal-weight text, only clears the "large text" 3:1
+     floor), so success stays dark-on-green in both themes; --admin-danger's red is dark enough in
+     light mode for white text (~4.8:1) but the lighter salmon dark mode uses (#f87171) drops that
+     to ~2.8:1, so danger flips per theme the same way --admin-accent-fg does. Computed against the
+     literal hex values below, not eyeballed -- see the bug this fixed: hardcoded text-white on
+     these buttons was flat-out illegible in dark mode. */
+  --admin-success-fg: #000000;
   --admin-danger: #dc2626;
   --admin-danger-dim: rgba(220, 38, 38, 0.10);
+  --admin-danger-fg: #ffffff;
   --admin-warning: #d97706;
   --admin-warning-dim: rgba(217, 119, 6, 0.10);
   --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 20px -8px rgba(0, 0, 0, 0.08);
@@ -200,8 +217,10 @@ html.theme-wipe::view-transition-group(root) {
   /* Status — muted to feel editorial rather than dashboard */
   --admin-success: #4ade80;
   --admin-success-dim: rgba(74, 222, 128, 0.12);
+  --admin-success-fg: #000000;
   --admin-danger: #f87171;
   --admin-danger-dim: rgba(248, 113, 113, 0.12);
+  --admin-danger-fg: #000000;
   --admin-warning: #fbbf24;
   --admin-warning-dim: rgba(251, 191, 36, 0.12);
   /* Three-layer shadow — same recipe as the landing's --shadow-lift */
@@ -210,38 +229,8 @@ html.theme-wipe::view-transition-group(root) {
   color-scheme: dark;
 }
 
-/* Moderation panel — inherits admin-shell tokens; the page itself handles
-   its own visual hierarchy so no separate mod-* namespace is needed. */
-.mod-shell {
-  --mod-bg: var(--admin-content);
-  --mod-panel: var(--admin-card);
-  --mod-panel2: var(--admin-hover);
-  --mod-elev: var(--admin-card);
-  --mod-border: var(--admin-border);
-  --mod-border2: var(--admin-border-strong);
-  --mod-text: var(--admin-text);
-  --mod-muted: var(--admin-text-secondary);
-  --mod-faint: var(--admin-text-tertiary);
-  --mod-accent: var(--admin-accent);
-  --mod-accent2: var(--admin-accent);
-  --mod-accent-dim: var(--admin-accent-soft);
-  --mod-ok: var(--admin-success);
-  --mod-ok-dim: var(--admin-success-dim);
-  --mod-warn: var(--admin-warning);
-  --mod-warn-dim: var(--admin-warning-dim);
-  --mod-danger: var(--admin-danger);
-  --mod-danger-dim: var(--admin-danger-dim);
-  --mod-shadow: var(--admin-shadow);
-  --mod-shadow-lift: var(--admin-shadow-lift);
-  color-scheme: light;
-}
-
-.dark .mod-shell {
-  color-scheme: dark;
-}
-
-/* A single rule that upgrades every native input/textarea/select across both
-   admin surfaces with the same soft focus glow the new shared <Input>
+/* A single rule that upgrades every native input/textarea/select across the
+   admin surface with the same soft focus glow the new shared <Input>
    component uses — pages that haven't been migrated to <Input> yet (still a
    plain <input className="..."> with its own border-color focus state) get
    the glass-glow for free instead of needing every call site touched by hand. */
@@ -249,11 +238,6 @@ html.theme-wipe::view-transition-group(root) {
 .admin-shell textarea:focus-visible,
 .admin-shell select:focus-visible {
   box-shadow: 0 0 0 3px var(--admin-accent-soft);
-}
-.mod-shell input:not([type='checkbox']):not([type='radio']):focus-visible,
-.mod-shell textarea:focus-visible,
-.mod-shell select:focus-visible {
-  box-shadow: 0 0 0 3px var(--mod-accent-dim);
 }
 
 @keyframes mod-live-ping {

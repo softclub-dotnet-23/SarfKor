@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card } from '../components/Card'
 import { Loading } from '../components/Loading'
-import { ErrorState } from '../components/ErrorState'
+import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { EmptyState } from '../components/EmptyState'
 import { Select } from '../components/Select'
 import { Pagination } from '../components/Pagination'
@@ -13,7 +13,6 @@ import { Badge } from '../components/Badge'
 import { CardIcon, ClockIcon, PlusIcon, EditIcon } from '../components/icons'
 import {
   subscriptionsApi,
-  ApiError,
   type SubscriptionStatus,
   type SubscriptionPlan,
   type StoreSubscriptionListItem,
@@ -50,6 +49,7 @@ function SubscriptionsSection({ subFilter, onSubFilterChange }: { subFilter: Sub
   const [pastDue, setPastDue] = useState<ExpiringSubscription[] | null>(null)
   const [totalCount, setTotalCount] = useState(0)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async () => {
     setError('')
@@ -64,7 +64,9 @@ function SubscriptionsSection({ subFilter, onSubFilterChange }: { subFilter: Sub
         setTotalCount(res.totalCount)
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить подписки')
+      console.error('Failed to load subscriptions:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить подписки')
     }
   }, [subFilter, skip, status, search])
 
@@ -75,7 +77,7 @@ function SubscriptionsSection({ subFilter, onSubFilterChange }: { subFilter: Sub
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="flex gap-1 rounded-lg bg-[color:var(--mod-panel2)] p-1">
+        <div className="flex gap-1 rounded-lg bg-[color:var(--admin-hover)] p-1">
           {(
             [
               ['all', 'Все'],
@@ -87,7 +89,7 @@ function SubscriptionsSection({ subFilter, onSubFilterChange }: { subFilter: Sub
               key={id}
               onClick={() => onSubFilterChange(id)}
               className={`rounded-md px-3 py-1.5 text-[12px] font-bold transition-colors ${
-                subFilter === id ? 'bg-[color:var(--mod-accent)] text-white' : 'text-[color:var(--mod-muted)] hover:text-[color:var(--mod-text)]'
+                subFilter === id ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]' : 'text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]'
               }`}
             >
               {label}
@@ -100,29 +102,29 @@ function SubscriptionsSection({ subFilter, onSubFilterChange }: { subFilter: Sub
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск по магазину…"
-              className="min-w-[200px] flex-1 rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+              className="min-w-[200px] flex-1 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
             />
-            <Select scheme="mod" value={status} onChange={(v) => setStatus(v as SubscriptionStatus)} placeholder="Все статусы" options={STATUS_OPTIONS} className="min-w-[180px]" />
+            <Select scheme="admin" value={status} onChange={(v) => setStatus(v as SubscriptionStatus)} placeholder="Все статусы" options={STATUS_OPTIONS} className="min-w-[180px]" />
           </>
         )}
       </div>
 
       {subFilter !== 'all' && (
-        <Card scheme="mod" className="overflow-hidden">
-          {(subFilter === 'expiring' ? expiring : pastDue) === null && !error && <Loading scheme="mod" />}
-          {error && <ErrorState scheme="mod" message={error} onRetry={load} />}
+        <Card scheme="admin" className="overflow-hidden">
+          {(subFilter === 'expiring' ? expiring : pastDue) === null && !error && <Loading scheme="admin" />}
+          {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
           {(subFilter === 'expiring' ? expiring : pastDue)?.length === 0 && (
-            <EmptyState scheme="mod" icon={<ClockIcon width={22} height={22} />} title="Пусто" body="Сейчас таких подписок нет." />
+            <EmptyState scheme="admin" icon={<ClockIcon width={22} height={22} />} title="Пусто" body="Сейчас таких подписок нет." />
           )}
           {(subFilter === 'expiring' ? expiring : pastDue) && (subFilter === 'expiring' ? expiring! : pastDue!).length > 0 && (
             <div className="flex flex-col">
               {(subFilter === 'expiring' ? expiring! : pastDue!).map((s) => (
-                <div key={s.storeSubscriptionId} className="flex items-center justify-between gap-2 border-b border-[color:var(--mod-border)] px-4 py-3 last:border-0">
+                <div key={s.storeSubscriptionId} className="flex items-center justify-between gap-2 border-b border-[color:var(--admin-border)] px-4 py-3 last:border-0">
                   <div>
-                    <div className="text-[13px] font-semibold text-[color:var(--mod-text)]">{s.storeName}</div>
-                    <div className="text-[11.5px] text-[color:var(--mod-faint)]">{s.subscriptionPlanName}</div>
+                    <div className="text-[13px] font-semibold text-[color:var(--admin-text)]">{s.storeName}</div>
+                    <div className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">{s.subscriptionPlanName}</div>
                   </div>
-                  <span className="font-[JetBrains_Mono,monospace] text-[12px] text-[color:var(--mod-warn)]">{fmtDate(s.currentPeriodEndsAt)}</span>
+                  <span className="font-[JetBrains_Mono,monospace] text-[12px] text-[color:var(--admin-warning)]">{fmtDate(s.currentPeriodEndsAt)}</span>
                 </div>
               ))}
             </div>
@@ -131,15 +133,15 @@ function SubscriptionsSection({ subFilter, onSubFilterChange }: { subFilter: Sub
       )}
 
       {subFilter === 'all' && (
-        <Card scheme="mod" className="overflow-hidden">
-          {rows === null && !error && <Loading scheme="mod" />}
-          {error && <ErrorState scheme="mod" message={error} onRetry={load} />}
-          {rows && rows.length === 0 && <EmptyState scheme="mod" icon={<CardIcon width={22} height={22} />} title="Подписок не найдено" body="Измените фильтры." />}
+        <Card scheme="admin" className="overflow-hidden">
+          {rows === null && !error && <Loading scheme="admin" />}
+          {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
+          {rows && rows.length === 0 && <EmptyState scheme="admin" icon={<CardIcon width={22} height={22} />} title="Подписок не найдено" body="Измените фильтры." />}
           {rows && rows.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[13px]">
                 <thead>
-                  <tr className="border-b border-[color:var(--mod-border)] text-left text-[11px] font-bold uppercase tracking-wide text-[color:var(--mod-faint)]">
+                  <tr className="border-b border-[color:var(--admin-border)] text-left text-[11px] font-bold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
                     <th className="px-4 py-3">Магазин</th>
                     <th className="px-4 py-3">Тариф</th>
                     <th className="px-4 py-3">Статус</th>
@@ -149,16 +151,16 @@ function SubscriptionsSection({ subFilter, onSubFilterChange }: { subFilter: Sub
                 </thead>
                 <tbody>
                   {rows.map((s) => (
-                    <tr key={s.storeSubscriptionId} className="border-b border-[color:var(--mod-border)] transition-colors last:border-0 hover:bg-[color:var(--mod-panel2)]">
-                      <td className="px-4 py-3 font-semibold text-[color:var(--mod-text)]">{s.storeName}</td>
-                      <td className="px-4 py-3 text-[color:var(--mod-muted)]">{s.subscriptionPlanName}</td>
+                    <tr key={s.storeSubscriptionId} className="border-b border-[color:var(--admin-border)] transition-colors last:border-0 hover:bg-[color:var(--admin-hover)]">
+                      <td className="px-4 py-3 font-semibold text-[color:var(--admin-text)]">{s.storeName}</td>
+                      <td className="px-4 py-3 text-[color:var(--admin-text-secondary)]">{s.subscriptionPlanName}</td>
                       <td className="px-4 py-3">
                         <SubscriptionStatusBadge status={s.status} size="sm" />
                       </td>
-                      <td className="px-4 py-3 font-[JetBrains_Mono,monospace] text-[color:var(--mod-text)]">
+                      <td className="px-4 py-3 font-[JetBrains_Mono,monospace] text-[color:var(--admin-text)]">
                         {s.priceAtIssueAmount} {s.priceAtIssueCurrency}
                       </td>
-                      <td className="px-4 py-3 font-[JetBrains_Mono,monospace] text-[color:var(--mod-faint)]">{fmtDate(s.currentPeriodEndsAt)}</td>
+                      <td className="px-4 py-3 font-[JetBrains_Mono,monospace] text-[color:var(--admin-text-tertiary)]">{fmtDate(s.currentPeriodEndsAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -194,39 +196,39 @@ function PlanFormFields({
   isActive: boolean; setIsActive: (v: boolean) => void
   nameError?: string; priceError?: string; codeError?: string
 }) {
-  const fieldClass = 'w-full rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]'
+  const fieldClass = 'w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]'
   return (
     <>
-      <FormField label="Название" required error={nameError} scheme="mod">
+      <FormField label="Название" required error={nameError} scheme="admin">
         <input value={name} onChange={(e) => setName(e.target.value)} className={fieldClass} />
       </FormField>
       {!isEdit && (
-        <FormField label="Код" required error={codeError} scheme="mod">
+        <FormField label="Код" required error={codeError} scheme="admin">
           <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="standard, pro…" className={fieldClass} />
         </FormField>
       )}
       <div className="grid grid-cols-2 gap-2.5">
-        <FormField label="Цена / мес" required error={priceError} scheme="mod">
+        <FormField label="Цена / мес" required error={priceError} scheme="admin">
           <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min={0} step="0.01" className={fieldClass} />
         </FormField>
-        <FormField label="Валюта" scheme="mod">
+        <FormField label="Валюта" scheme="admin">
           <input value={currency} onChange={(e) => setCurrency(e.target.value)} className={fieldClass} />
         </FormField>
       </div>
       <div className="grid grid-cols-2 gap-2.5">
-        <FormField label="Лимит точек" scheme="mod">
+        <FormField label="Лимит точек" scheme="admin">
           <input value={maxStores} onChange={(e) => setMaxStores(e.target.value)} type="number" min={0} placeholder="Без лимита" className={fieldClass} />
         </FormField>
-        <FormField label="Лимит сотрудников" scheme="mod">
+        <FormField label="Лимит сотрудников" scheme="admin">
           <input value={maxEmployees} onChange={(e) => setMaxEmployees(e.target.value)} type="number" min={0} placeholder="Без лимита" className={fieldClass} />
         </FormField>
       </div>
-      <FormField label="Возможности" scheme="mod">
+      <FormField label="Возможности" scheme="admin">
         <input value={features} onChange={(e) => setFeatures(e.target.value)} placeholder="Через запятую" className={fieldClass} />
       </FormField>
       {isEdit && (
-        <label className="flex items-center gap-2 text-[12.5px] font-semibold text-[color:var(--mod-text)]">
-          <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="h-4 w-4 accent-[color:var(--mod-accent)]" />
+        <label className="flex items-center gap-2 text-[12.5px] font-semibold text-[color:var(--admin-text)]">
+          <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="h-4 w-4 accent-[color:var(--admin-accent)]" />
           Тариф активен (доступен для назначения)
         </label>
       )}
@@ -324,7 +326,7 @@ function PlanFormModal({ plan, onClose, onSaved }: { plan: SubscriptionPlan | 'c
       isDirty={!!(name || code || price || maxStores || maxEmployees || features)}
       onSubmit={submit}
       submitLabel={isEdit ? 'Сохранить' : 'Создать тариф'}
-      scheme="mod"
+      scheme="admin"
     >
       <PlanFormFields
         isEdit={isEdit} name={name} setName={setName} code={code} setCode={setCode} price={price} setPrice={setPrice}
@@ -339,6 +341,7 @@ function PlanFormModal({ plan, onClose, onSaved }: { plan: SubscriptionPlan | 'c
 function PlansSection() {
   const [plans, setPlans] = useState<SubscriptionPlan[] | null>(null)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | 'create' | null>(null)
 
   const load = useCallback(async () => {
@@ -346,7 +349,9 @@ function PlansSection() {
     try {
       setPlans((await subscriptionsApi.getSubscriptionPlans(true)).plans)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить тарифы')
+      console.error('Failed to load subscription plans:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить тарифы')
     }
   }, [])
 
@@ -359,33 +364,33 @@ function PlansSection() {
       <div className="flex justify-end">
         <button
           onClick={() => setEditingPlan('create')}
-          className="flex items-center gap-1.5 rounded-xl bg-[color:var(--mod-accent)] px-4 py-2.5 text-[13px] font-bold text-white transition-transform hover:brightness-110 active:scale-95"
+          className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:brightness-110 active:scale-95"
         >
           <PlusIcon width={15} height={15} />
           Новый тариф
         </button>
       </div>
 
-      {plans === null && !error && <Loading scheme="mod" />}
-      {error && <ErrorState scheme="mod" message={error} onRetry={load} />}
+      {plans === null && !error && <Loading scheme="admin" />}
+      {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
       {plans &&
         plans.map((p) => (
-          <Card key={p.subscriptionPlanId} scheme="mod" className="flex items-center justify-between gap-3 p-4">
+          <Card key={p.subscriptionPlanId} scheme="admin" className="flex items-center justify-between gap-3 p-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-[color:var(--mod-text)]">{p.name}</span>
-                <Badge scheme="mod" variant={p.isActive ? 'success' : 'neutral'} size="sm">
+                <span className="font-bold text-[color:var(--admin-text)]">{p.name}</span>
+                <Badge scheme="admin" variant={p.isActive ? 'success' : 'neutral'} size="sm">
                   {p.isActive ? 'Активен' : 'Отключён'}
                 </Badge>
               </div>
-              <div className="mt-0.5 font-[JetBrains_Mono,monospace] text-[11.5px] text-[color:var(--mod-faint)]">
+              <div className="mt-0.5 font-[JetBrains_Mono,monospace] text-[11.5px] text-[color:var(--admin-text-tertiary)]">
                 {p.code} · {p.monthlyPriceAmount} {p.monthlyPriceCurrency}/мес
                 {p.maxStores ? ` · до ${p.maxStores} точек` : ''}
                 {p.maxEmployees ? ` · до ${p.maxEmployees} сотрудников` : ''}
               </div>
-              {p.features.length > 0 && <div className="mt-1 text-[12px] text-[color:var(--mod-muted)]">{p.features.join(' · ')}</div>}
+              {p.features.length > 0 && <div className="mt-1 text-[12px] text-[color:var(--admin-text-secondary)]">{p.features.join(' · ')}</div>}
             </div>
-            <button onClick={() => setEditingPlan(p)} className="shrink-0 grid h-9 w-9 place-items-center rounded-lg text-[color:var(--mod-muted)] hover:bg-[color:var(--mod-panel2)]">
+            <button onClick={() => setEditingPlan(p)} className="shrink-0 grid h-9 w-9 place-items-center rounded-lg text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]">
               <EditIcon width={16} height={16} />
             </button>
           </Card>
@@ -403,6 +408,7 @@ function PaymentsSection() {
   const [payments, setPayments] = useState<SubscriptionPayment[] | null>(null)
   const [totalCount, setTotalCount] = useState(0)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
   const [reversing, setReversing] = useState<SubscriptionPayment | null>(null)
 
   const load = useCallback(async () => {
@@ -412,7 +418,9 @@ function PaymentsSection() {
       setPayments(res.payments)
       setTotalCount(res.totalCount)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить платежи')
+      console.error('Failed to load subscription payments:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить платежи')
     }
   }, [skip])
 
@@ -421,15 +429,15 @@ function PaymentsSection() {
   }, [load])
 
   return (
-    <Card scheme="mod" className="overflow-hidden">
-      {payments === null && !error && <Loading scheme="mod" />}
-      {error && <ErrorState scheme="mod" message={error} onRetry={load} />}
-      {payments && payments.length === 0 && <EmptyState scheme="mod" icon={<CardIcon width={22} height={22} />} title="Платежей ещё не было" />}
+    <Card scheme="admin" className="overflow-hidden">
+      {payments === null && !error && <Loading scheme="admin" />}
+      {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
+      {payments && payments.length === 0 && <EmptyState scheme="admin" icon={<CardIcon width={22} height={22} />} title="Платежей ещё не было" />}
       {payments && payments.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[13px]">
             <thead>
-              <tr className="border-b border-[color:var(--mod-border)] text-left text-[11px] font-bold uppercase tracking-wide text-[color:var(--mod-faint)]">
+              <tr className="border-b border-[color:var(--admin-border)] text-left text-[11px] font-bold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
                 <th className="px-4 py-3">Магазин</th>
                 <th className="px-4 py-3">Сумма</th>
                 <th className="px-4 py-3">Период</th>
@@ -440,20 +448,20 @@ function PaymentsSection() {
             </thead>
             <tbody>
               {payments.map((p) => (
-                <tr key={p.subscriptionPaymentId} className="border-b border-[color:var(--mod-border)] last:border-0">
-                  <td className="px-4 py-3 font-semibold text-[color:var(--mod-text)]">{p.storeName}</td>
-                  <td className={`px-4 py-3 font-[JetBrains_Mono,monospace] font-bold ${p.isReversal ? 'text-[color:var(--mod-danger)]' : 'text-[color:var(--mod-text)]'}`}>
+                <tr key={p.subscriptionPaymentId} className="border-b border-[color:var(--admin-border)] last:border-0">
+                  <td className="px-4 py-3 font-semibold text-[color:var(--admin-text)]">{p.storeName}</td>
+                  <td className={`px-4 py-3 font-[JetBrains_Mono,monospace] font-bold ${p.isReversal ? 'text-[color:var(--admin-danger)]' : 'text-[color:var(--admin-text)]'}`}>
                     {p.isReversal ? '−' : '+'}
                     {p.amount} {p.currency}
                   </td>
-                  <td className="px-4 py-3 font-[JetBrains_Mono,monospace] text-[color:var(--mod-faint)]">
+                  <td className="px-4 py-3 font-[JetBrains_Mono,monospace] text-[color:var(--admin-text-tertiary)]">
                     {fmtDate(p.periodStart)} – {fmtDate(p.periodEnd)}
                   </td>
-                  <td className="px-4 py-3 text-[color:var(--mod-muted)]">{p.method}</td>
-                  <td className="px-4 py-3 text-[color:var(--mod-muted)]">{p.recordedByEmail ?? '—'}</td>
+                  <td className="px-4 py-3 text-[color:var(--admin-text-secondary)]">{p.method}</td>
+                  <td className="px-4 py-3 text-[color:var(--admin-text-secondary)]">{p.recordedByEmail ?? '—'}</td>
                   <td className="px-4 py-3 text-right">
                     {!p.isReversal && (
-                      <button onClick={() => setReversing(p)} className="text-[11.5px] font-semibold text-[color:var(--mod-danger)] hover:underline">
+                      <button onClick={() => setReversing(p)} className="text-[11.5px] font-semibold text-[color:var(--admin-danger)] hover:underline">
                         Сторнировать
                       </button>
                     )}
@@ -504,7 +512,7 @@ export function AdminSubscriptionsPage() {
 
   return (
     <div style={{ animation: 'mod-fade-in .3s ease' }}>
-      <div className="mb-4 flex gap-1 rounded-lg bg-[color:var(--mod-panel2)] p-1" style={{ width: 'fit-content' }}>
+      <div className="mb-4 flex gap-1 rounded-lg bg-[color:var(--admin-hover)] p-1" style={{ width: 'fit-content' }}>
         {(
           [
             ['subscriptions', 'Подписки'],
@@ -516,7 +524,7 @@ export function AdminSubscriptionsPage() {
             key={id}
             onClick={() => setMainTab(id)}
             className={`rounded-md px-4 py-2 text-[12.5px] font-bold transition-colors ${
-              mainTab === id ? 'bg-[color:var(--mod-accent)] text-white' : 'text-[color:var(--mod-muted)] hover:text-[color:var(--mod-text)]'
+              mainTab === id ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]' : 'text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]'
             }`}
           >
             {label}

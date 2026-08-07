@@ -507,7 +507,7 @@ function AuthPage({ mode }: { mode: Mode }) {
               >
                 {stage === 'confirm' ? (
                   <>
-                    Мы отправили код на <strong className="font-semibold text-white">{email}</strong>. Введите его ниже,
+                    Мы отправили код на <strong className="font-semibold text-[color:var(--admin-text)]">{email}</strong>. Введите его ниже,
                     чтобы подтвердить email и войти.
                   </>
                 ) : isRegister ? (

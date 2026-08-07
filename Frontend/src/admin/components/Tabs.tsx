@@ -8,12 +8,6 @@ const SCHEMES = {
     activeText: 'text-[color:var(--admin-text)]',
     inactiveText: 'text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]',
   },
-  mod: {
-    track: 'border-b border-[color:var(--mod-border)]',
-    indicator: 'bg-[color:var(--mod-accent)]',
-    activeText: 'text-[color:var(--mod-text)]',
-    inactiveText: 'text-[color:var(--mod-muted)] hover:text-[color:var(--mod-text)]',
-  },
 } as const
 
 interface TabsProps<T extends string> {

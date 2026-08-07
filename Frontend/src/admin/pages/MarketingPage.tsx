@@ -166,7 +166,7 @@ function PromotionFormFields({
           onClick={() => setTargetMode('product')}
           className={`flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
             targetMode === 'product'
-              ? 'bg-[color:var(--admin-accent)] text-white'
+              ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
               : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
           }`}
         >
@@ -177,7 +177,7 @@ function PromotionFormFields({
           onClick={() => setTargetMode('category')}
           className={`flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
             targetMode === 'category'
-              ? 'bg-[color:var(--admin-accent)] text-white'
+              ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
               : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
           }`}
         >

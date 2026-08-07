@@ -2,13 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card } from '../components/Card'
 import { Loading } from '../components/Loading'
-import { ErrorState } from '../components/ErrorState'
+import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { EmptyState } from '../components/EmptyState'
 import { Pagination } from '../components/Pagination'
 import { Badge } from '../components/Badge'
 import { UserDetailPanel } from '../components/UserDetailPanel'
 import { SearchIcon, UsersIcon, ChevronDownIcon } from '../components/icons'
-import { adminUsersApi, ApiError, type AdminUserListItem } from '../../lib/api'
+import { adminUsersApi, type AdminUserListItem } from '../../lib/api'
 
 const TAKE = 25
 
@@ -27,6 +27,7 @@ export function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUserListItem[] | null>(null)
   const [totalCount, setTotalCount] = useState(0)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async () => {
     setError('')
@@ -35,7 +36,9 @@ export function AdminUsersPage() {
       setUsers(res.users)
       setTotalCount(res.totalCount)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить пользователей')
+      console.error('Failed to load users list:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить пользователей')
     }
   }, [skip, search])
 
@@ -84,30 +87,30 @@ export function AdminUsersPage() {
         }}
         className="relative mb-4 max-w-md"
       >
-        <SearchIcon width={15} height={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--mod-faint)]" />
+        <SearchIcon width={15} height={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--admin-text-tertiary)]" />
         <input
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           onBlur={() => updateParam('search', searchInput.trim())}
           placeholder="Поиск по email…"
-          className="w-full rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] py-2.5 pl-9 pr-3.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+          className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2.5 pl-9 pr-3.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
         />
       </form>
 
-      <Card scheme="mod" className="overflow-hidden">
-        {users === null && !error && <Loading scheme="mod" />}
-        {error && <ErrorState scheme="mod" message={error} onRetry={load} />}
-        {users && users.length === 0 && <EmptyState scheme="mod" icon={<UsersIcon width={22} height={22} />} title="Пользователей не найдено" body="Измените поисковый запрос." />}
+      <Card scheme="admin" className="overflow-hidden">
+        {users === null && !error && <Loading scheme="admin" />}
+        {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
+        {users && users.length === 0 && <EmptyState scheme="admin" icon={<UsersIcon width={22} height={22} />} title="Пользователей не найдено" body="Измените поисковый запрос." />}
         {sortedUsers && sortedUsers.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[13px]">
               <thead>
-                <tr className="border-b border-[color:var(--mod-border)] text-left text-[11px] font-bold uppercase tracking-wide text-[color:var(--mod-faint)]">
+                <tr className="border-b border-[color:var(--admin-border)] text-left text-[11px] font-bold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Регистрация</th>
                   <th className="px-4 py-3">Роли</th>
                   <th className="px-4 py-3">
-                    <button onClick={toggleSort} className="flex items-center gap-1 hover:text-[color:var(--mod-text)]">
+                    <button onClick={toggleSort} className="flex items-center gap-1 hover:text-[color:var(--admin-text)]">
                       Рейтинг
                       <ChevronDownIcon width={11} height={11} className={sortDir === 'asc' ? 'rotate-180' : ''} />
                     </button>
@@ -120,17 +123,17 @@ export function AdminUsersPage() {
                   <tr
                     key={u.userId}
                     onClick={() => openUser(u.userId)}
-                    className="cursor-pointer border-b border-[color:var(--mod-border)] transition-colors last:border-0 hover:bg-[color:var(--mod-panel2)]"
+                    className="cursor-pointer border-b border-[color:var(--admin-border)] transition-colors last:border-0 hover:bg-[color:var(--admin-hover)]"
                   >
-                    <td className="px-4 py-3 font-semibold text-[color:var(--mod-text)]">{u.email ?? u.userId}</td>
-                    <td className="px-4 py-3 font-[JetBrains_Mono,monospace] text-[color:var(--mod-faint)]">{fmtDate(u.createdAt)}</td>
-                    <td className="px-4 py-3 text-[color:var(--mod-muted)]">{u.roles.join(', ') || '—'}</td>
-                    <td className="px-4 py-3 font-[JetBrains_Mono,monospace] font-bold text-[color:var(--mod-text)]">{u.trustScore ?? '—'}</td>
+                    <td className="px-4 py-3 font-semibold text-[color:var(--admin-text)]">{u.email ?? u.userId}</td>
+                    <td className="px-4 py-3 font-[JetBrains_Mono,monospace] text-[color:var(--admin-text-tertiary)]">{fmtDate(u.createdAt)}</td>
+                    <td className="px-4 py-3 text-[color:var(--admin-text-secondary)]">{u.roles.join(', ') || '—'}</td>
+                    <td className="px-4 py-3 font-[JetBrains_Mono,monospace] font-bold text-[color:var(--admin-text)]">{u.trustScore ?? '—'}</td>
                     <td className="px-4 py-3">
                       {u.isBlocked ? (
-                        <Badge scheme="mod" variant="danger" size="sm">Заблокирован</Badge>
+                        <Badge scheme="admin" variant="danger" size="sm">Заблокирован</Badge>
                       ) : (
-                        <Badge scheme="mod" variant="success" size="sm">Активен</Badge>
+                        <Badge scheme="admin" variant="success" size="sm">Активен</Badge>
                       )}
                     </td>
                   </tr>

@@ -25,7 +25,7 @@ export function AuditLogRow({ entry, actionLabel, extra }: { entry: AuditLogEntr
   const canExpand = !!(before || after || entry.reason)
 
   return (
-    <div className="group rounded-xl border border-[color:var(--mod-border)]">
+    <div className="group rounded-xl border border-[color:var(--admin-border)]">
       {/* A real sibling button (`extra`), not an absolutely-positioned overlay on top of this row —
           the old overlay drifted onto the timestamp whenever a row's height differed from the
           pixel offset it was hard-coded against. Also can't nest `extra`'s <button> inside this
@@ -37,50 +37,50 @@ export function AuditLogRow({ entry, actionLabel, extra }: { entry: AuditLogEntr
         onKeyDown={(e) => canExpand && (e.key === 'Enter' || e.key === ' ') && setExpanded((v) => !v)}
         className={`flex w-full items-center gap-3 px-3.5 py-3 text-left ${canExpand ? 'cursor-pointer' : 'cursor-default'}`}
       >
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]">
           <ClockIcon width={14} height={14} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[12.5px] font-semibold text-[color:var(--mod-text)]">{actionLabel ?? entry.action}</div>
-          <div className="truncate text-[11px] text-[color:var(--mod-muted)]">
+          <div className="truncate text-[12.5px] font-semibold text-[color:var(--admin-text)]">{actionLabel ?? entry.action}</div>
+          <div className="truncate text-[11px] text-[color:var(--admin-text-secondary)]">
             {entry.entityType} #{entry.entityId}
             {entry.performedByEmail ? ` · ${entry.performedByEmail}` : ''}
             {entry.details ? ` · ${entry.details}` : ''}
           </div>
         </div>
         {extra}
-        <span className="shrink-0 font-[JetBrains_Mono,monospace] text-[10.5px] text-[color:var(--mod-faint)]">
+        <span className="shrink-0 font-[JetBrains_Mono,monospace] text-[10.5px] text-[color:var(--admin-text-tertiary)]">
           {fmtDateTime(entry.occurredAt)}
         </span>
         {canExpand && (
-          <ChevronDownIcon width={13} height={13} className={`shrink-0 text-[color:var(--mod-faint)] transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          <ChevronDownIcon width={13} height={13} className={`shrink-0 text-[color:var(--admin-text-tertiary)] transition-transform ${expanded ? 'rotate-180' : ''}`} />
         )}
       </div>
       {expanded && canExpand && (
-        <div className="border-t border-[color:var(--mod-border)] px-3.5 py-3">
+        <div className="border-t border-[color:var(--admin-border)] px-3.5 py-3">
           {entry.reason && (
-            <p className="mb-2 text-[12px] text-[color:var(--mod-text)]">
-              <span className="font-semibold text-[color:var(--mod-faint)]">Причина: </span>
+            <p className="mb-2 text-[12px] text-[color:var(--admin-text)]">
+              <span className="font-semibold text-[color:var(--admin-text-tertiary)]">Причина: </span>
               {entry.reason}
             </p>
           )}
           {entry.ipAddress && (
-            <p className="mb-2 font-[JetBrains_Mono,monospace] text-[11px] text-[color:var(--mod-faint)]">IP: {entry.ipAddress}</p>
+            <p className="mb-2 font-[JetBrains_Mono,monospace] text-[11px] text-[color:var(--admin-text-tertiary)]">IP: {entry.ipAddress}</p>
           )}
           {(before || after) && (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {before && (
                 <div>
-                  <div className="mb-1 text-[10.5px] font-bold uppercase tracking-wide text-[color:var(--mod-faint)]">До</div>
-                  <pre className="overflow-x-auto rounded-lg bg-[color:var(--mod-panel2)] p-2.5 font-[JetBrains_Mono,monospace] text-[10.5px] leading-relaxed text-[color:var(--mod-muted)]">
+                  <div className="mb-1 text-[10.5px] font-bold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">До</div>
+                  <pre className="overflow-x-auto rounded-lg bg-[color:var(--admin-hover)] p-2.5 font-[JetBrains_Mono,monospace] text-[10.5px] leading-relaxed text-[color:var(--admin-text-secondary)]">
                     {before}
                   </pre>
                 </div>
               )}
               {after && (
                 <div>
-                  <div className="mb-1 text-[10.5px] font-bold uppercase tracking-wide text-[color:var(--mod-faint)]">После</div>
-                  <pre className="overflow-x-auto rounded-lg bg-[color:var(--mod-panel2)] p-2.5 font-[JetBrains_Mono,monospace] text-[10.5px] leading-relaxed text-[color:var(--mod-muted)]">
+                  <div className="mb-1 text-[10.5px] font-bold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">После</div>
+                  <pre className="overflow-x-auto rounded-lg bg-[color:var(--admin-hover)] p-2.5 font-[JetBrains_Mono,monospace] text-[10.5px] leading-relaxed text-[color:var(--admin-text-secondary)]">
                     {after}
                   </pre>
                 </div>

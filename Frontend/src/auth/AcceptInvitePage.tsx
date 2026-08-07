@@ -288,7 +288,7 @@ export function AcceptInvitePage() {
               screen === 'accountExists') && (
               <Link
                 to="/login"
-                className="mt-7 flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98]"
+                className="mt-7 flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98]"
               >
                 {t('partner.invite.goLogin')}
               </Link>

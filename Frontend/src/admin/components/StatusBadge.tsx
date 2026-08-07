@@ -25,7 +25,7 @@ const SUBSCRIPTION_STATUS: Record<SubscriptionStatus, { label: string; variant: 
 export function StoreStatusBadge({ status, size = 'md' }: { status: StoreStatus; size?: 'md' | 'sm' }) {
   const s = STORE_STATUS[status]
   return (
-    <Badge scheme="mod" variant={s.variant} size={size}>
+    <Badge scheme="admin" variant={s.variant} size={size}>
       {s.label}
     </Badge>
   )
@@ -34,7 +34,7 @@ export function StoreStatusBadge({ status, size = 'md' }: { status: StoreStatus;
 export function SubscriptionStatusBadge({ status, size = 'md' }: { status: SubscriptionStatus; size?: 'md' | 'sm' }) {
   const s = SUBSCRIPTION_STATUS[status]
   return (
-    <Badge scheme="mod" variant={s.variant} size={size}>
+    <Badge scheme="admin" variant={s.variant} size={size}>
       {s.label}
     </Badge>
   )

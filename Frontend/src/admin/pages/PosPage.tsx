@@ -296,7 +296,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
               <button
                 type="submit"
                 disabled={voidBusy || !voidReason.trim()}
-                className="self-start rounded-lg bg-[color:var(--admin-danger)] px-3.5 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                className="self-start rounded-lg bg-[color:var(--admin-danger)] px-3.5 py-1.5 text-[12px] font-semibold text-[color:var(--admin-danger-fg)] disabled:opacity-50"
               >
                 {voidBusy ? 'Отменяем…' : 'Подтвердить отмену'}
               </button>

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { LineChart } from '../components/LineChart'
 import { Loading } from '../components/Loading'
-import { ErrorState } from '../components/ErrorState'
+import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { Panel, SectionHeader, Row, RowDivider, EmptyRow } from '../cabinet/components/primitives'
 import { AlertIcon, ClockIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
-import { storesApi, salesApi, ApiError, type StoreDashboard, type ProfitReport, type ReorderAlert, type CashierShift } from '../../lib/api'
+import { storesApi, salesApi, type StoreDashboard, type ProfitReport, type ReorderAlert, type CashierShift } from '../../lib/api'
 import { daysAgo, firstOfMonth, today, weekdayLabel } from '../lib/dates'
 
 const DAILY_GOAL_KEY = 'sarfkor-daily-goal'
@@ -27,6 +27,7 @@ function useDashboardData(storeId: number) {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async () => {
     setError('')
@@ -41,6 +42,7 @@ function useDashboardData(storeId: number) {
         salesApi.getCashierShifts(storeId),
       ])
       if (dashboard.outcome === 'Forbidden' || dashboard.outcome === 'StoreNotFound') {
+        setErrorKind(dashboard.outcome === 'Forbidden' ? 'forbidden' : 'notFound')
         setError(dashboard.outcome === 'Forbidden' ? 'Нет доступа к этому магазину' : 'Магазин не найден')
         setLoading(false)
         return
@@ -54,7 +56,9 @@ function useDashboardData(storeId: number) {
         shifts: shiftsRes.shifts ?? [],
       })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить данные')
+      console.error('Failed to load dashboard data:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить данные')
     } finally {
       setLoading(false)
     }
@@ -66,7 +70,7 @@ function useDashboardData(storeId: number) {
     return () => clearInterval(interval)
   }, [load])
 
-  return { data, loading, error, reload: load }
+  return { data, loading, error, errorKind, reload: load }
 }
 
 /** Flat KPI: 32/500 number, 12/400 muted label, no icon, hairline left rule. */
@@ -104,14 +108,14 @@ function KpiStat({
 
 export function DashboardPage() {
   const { storeId } = useAuth()
-  const { data, loading, error, reload } = useDashboardData(storeId!)
+  const { data, loading, error, errorKind, reload } = useDashboardData(storeId!)
   const [dailyGoal] = useState(() => Number(localStorage.getItem(DAILY_GOAL_KEY)) || 150)
 
   if (loading) return <Loading label="Загружаем данные магазина…" />
   if (error || !data) {
     return (
       <Panel>
-        <ErrorState message={error || 'Нет данных'} onRetry={reload} />
+        <ErrorState message={error || 'Нет данных'} kind={error ? errorKind : 'notFound'} onRetry={reload} />
       </Panel>
     )
   }

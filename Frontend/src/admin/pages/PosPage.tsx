@@ -230,7 +230,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
 
   return (
     <div className="rounded-[16px] bg-[color:var(--admin-hover)] p-4">
-      <button onClick={() => setExpanded((v) => !v)} className="flex w-full items-center justify-between gap-3 text-left">
+      <button onClick={() => setExpanded((v) => !v)} className="flex min-h-11 w-full items-center justify-between gap-3 text-left">
         <div>
           <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">
             Продажа #{sale.saleTransactionId} {sale.voided && <span className="text-[color:var(--admin-danger)]">· отменена</span>}
@@ -256,7 +256,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setVoidOpen((v) => !v)}
-                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-danger-dim)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-danger)] hover:opacity-80"
+                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-danger-dim)] px-3 py-2.5 text-[11.5px] font-semibold text-[color:var(--admin-danger)] hover:opacity-80 lg:py-1.5"
               >
                 <AlertIcon width={12} height={12} />
                 Отменить продажу
@@ -266,7 +266,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
                   setCommissionOpen((v) => !v)
                   if (!commissions) loadCommissions()
                 }}
-                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-2.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)] lg:py-1.5"
               >
                 <ReceiptPercentIcon />
                 Комиссия
@@ -276,7 +276,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
                   setReturnOpen((v) => !v)
                   if (!returns) loadReturns()
                 }}
-                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-2.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)] lg:py-1.5"
               >
                 <ReturnIcon />
                 Возврат
@@ -290,13 +290,13 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
                 value={voidReason}
                 onChange={(e) => setVoidReason(e.target.value)}
                 placeholder="Причина отмены (обязательно)"
-                className="rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--admin-text)] outline-none"
+                className="rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-2.5 text-[12.5px] text-[color:var(--admin-text)] outline-none lg:py-1.5"
               />
               {voidError && <div className="text-[11.5px] font-medium text-[color:var(--admin-danger)]">{voidError}</div>}
               <button
                 type="submit"
                 disabled={voidBusy || !voidReason.trim()}
-                className="self-start rounded-lg bg-[color:var(--admin-danger)] px-3.5 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                className="self-start rounded-lg bg-[color:var(--admin-danger)] px-3.5 py-2.5 text-[12px] font-semibold text-white disabled:opacity-50 lg:py-1.5"
               >
                 {voidBusy ? 'Отменяем…' : 'Подтвердить отмену'}
               </button>
@@ -313,12 +313,12 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
                   min={0}
                   step="0.01"
                   placeholder="Сумма комиссии"
-                  className="min-w-0 flex-1 rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--admin-text)] outline-none"
+                  className="min-w-0 flex-1 rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-2.5 text-[12.5px] text-[color:var(--admin-text)] outline-none lg:py-1.5"
                 />
                 <button
                   type="submit"
                   disabled={commissionBusy || !commissionAmount}
-                  className="shrink-0 rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                  className="shrink-0 rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-2.5 text-[12px] font-semibold text-white disabled:opacity-50 lg:py-1.5"
                 >
                   {commissionBusy ? 'Сохраняем…' : 'Записать'}
                 </button>
@@ -356,19 +356,19 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
                     onChange={(e) => setReturnQty(e.target.value)}
                     type="number"
                     min={1}
-                    className="w-20 shrink-0 rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--admin-text)] outline-none"
+                    className="w-20 shrink-0 rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-2.5 text-[12.5px] text-[color:var(--admin-text)] outline-none lg:py-1.5"
                   />
                 </div>
                 <input
                   value={returnReason}
                   onChange={(e) => setReturnReason(e.target.value)}
                   placeholder="Причина возврата (обязательно)"
-                  className="rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-1.5 text-[12.5px] text-[color:var(--admin-text)] outline-none"
+                  className="rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-2.5 py-2.5 text-[12.5px] text-[color:var(--admin-text)] outline-none lg:py-1.5"
                 />
                 <button
                   type="submit"
                   disabled={returnBusy || !returnLineId || !returnReason.trim()}
-                  className="self-start rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                  className="self-start rounded-lg bg-[color:var(--admin-accent)] px-3.5 py-2.5 text-[12px] font-semibold text-white disabled:opacity-50 lg:py-1.5"
                 >
                   {returnBusy ? 'Оформляем…' : 'Оформить возврат'}
                 </button>
@@ -632,8 +632,8 @@ export function PosPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-      <div className="flex min-w-0 flex-col gap-5">
+    <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-4 lg:gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="flex min-w-0 flex-col gap-3 lg:gap-5">
         <div className="flex gap-2">
           <form onSubmit={handleScan} className="relative flex-1">
             <BarcodeIcon
@@ -649,7 +649,7 @@ export function PosPage() {
               type="text"
               placeholder="Сканируйте штрихкод (или введите вручную) и нажмите Enter"
               disabled={scanning}
-              className="w-full rounded-[14px] border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] py-3.5 pl-11 pr-4 text-sm text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)] disabled:opacity-60"
+              className="w-full rounded-[14px] border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] py-4 pl-11 pr-4 text-sm text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)] disabled:opacity-60 lg:py-3.5"
             />
           </form>
           <button
@@ -657,13 +657,13 @@ export function PosPage() {
             onClick={() => setCameraOpen((v) => !v)}
             title={cameraOpen ? 'Скрыть камеру' : 'Сканировать камерой'}
             aria-pressed={cameraOpen}
-            className={`shrink-0 rounded-[14px] border px-4 transition-colors ${
+            className={`grid shrink-0 place-items-center rounded-[14px] border px-5 transition-colors lg:px-4 ${
               cameraOpen
                 ? 'border-[color:var(--admin-accent)] bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]'
                 : 'border-[color:var(--admin-border)] bg-[color:var(--admin-card)] text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]'
             }`}
           >
-            <CameraIcon width={17} height={17} />
+            <CameraIcon width={19} height={19} />
           </button>
         </div>
 
@@ -703,8 +703,8 @@ export function PosPage() {
           })()}
 
         {!lastScan && !scanError && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-[16px] border border-dashed border-[color:var(--admin-border)] py-20 text-center text-[color:var(--admin-text-tertiary)]">
-            <BarcodeIcon width={36} height={36} />
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-[16px] border border-dashed border-[color:var(--admin-border)] py-8 text-center text-[color:var(--admin-text-tertiary)] lg:py-20">
+            <BarcodeIcon width={32} height={32} />
             <p className="max-w-xs text-[13px]">
               Поиск товаров работает только по точному штрихкоду — отсканируйте товар, чтобы добавить его в чек
             </p>
@@ -713,7 +713,7 @@ export function PosPage() {
       </div>
 
       {/* Cart / checkout */}
-      <Card className="flex h-fit flex-col gap-4 p-5 lg:sticky lg:top-6">
+      <Card className="flex h-fit flex-col gap-3 p-5 lg:sticky lg:top-6 lg:gap-4">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Текущий чек</span>
           <div className="flex items-center gap-3">
@@ -752,34 +752,34 @@ export function PosPage() {
                 className="flex items-center gap-2.5 overflow-hidden rounded-xl bg-[color:var(--admin-hover)] p-2.5"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12.5px] font-semibold text-[color:var(--admin-text)]">{line.productName}</div>
-                  <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
+                  <div className="truncate text-[14px] font-semibold text-[color:var(--admin-text)] lg:text-[12.5px]">{line.productName}</div>
+                  <div className="font-[JetBrains_Mono,monospace] text-[12.5px] tabular-nums text-[color:var(--admin-text-tertiary)] lg:text-[11px]">
                     {fmt(line.unitPrice)} смн × {line.quantity}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <button
                     onClick={() => changeQty(line.productId, -1)}
-                    className="grid h-6 w-6 place-items-center rounded-md bg-[color:var(--admin-card)] text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+                    className="grid h-11 w-11 place-items-center rounded-md bg-[color:var(--admin-card)] text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)] lg:h-6 lg:w-6"
                     aria-label="Уменьшить"
                   >
-                    <MinusIcon width={12} height={12} />
+                    <MinusIcon width={14} height={14} />
                   </button>
-                  <span className="w-5 text-center text-[12px] font-bold text-[color:var(--admin-text)]">{line.quantity}</span>
+                  <span className="w-6 text-center font-[JetBrains_Mono,monospace] text-[14px] font-bold tabular-nums text-[color:var(--admin-text)] lg:w-5 lg:text-[12px]">{line.quantity}</span>
                   <button
                     onClick={() => changeQty(line.productId, 1)}
-                    className="grid h-6 w-6 place-items-center rounded-md bg-[color:var(--admin-card)] text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+                    className="grid h-11 w-11 place-items-center rounded-md bg-[color:var(--admin-card)] text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)] lg:h-6 lg:w-6"
                     aria-label="Увеличить"
                   >
-                    <PlusIcon width={12} height={12} />
+                    <PlusIcon width={14} height={14} />
                   </button>
                 </div>
                 <button
                   onClick={() => removeLine(line.productId)}
-                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-danger)]"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-danger)] lg:h-6 lg:w-6"
                   aria-label="Удалить"
                 >
-                  <TrashIcon width={13} height={13} />
+                  <TrashIcon width={15} height={15} />
                 </button>
               </motion.div>
             ))}
@@ -800,10 +800,10 @@ export function PosPage() {
                 </div>
                 <button
                   onClick={() => removeBundleLine(b.productBundleId)}
-                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-danger)]"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-danger)] lg:h-6 lg:w-6"
                   aria-label="Удалить набор"
                 >
-                  <TrashIcon width={13} height={13} />
+                  <TrashIcon width={15} height={15} />
                 </button>
               </motion.div>
             ))}
@@ -815,31 +815,37 @@ export function PosPage() {
 
         {storeId != null && <BundlePicker storeId={storeId} onAdd={addBundleToCart} />}
 
-        <div className="flex flex-col gap-2 border-t border-[color:var(--admin-border)] pt-4">
+        {/* Total + checkout — the one thing that must always be reachable
+            without hunting for it. Sticks to the bottom of the scroll area
+            on mobile/Cashier (a phone in one hand, in a hurry); on desktop
+            (lg+) it's just the card's normal in-flow footer, as before. */}
+        <div className="sticky bottom-0 -mx-5 -mb-5 flex flex-col gap-3 rounded-b-2xl border-t border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-5 py-4 lg:static lg:mx-0 lg:mb-0 lg:gap-2 lg:rounded-none lg:px-0 lg:py-0 lg:pt-4">
           <div className="flex items-center justify-between text-[13px] text-[color:var(--admin-text-secondary)]">
             <span>Товаров</span>
-            <span className="font-semibold text-[color:var(--admin-text)]">{itemCount}</span>
+            <span className="font-[JetBrains_Mono,monospace] font-semibold tabular-nums text-[color:var(--admin-text)]">{itemCount}</span>
           </div>
-          <div className="flex items-center justify-between text-[15px]">
-            <span className="font-semibold text-[color:var(--admin-text)]">Итого</span>
-            <span className="text-[22px] font-extrabold text-[color:var(--admin-text)]">{fmt(total)} смн</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[15px] font-semibold text-[color:var(--admin-text)]">Итого</span>
+            <span className="font-[JetBrains_Mono,monospace] text-[36px] font-extrabold leading-none tabular-nums text-[color:var(--admin-text)] lg:text-[22px]">
+              {fmt(total)} смн
+            </span>
           </div>
+
+          {checkoutError && (
+            <div className="flex items-center gap-2 rounded-xl bg-[color:var(--admin-danger-dim)] px-3.5 py-2.5 text-[12.5px] font-medium text-[color:var(--admin-danger)]">
+              <AlertIcon width={14} height={14} className="shrink-0" />
+              {checkoutError}
+            </div>
+          )}
+
+          <button
+            onClick={completeSale}
+            disabled={(cart.length === 0 && cartBundles.length === 0) || checkoutBusy}
+            className="rounded-xl bg-[color:var(--admin-accent)] py-5 text-[17px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 lg:py-3.5 lg:text-[14px]"
+          >
+            {checkoutBusy ? 'Проводим продажу…' : 'Оформить продажу'}
+          </button>
         </div>
-
-        {checkoutError && (
-          <div className="flex items-center gap-2 rounded-xl bg-[color:var(--admin-danger-dim)] px-3.5 py-2.5 text-[12.5px] font-medium text-[color:var(--admin-danger)]">
-            <AlertIcon width={14} height={14} className="shrink-0" />
-            {checkoutError}
-          </div>
-        )}
-
-        <button
-          onClick={completeSale}
-          disabled={(cart.length === 0 && cartBundles.length === 0) || checkoutBusy}
-          className="rounded-xl bg-[color:var(--admin-accent)] py-3.5 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
-        >
-          {checkoutBusy ? 'Проводим продажу…' : 'Оформить продажу'}
-        </button>
       </Card>
 
       {recentSales.length > 0 && (

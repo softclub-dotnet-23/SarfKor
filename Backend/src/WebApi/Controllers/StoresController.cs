@@ -3,12 +3,16 @@ using Application.Common;
 using Application.Sales.Queries.GetCashierAnomalyReport;
 using Application.Sales.Queries.GetDailySalesReport;
 using Application.Sales.Queries.GetProfitReport;
-using Application.Stores.Commands.AddStoreEmployee;
 using Application.Stores.Commands.CreateStore;
+using Application.Stores.Commands.CreateStoreEmployeeInvitation;
 using Application.Stores.Commands.RemoveStoreEmployee;
+using Application.Stores.Commands.ResendStoreEmployeeInvitation;
+using Application.Stores.Commands.RevokeStoreEmployeeInvitation;
 using Application.Stores.Commands.UpdateStoreEmployee;
 using Application.Stores.Queries.GetStoreDashboard;
+using Application.Stores.Queries.GetStoreEmployeeInvitations;
 using Application.Stores.Queries.GetStoreEmployees;
+using Domain.Stores;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -41,38 +45,6 @@ public sealed class StoresController : ControllerBase
 
         var result = await handler.Handle(command, cancellationToken);
         return Ok(result);
-    }
-
-    [HttpPost("stores/{storeId:int}/employees")]
-    [Authorize("StorePartner")]
-    [EnableRateLimiting("partner-write")]
-    public async Task<IActionResult> AddEmployee(
-        int storeId,
-        AddStoreEmployeeRequest request,
-        [FromServices] ICommandHandler<AddStoreEmployeeCommand, AddStoreEmployeeResult> handler,
-        [FromServices] IValidator<AddStoreEmployeeCommand> validator,
-        CancellationToken cancellationToken)
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userId is null)
-            return Unauthorized();
-
-        var command = new AddStoreEmployeeCommand(storeId, request.EmployeeEmail, request.Role, userId);
-
-        var validationResult = await validator.ValidateAsync(command, cancellationToken);
-        if (!validationResult.IsValid)
-            return this.ToValidationProblem(validationResult);
-
-        var result = await handler.Handle(command, cancellationToken);
-        return result.Outcome switch
-        {
-            AddStoreEmployeeOutcome.Added => Ok(result),
-            AddStoreEmployeeOutcome.StoreNotFound => NotFound("Store not found."),
-            AddStoreEmployeeOutcome.Forbidden => Forbid(),
-            AddStoreEmployeeOutcome.AlreadyEmployed => Conflict("This user is already an employee of this store."),
-            AddStoreEmployeeOutcome.Invited => Ok(result),
-            _ => Problem()
-        };
     }
 
     [HttpDelete("store-employees/{storeEmployeeId:int}")]
@@ -158,6 +130,122 @@ public sealed class StoresController : ControllerBase
             GetStoreEmployeesOutcome.Found => Ok(result),
             GetStoreEmployeesOutcome.StoreNotFound => NotFound(),
             GetStoreEmployeesOutcome.Forbidden => Forbid(),
+            _ => Problem()
+        };
+    }
+
+    // Replaces AddEmployee's direct-attach path (kept above only for backward compatibility —
+    // ADMIN_PROMPT-style task note: the frontend no longer calls it) — every new employee, existing
+    // account or not, goes through an emailed link they have to click and confirm themselves.
+    [HttpPost("stores/{storeId:int}/employee-invitations")]
+    [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
+    public async Task<IActionResult> CreateEmployeeInvitation(
+        int storeId,
+        CreateStoreEmployeeInvitationRequest request,
+        [FromServices] ICommandHandler<CreateStoreEmployeeInvitationCommand, CreateStoreEmployeeInvitationResult> handler,
+        [FromServices] IValidator<CreateStoreEmployeeInvitationCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new CreateStoreEmployeeInvitationCommand(storeId, request.Email, request.Role, userId);
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            CreateStoreEmployeeInvitationOutcome.Sent => Ok(result),
+            CreateStoreEmployeeInvitationOutcome.StoreNotFound => NotFound("Store not found."),
+            CreateStoreEmployeeInvitationOutcome.Forbidden => Forbid(),
+            CreateStoreEmployeeInvitationOutcome.AlreadyEmployed => Conflict("This user is already an employee of this store."),
+            _ => Problem()
+        };
+    }
+
+    [HttpGet("stores/{storeId:int}/employee-invitations")]
+    [Authorize("StorePartner")]
+    public async Task<IActionResult> GetEmployeeInvitations(
+        int storeId,
+        StoreEmployeeInvitationStatus? status,
+        [FromServices] IQueryHandler<GetStoreEmployeeInvitationsQuery, GetStoreEmployeeInvitationsResult> handler,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var result = await handler.Handle(new GetStoreEmployeeInvitationsQuery(storeId, userId, status), cancellationToken);
+        return result.Outcome switch
+        {
+            GetStoreEmployeeInvitationsOutcome.Found => Ok(result),
+            GetStoreEmployeeInvitationsOutcome.StoreNotFound => NotFound(),
+            GetStoreEmployeeInvitationsOutcome.Forbidden => Forbid(),
+            _ => Problem()
+        };
+    }
+
+    [HttpPost("store-employee-invitations/{invitationId:int}/revoke")]
+    [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
+    public async Task<IActionResult> RevokeEmployeeInvitation(
+        int invitationId,
+        [FromServices] ICommandHandler<RevokeStoreEmployeeInvitationCommand, RevokeStoreEmployeeInvitationResult> handler,
+        [FromServices] IValidator<RevokeStoreEmployeeInvitationCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new RevokeStoreEmployeeInvitationCommand(invitationId, userId);
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            RevokeStoreEmployeeInvitationOutcome.Revoked => Ok(result),
+            RevokeStoreEmployeeInvitationOutcome.NotFound => NotFound(),
+            RevokeStoreEmployeeInvitationOutcome.Forbidden => Forbid(),
+            RevokeStoreEmployeeInvitationOutcome.NotPending => Conflict("This invitation is no longer pending."),
+            _ => Problem()
+        };
+    }
+
+    // Its own rate-limit bucket, not "partner-write" — this is the one owner action here that
+    // sends an email, and task spec explicitly calls out "с ограничением частоты".
+    [HttpPost("store-employee-invitations/{invitationId:int}/resend")]
+    [Authorize("StorePartner")]
+    [EnableRateLimiting("invite-resend")]
+    public async Task<IActionResult> ResendEmployeeInvitation(
+        int invitationId,
+        [FromServices] ICommandHandler<ResendStoreEmployeeInvitationCommand, ResendStoreEmployeeInvitationResult> handler,
+        [FromServices] IValidator<ResendStoreEmployeeInvitationCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new ResendStoreEmployeeInvitationCommand(invitationId, userId);
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            ResendStoreEmployeeInvitationOutcome.Resent => Ok(result),
+            ResendStoreEmployeeInvitationOutcome.NotFound => NotFound(),
+            ResendStoreEmployeeInvitationOutcome.Forbidden => Forbid(),
+            ResendStoreEmployeeInvitationOutcome.NotPending => Conflict("This invitation is no longer pending."),
             _ => Problem()
         };
     }

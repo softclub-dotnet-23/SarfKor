@@ -6,6 +6,7 @@ import { ErrorState } from '../components/ErrorState'
 import { EmptyState } from '../components/EmptyState'
 import { Select } from '../components/Select'
 import { Pagination } from '../components/Pagination'
+import { DateField } from '../components/DateField'
 import { AuditLogRow } from '../components/AuditLogRow'
 import { ClockIcon } from '../components/icons'
 import { adminApi, ApiError, type AuditLogEntry } from '../../lib/api'
@@ -48,8 +49,8 @@ export function AdminAuditLogPage() {
         entityType: entityType || undefined,
         action: action || undefined,
         performedByUserId: performedByUserId || undefined,
-        from: from ? new Date(from).toISOString() : undefined,
-        to: to ? new Date(to).toISOString() : undefined,
+        from: from || undefined,
+        to: to || undefined,
       })
       setEntries(res.entries)
       setTotalCount(res.totalCount)
@@ -96,20 +97,8 @@ export function AdminAuditLogPage() {
             className="w-full rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
           />
         </form>
-        <input
-          type="date"
-          value={from}
-          onChange={(e) => updateParam('from', e.target.value)}
-          title="С даты"
-          className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
-        />
-        <input
-          type="date"
-          value={to}
-          onChange={(e) => updateParam('to', e.target.value)}
-          title="По дату"
-          className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
-        />
+        <DateField value={from} onChange={(iso) => updateParam('from', iso)} title="С даты" />
+        <DateField value={to} onChange={(iso) => updateParam('to', iso)} title="По дату" />
         {performedByUserId && (
           <button
             onClick={() => updateParam('performedByUserId', '')}
@@ -129,17 +118,23 @@ export function AdminAuditLogPage() {
         {entries && entries.length > 0 && (
           <div className="flex flex-col gap-1.5 p-2">
             {entries.map((e) => (
-              <div key={e.auditLogId} className="group relative">
-                <AuditLogRow entry={e} />
-                {!performedByUserId && (
-                  <button
-                    onClick={() => updateParam('performedByUserId', e.performedByUserId)}
-                    className="absolute right-11 top-3 hidden text-[10.5px] font-semibold text-[color:var(--mod-accent2)] hover:underline group-hover:block"
-                  >
-                    только он
-                  </button>
-                )}
-              </div>
+              <AuditLogRow
+                key={e.auditLogId}
+                entry={e}
+                extra={
+                  !performedByUserId && (
+                    <button
+                      onClick={(ev) => {
+                        ev.stopPropagation()
+                        updateParam('performedByUserId', e.performedByUserId)
+                      }}
+                      className="shrink-0 text-[10.5px] font-semibold text-[color:var(--mod-muted)] opacity-0 hover:text-[color:var(--mod-text)] hover:underline group-hover:opacity-100"
+                    >
+                      только он
+                    </button>
+                  )
+                }
+              />
             ))}
           </div>
         )}

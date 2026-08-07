@@ -30,5 +30,10 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .WithMany()
             .HasForeignKey(x => x.TaxRateId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // SearchProductsQueryHandler's `ILIKE '%term%'` on Name — a plain btree index only helps a
+        // prefix match, not an arbitrary substring; gin_trgm_ops does. CategoryId/BrandId already
+        // get a btree index for free from the FK configuration above.
+        builder.HasIndex(x => x.Name).HasMethod("gin").HasOperators("gin_trgm_ops");
     }
 }

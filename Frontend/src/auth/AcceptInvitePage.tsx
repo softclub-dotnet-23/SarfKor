@@ -1,11 +1,13 @@
-import { useState, type FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { LogoMark } from '../components/Logo'
 import { SunIcon, MoonIcon } from '../components/icons'
 import { useTheme } from '../theme/ThemeProvider'
 import { useThemeTransition } from '../theme/useThemeTransition'
-import { authApi, ApiError } from '../lib/api'
+import { LanguageSwitcher } from '../admin/components/LanguageSwitcher'
+import { useT } from '../i18n/translations'
+import { authApi, ApiError, type InviteInfo } from '../lib/api'
 import { useAuth } from './AuthContext'
 
 function EyeToggle({ shown, onClick }: { shown: boolean; onClick: () => void }) {
@@ -33,55 +35,96 @@ function EyeToggle({ shown, onClick }: { shown: boolean; onClick: () => void }) 
   )
 }
 
+type Screen = 'loading' | 'linkIncomplete' | 'notFound' | 'expired' | 'accepted' | 'revoked' | 'form' | 'accountExists'
+
+const inputCls =
+  'w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-3.5 py-2.5 pr-10 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]'
+
+const roleLabelKey = { Cashier: 'partner.staff.roleCashier', Owner: 'partner.staff.roleOwner' } as const
+
 export function AcceptInvitePage() {
   const { theme, toggleTheme } = useTheme()
   const { runThemeTransition } = useThemeTransition()
+  const t = useT()
   const isDark = theme === 'dark'
+  const params = useParams<{ token?: string }>()
   const [searchParams] = useSearchParams()
-  const token = searchParams.get('token') ?? ''
+  // Path param (/invite/:token, the current link shape) first, falling back to the old
+  // ?token= query shape in case an already-sent email link is still floating around.
+  const token = params.token ?? searchParams.get('token') ?? ''
   const navigate = useNavigate()
   const { applyAuthResult } = useAuth()
 
+  const [screen, setScreen] = useState<Screen>(token ? 'loading' : 'linkIncomplete')
+  const [info, setInfo] = useState<InviteInfo | null>(null)
+
+  const [displayName, setDisplayName] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [accountAlreadyExisted, setAccountAlreadyExisted] = useState(false)
   const [error, setError] = useState('')
 
-  const linkIncomplete = !token
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    authApi
+      .getInvite(token)
+      .then((res) => {
+        if (cancelled) return
+        setInfo(res)
+        if (res.outcome === 'Valid') setScreen('form')
+        else if (res.outcome === 'NotFound') setScreen('notFound')
+        else if (res.outcome === 'Expired') setScreen('expired')
+        else if (res.outcome === 'Accepted') setScreen('accepted')
+        else if (res.outcome === 'Revoked') setScreen('revoked')
+      })
+      .catch(() => {
+        if (!cancelled) setScreen('notFound')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
 
-    if (password !== confirmPassword) {
-      setError('Пароли не совпадают')
+    const requiresPassword = info?.requiresPassword !== false
+    if (requiresPassword && password !== confirmPassword) {
+      setError(t('partner.invite.passwordMismatch'))
       return
     }
 
     setLoading(true)
     try {
-      const res = await authApi.acceptStoreEmployeeInvitation(token, password)
+      const res = await authApi.acceptStoreEmployeeInvitation(token, displayName.trim(), requiresPassword ? password : undefined)
       if (res.outcome === 'Accepted' && res.auth) {
         await applyAuthResult(res.auth)
         // RequireOwner already bounces a Cashier straight to /admin/pos — no special-casing needed.
         navigate('/admin', { replace: true })
       } else if (res.outcome === 'AccountAlreadyExisted') {
-        setAccountAlreadyExisted(true)
+        setScreen('accountExists')
+      } else if (res.outcome === 'Expired') {
+        setScreen('expired')
+      } else if (res.outcome === 'AlreadyAccepted') {
+        setScreen('accepted')
+      } else if (res.outcome === 'Revoked') {
+        setScreen('revoked')
+      } else if (res.outcome === 'NotFound') {
+        setScreen('notFound')
       } else {
-        setError('Приглашение недействительно или истекло — попросите владельца магазина пригласить вас снова')
+        setError(t('partner.invite.genericError'))
       }
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.status === 429
-          ? 'Слишком много попыток. Подождите немного и попробуйте снова'
-          : 'Приглашение недействительно или истекло — попросите владельца магазина пригласить вас снова',
-      )
+      setError(err instanceof ApiError && err.status === 429 ? t('partner.invite.tooManyAttempts') : t('partner.invite.genericError'))
     } finally {
       setLoading(false)
     }
   }
+
+  const requiresPassword = info?.requiresPassword !== false
 
   return (
     <div className="admin-shell flex min-h-screen bg-[color:var(--admin-content)] text-[color:var(--admin-text)]">
@@ -117,16 +160,17 @@ export function AcceptInvitePage() {
             <LogoMark size={26} />
             <span className="text-[18px] font-extrabold tracking-tight text-[color:var(--admin-text)]">Sarfkor</span>
           </Link>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2">
+            <LanguageSwitcher scheme="admin" />
             <button
               onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
-              aria-label="Переключить тему"
+              aria-label={t('shell.toggleTheme')}
               className="grid h-9 w-9 place-items-center rounded-lg text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]"
             >
               {isDark ? <SunIcon width={17} height={17} /> : <MoonIcon width={17} height={17} />}
             </button>
-            <Link to="/" className="text-[13px] font-medium text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text)]">
-              На главный сайт
+            <Link to="/" className="hidden text-[13px] font-medium text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text)] sm:inline">
+              {t('partner.invite.backToSite')}
             </Link>
           </div>
         </div>
@@ -138,78 +182,89 @@ export function AcceptInvitePage() {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="w-full max-w-[380px]"
           >
-            {linkIncomplete ? (
+            {screen === 'loading' && (
+              <p className="text-center text-[14px] text-[color:var(--admin-text-tertiary)]">{t('partner.invite.loading')}</p>
+            )}
+
+            {screen === 'linkIncomplete' && (
+              <InfoScreen titleKey="partner.invite.linkIncompleteTitle" bodyKey="partner.invite.linkIncompleteBody" t={t} />
+            )}
+            {screen === 'notFound' && <InfoScreen titleKey="partner.invite.notFoundTitle" bodyKey="partner.invite.notFoundBody" t={t} />}
+            {screen === 'expired' && <InfoScreen titleKey="partner.invite.expiredTitle" bodyKey="partner.invite.expiredBody" t={t} />}
+            {screen === 'accepted' && <InfoScreen titleKey="partner.invite.acceptedTitle" bodyKey="partner.invite.acceptedBody" t={t} />}
+            {screen === 'revoked' && <InfoScreen titleKey="partner.invite.revokedTitle" bodyKey="partner.invite.revokedBody" t={t} />}
+            {screen === 'accountExists' && <InfoScreen titleKey="partner.invite.accountExistsTitle" bodyKey="partner.invite.accountExistsBody" t={t} />}
+
+            {screen === 'form' && info && (
               <>
                 <h2 className="mb-1.5 text-[24px] font-extrabold tracking-tight text-[color:var(--admin-text)]">
-                  Ссылка неполная
+                  {t('partner.invite.formTitle')}
                 </h2>
                 <p className="mb-7 text-[14px] leading-relaxed text-[color:var(--admin-text-tertiary)]">
-                  Откройте ссылку из письма целиком, или попросите владельца магазина пригласить вас снова.
+                  {t('partner.invite.formSubtitle', {
+                    store: info.storeName ?? '',
+                    role: info.role ? t(roleLabelKey[info.role]) : '',
+                  })}
                 </p>
-                <Link
-                  to="/login"
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98]"
-                >
-                  Войти
-                </Link>
-              </>
-            ) : accountAlreadyExisted ? (
-              <>
-                <h2 className="mb-1.5 text-[24px] font-extrabold tracking-tight text-[color:var(--admin-text)]">
-                  Вы уже в команде
-                </h2>
-                <p className="mb-7 text-[14px] leading-relaxed text-[color:var(--admin-text-tertiary)]">
-                  Аккаунт с этим email уже существует — мы добавили вас в магазин. Войдите со своим текущим паролем.
-                </p>
-                <Link
-                  to="/login"
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98]"
-                >
-                  Войти
-                </Link>
-              </>
-            ) : (
-              <>
-                <h2 className="mb-1.5 text-[24px] font-extrabold tracking-tight text-[color:var(--admin-text)]">
-                  Приглашение в команду
-                </h2>
-                <p className="mb-7 text-[14px] text-[color:var(--admin-text-tertiary)]">Задайте пароль, чтобы начать работу</p>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                   <label className="flex flex-col gap-1.5">
-                    <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Пароль</span>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        minLength={8}
-                        autoComplete="new-password"
-                        autoFocus
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-3.5 py-2.5 pr-10 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
-                      />
-                      <EyeToggle shown={showPassword} onClick={() => setShowPassword((v) => !v)} />
+                    <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">{t('partner.invite.emailFieldLabel')}</span>
+                    <div className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text-tertiary)]">
+                      {info.email}
                     </div>
-                    <span className="text-[11px] text-[color:var(--admin-text-tertiary)]">Минимум 8 символов</span>
                   </label>
 
                   <label className="flex flex-col gap-1.5">
-                    <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Повторите пароль</span>
+                    <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">{t('partner.invite.nameLabel')}</span>
                     <input
-                      type={showPassword ? 'text' : 'password'}
                       required
-                      autoComplete="new-password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
+                      autoFocus
+                      maxLength={100}
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder={t('partner.invite.namePlaceholder')}
+                      className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
                     />
                   </label>
 
+                  {requiresPassword && (
+                    <>
+                      <label className="flex flex-col gap-1.5">
+                        <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">{t('partner.invite.passwordLabel')}</span>
+                        <div className="relative">
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            required
+                            minLength={8}
+                            autoComplete="new-password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className={inputCls}
+                          />
+                          <EyeToggle shown={showPassword} onClick={() => setShowPassword((v) => !v)} />
+                        </div>
+                        <span className="text-[11px] text-[color:var(--admin-text-tertiary)]">{t('partner.invite.passwordRequirements')}</span>
+                      </label>
+
+                      <label className="flex flex-col gap-1.5">
+                        <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">{t('partner.invite.confirmPasswordLabel')}</span>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          autoComplete="new-password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
+                        />
+                      </label>
+                    </>
+                  )}
+
                   {error && (
-                    <div className="rounded-lg bg-[#f8717118] px-3.5 py-2.5 text-[12.5px] font-medium text-[#f87171]">
+                    <div className="rounded-lg bg-[color:var(--admin-danger-dim)] px-3.5 py-2.5 text-[12.5px] font-medium text-[color:var(--admin-danger)]">
                       {error}
                     </div>
                   )}
@@ -219,14 +274,37 @@ export function AcceptInvitePage() {
                     disabled={loading}
                     className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-60"
                   >
-                    {loading ? 'Сохраняем…' : 'Присоединиться'}
+                    {loading ? t('partner.invite.submitBusy') : t('partner.invite.submit')}
                   </button>
                 </form>
               </>
+            )}
+
+            {(screen === 'linkIncomplete' ||
+              screen === 'notFound' ||
+              screen === 'expired' ||
+              screen === 'accepted' ||
+              screen === 'revoked' ||
+              screen === 'accountExists') && (
+              <Link
+                to="/login"
+                className="mt-7 flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98]"
+              >
+                {t('partner.invite.goLogin')}
+              </Link>
             )}
           </motion.div>
         </div>
       </div>
     </div>
+  )
+}
+
+function InfoScreen({ titleKey, bodyKey, t }: { titleKey: 'partner.invite.linkIncompleteTitle' | 'partner.invite.notFoundTitle' | 'partner.invite.expiredTitle' | 'partner.invite.acceptedTitle' | 'partner.invite.revokedTitle' | 'partner.invite.accountExistsTitle'; bodyKey: 'partner.invite.linkIncompleteBody' | 'partner.invite.notFoundBody' | 'partner.invite.expiredBody' | 'partner.invite.acceptedBody' | 'partner.invite.revokedBody' | 'partner.invite.accountExistsBody'; t: (key: typeof titleKey | typeof bodyKey) => string }) {
+  return (
+    <>
+      <h2 className="mb-1.5 text-[24px] font-extrabold tracking-tight text-[color:var(--admin-text)]">{t(titleKey)}</h2>
+      <p className="mb-1 text-[14px] leading-relaxed text-[color:var(--admin-text-tertiary)]">{t(bodyKey)}</p>
+    </>
   )
 }

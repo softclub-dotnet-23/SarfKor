@@ -8,6 +8,7 @@ using Application.Identity.Commands.Register;
 using Application.Identity.Commands.ResetPassword;
 using Application.Stores.Commands.AcceptStoreEmployeeInvitation;
 using Application.Stores.Commands.ConfirmStoreOwnerInvitation;
+using Application.Stores.Queries.GetStoreEmployeeInvitationByToken;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -149,6 +150,34 @@ public sealed class AuthController : ControllerBase
         };
     }
 
+    // Public — no auth, so the /invite/{token} page can show who's inviting whom before the
+    // visitor commits to anything. Same rate-limit bucket as AcceptInvite: both sit on the same
+    // guessable-token attack surface.
+    [HttpGet("invite/{token}")]
+    [EnableRateLimiting("invite-accept")]
+    public async Task<IActionResult> GetInvite(
+        string token,
+        [FromServices] IQueryHandler<GetStoreEmployeeInvitationByTokenQuery, GetStoreEmployeeInvitationByTokenResult> handler,
+        [FromServices] IValidator<GetStoreEmployeeInvitationByTokenQuery> validator,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetStoreEmployeeInvitationByTokenQuery(token);
+        var validationResult = await validator.ValidateAsync(query, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(query, cancellationToken);
+        return result.Outcome switch
+        {
+            GetStoreEmployeeInvitationByTokenOutcome.Valid => Ok(result),
+            GetStoreEmployeeInvitationByTokenOutcome.NotFound => NotFound(new { outcome = "NotFound" }),
+            GetStoreEmployeeInvitationByTokenOutcome.Expired => Ok(new { outcome = "Expired" }),
+            GetStoreEmployeeInvitationByTokenOutcome.Accepted => Ok(new { outcome = "Accepted" }),
+            GetStoreEmployeeInvitationByTokenOutcome.Revoked => Ok(new { outcome = "Revoked" }),
+            _ => Problem()
+        };
+    }
+
     [HttpPost("accept-invite")]
     [EnableRateLimiting("invite-accept")]
     public async Task<IActionResult> AcceptInvite(
@@ -166,8 +195,12 @@ public sealed class AuthController : ControllerBase
         {
             AcceptStoreEmployeeInvitationOutcome.Accepted => Ok(result),
             AcceptStoreEmployeeInvitationOutcome.AccountAlreadyExisted => Ok(result),
-            AcceptStoreEmployeeInvitationOutcome.InvalidOrExpiredToken => BadRequest("Invalid or expired invitation link."),
-            AcceptStoreEmployeeInvitationOutcome.RegistrationFailed => BadRequest("Could not create the account — check password requirements."),
+            AcceptStoreEmployeeInvitationOutcome.NotFound => NotFound(new { outcome = "NotFound" }),
+            AcceptStoreEmployeeInvitationOutcome.Expired => BadRequest(new { outcome = "Expired" }),
+            AcceptStoreEmployeeInvitationOutcome.AlreadyAccepted => Conflict(new { outcome = "AlreadyAccepted" }),
+            AcceptStoreEmployeeInvitationOutcome.Revoked => Conflict(new { outcome = "Revoked" }),
+            AcceptStoreEmployeeInvitationOutcome.PasswordRequired => BadRequest(new { outcome = "PasswordRequired" }),
+            AcceptStoreEmployeeInvitationOutcome.RegistrationFailed => BadRequest(new { outcome = "RegistrationFailed" }),
             _ => Problem()
         };
     }

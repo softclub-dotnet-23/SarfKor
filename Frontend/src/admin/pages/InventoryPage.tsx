@@ -7,6 +7,7 @@ import { Loading } from '../components/Loading'
 import { ErrorState } from '../components/ErrorState'
 import { Reveal } from '../components/Reveal'
 import { BarcodeScannerView } from '../components/BarcodeScannerView'
+import { ProductPicker } from '../components/ProductPicker'
 import { SearchIcon, PlusIcon, AlertIcon, TruckIcon, BarcodeIcon, CameraIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner'
@@ -16,11 +17,14 @@ import {
   storesApi,
   catalogApi,
   pricingApi,
+  suppliersApi,
   ApiError,
   type StockLevel,
   type ReorderAlert,
   type Category,
   type Brand,
+  type Supplier,
+  type ProductSearchItem,
 } from '../../lib/api'
 import { createReorderRule } from '../../lib/api/reorderRules'
 
@@ -106,12 +110,13 @@ export function InventoryPage() {
   const [priceDone, setPriceDone] = useState(false)
 
   const [ruleOpen, setRuleOpen] = useState(false)
-  const [ruleProductId, setRuleProductId] = useState('')
+  const [ruleProduct, setRuleProduct] = useState<ProductSearchItem | null>(null)
   const [ruleThreshold, setRuleThreshold] = useState('5')
   const [ruleReorderQty, setRuleReorderQty] = useState('20')
   const [ruleSupplierId, setRuleSupplierId] = useState('')
   const [ruleBusy, setRuleBusy] = useState(false)
   const [ruleError, setRuleError] = useState('')
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
 
   const load = useCallback(async () => {
     if (!storeId) return
@@ -138,6 +143,11 @@ export function InventoryPage() {
     catalogApi.getCategories().then((res) => setCategories(res.categories)).catch(() => {})
     catalogApi.getBrands().then((res) => setBrands(res.brands)).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!storeId) return
+    suppliersApi.getSuppliers(storeId).then((res) => setSuppliers(res.suppliers)).catch(() => {})
+  }, [storeId])
 
   const alertMap = useMemo(() => new Map(alerts.map((a) => [a.productId, a])), [alerts])
 
@@ -382,10 +392,10 @@ export function InventoryPage() {
 
   async function confirmCreateRule() {
     if (!storeId || ruleBusy) return
-    const productId = Number(ruleProductId)
+    const productId = ruleProduct?.productId
     const thresholdQuantity = Number(ruleThreshold)
     const reorderQuantity = Number(ruleReorderQty)
-    if (!productId || productId <= 0 || !thresholdQuantity || thresholdQuantity < 0 || !reorderQuantity || reorderQuantity <= 0) {
+    if (!productId || !thresholdQuantity || thresholdQuantity < 0 || !reorderQuantity || reorderQuantity <= 0) {
       setRuleError('Проверьте товар, порог и количество пополнения')
       return
     }
@@ -399,7 +409,7 @@ export function InventoryPage() {
         return
       }
       setRuleOpen(false)
-      setRuleProductId('')
+      setRuleProduct(null)
       setRuleThreshold('5')
       setRuleReorderQty('20')
       setRuleSupplierId('')
@@ -482,7 +492,10 @@ export function InventoryPage() {
           запоминаются в этом браузере.
         </p>
 
-        <div className="overflow-x-auto">
+        {/* Table on wider screens; a stacked card list below sm — a 3-action
+            row per line doesn't fit a phone width without cramming, and a
+            cashier checking stock is more likely on a phone than at a desk. */}
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
             <thead>
               <tr className="text-[11px] uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
@@ -560,6 +573,71 @@ export function InventoryPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex flex-col gap-2.5 sm:hidden">
+          {filtered.map((s) => {
+            const alert = alertMap.get(s.productId)
+            const name = nameCache[s.productId]
+            return (
+              <div key={s.productId} className="rounded-[14px] bg-[color:var(--admin-hover)] p-3.5">
+                <div className="mb-2.5 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-[14px] font-semibold text-[color:var(--admin-text)]">{name ?? `Товар #${s.productId}`}</div>
+                    <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">ID {s.productId}</div>
+                  </div>
+                  {alert ? (
+                    <Badge variant="warning" className="shrink-0">Мало · {s.quantity}</Badge>
+                  ) : s.quantity === 0 ? (
+                    <Badge variant="danger" className="shrink-0">Нет в наличии</Badge>
+                  ) : (
+                    <Badge variant="success" className="shrink-0">{s.quantity}</Badge>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    onClick={() => {
+                      setReceiptFor({ productId: s.productId, productName: name })
+                      setReceiptQty(10)
+                      setReceiptPrice('')
+                      setReceiptError('')
+                    }}
+                    className="flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg bg-[color:var(--admin-accent-soft)] px-1 py-2 text-[10.5px] font-semibold text-[color:var(--admin-accent)]"
+                  >
+                    <TruckIcon width={15} height={15} />
+                    Приход
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPriceFor({ productId: s.productId, productName: name })
+                      setPriceAmount('')
+                      setPriceDone(false)
+                      setPriceError('')
+                    }}
+                    className="flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg bg-[color:var(--admin-card)] px-1 py-2 text-center text-[10.5px] font-semibold text-[color:var(--admin-text-secondary)]"
+                  >
+                    Цена
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCostFor({ productId: s.productId, productName: name })
+                      setCostAmount('')
+                      setCostDone(false)
+                      setCostError('')
+                    }}
+                    className="flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg bg-[color:var(--admin-card)] px-1 py-2 text-center text-[10.5px] font-semibold text-[color:var(--admin-text-secondary)]"
+                  >
+                    Себестоимость
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+          {filtered.length === 0 && (
+            <div className="py-12 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">
+              {stock?.length === 0 ? 'На складе пока нет ни одной позиции' : 'Ничего не найдено'}
+            </div>
+          )}
         </div>
       </Card>
       </Reveal>
@@ -866,14 +944,8 @@ export function InventoryPage() {
           </p>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">ID товара</span>
-            <input
-              type="number"
-              min={1}
-              value={ruleProductId}
-              onChange={(e) => setRuleProductId(e.target.value)}
-              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
-            />
+            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Товар</span>
+            <ProductPicker value={ruleProduct} onChange={setRuleProduct} storeId={storeId ?? undefined} scheme="admin" scanEnabled />
           </label>
 
           <div className="grid grid-cols-2 gap-3">
@@ -900,13 +972,12 @@ export function InventoryPage() {
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">ID предпочитаемого поставщика (необязательно)</span>
-            <input
-              type="number"
-              min={1}
+            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Предпочитаемый поставщик (необязательно)</span>
+            <Select
               value={ruleSupplierId}
-              onChange={(e) => setRuleSupplierId(e.target.value)}
-              className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[14px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+              onChange={setRuleSupplierId}
+              placeholder="Без предпочтения"
+              options={suppliers.map((s) => ({ value: String(s.supplierId), label: s.name }))}
             />
           </label>
 
@@ -914,7 +985,7 @@ export function InventoryPage() {
 
           <button
             onClick={confirmCreateRule}
-            disabled={ruleBusy || !ruleProductId}
+            disabled={ruleBusy || !ruleProduct}
             className="flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
           >
             <PlusIcon width={16} height={16} />

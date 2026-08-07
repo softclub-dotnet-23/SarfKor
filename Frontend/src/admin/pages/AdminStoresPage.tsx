@@ -6,6 +6,7 @@ import { ErrorState } from '../components/ErrorState'
 import { EmptyState } from '../components/EmptyState'
 import { Select } from '../components/Select'
 import { Pagination } from '../components/Pagination'
+import { DateField } from '../components/DateField'
 import { StoreStatusBadge, SubscriptionStatusBadge } from '../components/StatusBadge'
 import { StoreDetailPanel } from '../components/StoreDetailPanel'
 import { SearchIcon, StoreIcon, AlertIcon } from '../components/icons'
@@ -125,8 +126,8 @@ export function AdminStoresPage() {
         take: TAKE,
         status: status || undefined,
         subscriptionStatus: subscriptionStatus || undefined,
-        connectedFrom: connectedFrom ? new Date(connectedFrom).toISOString() : undefined,
-        connectedTo: connectedTo ? new Date(connectedTo).toISOString() : undefined,
+        connectedFrom: connectedFrom || undefined,
+        connectedTo: connectedTo || undefined,
         search: search || undefined,
       })
       setStores(res.stores)
@@ -165,7 +166,7 @@ export function AdminStoresPage() {
     <div style={{ animation: 'mod-fade-in .3s ease' }}>
       {flag && (
         <div className="mb-4">
-          <button onClick={() => updateParam('flag', '')} className="mb-3 text-[12px] font-semibold text-[color:var(--mod-accent2)] hover:underline">
+          <button onClick={() => updateParam('flag', '')} className="mb-3 text-[12px] font-semibold text-[color:var(--mod-muted)] hover:text-[color:var(--mod-text)] hover:underline">
             ← Все магазины
           </button>
           <FlaggedStoresView flag={flag} onOpenStore={openStore} />
@@ -207,20 +208,8 @@ export function AdminStoresPage() {
               placeholder="Любая подписка"
               options={SUBSCRIPTION_STATUS_OPTIONS}
             />
-            <input
-              type="date"
-              value={connectedFrom}
-              onChange={(e) => updateParam('connectedFrom', e.target.value)}
-              title="Подключён с"
-              className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
-            />
-            <input
-              type="date"
-              value={connectedTo}
-              onChange={(e) => updateParam('connectedTo', e.target.value)}
-              title="Подключён по"
-              className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
-            />
+            <DateField value={connectedFrom} onChange={(iso) => updateParam('connectedFrom', iso)} title="Подключён с" />
+            <DateField value={connectedTo} onChange={(iso) => updateParam('connectedTo', iso)} title="Подключён по" />
           </div>
 
           <Card scheme="mod" className="overflow-hidden">

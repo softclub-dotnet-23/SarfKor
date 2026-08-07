@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { lockBodyScroll, unlockBodyScroll } from '../../lib/scrollLock'
 import { XIcon } from './icons'
 
 // Same scheme split as Card/Select/Input/Badge: 'admin' for the StorePartner cabinet,
@@ -35,10 +36,10 @@ export function AdminModal({ open, onClose, title, children, scheme = 'admin' }:
     if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
+    lockBodyScroll()
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      unlockBodyScroll()
     }
   }, [open, onClose])
 

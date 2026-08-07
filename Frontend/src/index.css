@@ -140,106 +140,132 @@ button {
 html.theme-wipe::view-transition-group(root) {
   animation-duration: 0.85s;
 }
-/* Admin panel — separate token set (dark-first product UI, distinct from the
-   light-first marketing site) but driven by the exact same .dark class the
-   public site's ThemeToggle already flips, so both surfaces stay in sync. */
+
+/* ===========================================================================
+   Shared work-console design system — ONE canonical token set, used by all
+   three logged-in cabinets (platform Admin, StorePartner, Cashier). This is
+   the single place that holds the actual palette values; --mod-* and
+   --admin-* below are not a second copy of the palette, they're just the
+   pre-existing per-cabinet variable NAMES every component/page already
+   references, now aliased to --ds-* so there is exactly one number to change.
+   Values are the platform-Admin console's original palette (the design
+   reference: neutral grey, no blue, color reserved for status), carried over
+   unchanged — StorePartner/Cashier used to have their own blue-accented set
+   (--admin-accent: #0284c7) which is what this replaces. Same .dark class
+   drives every cabinet, so the site-wide theme toggle stays in sync. */
+:root {
+  --ds-bg: #f5f5f6;
+  --ds-panel: #ffffff;
+  --ds-panel2: #efeff1;
+  --ds-elev: #ffffff;
+  --ds-border: rgba(0, 0, 0, 0.09);
+  --ds-border2: rgba(0, 0, 0, 0.15);
+  --ds-text: #0c0c0e;
+  --ds-muted: #6a6a72;
+  --ds-faint: #9a9aa2;
+  --ds-hover: rgba(0, 0, 0, 0.045);
+  --ds-accent: #27272a;
+  --ds-accent2: #18181b;
+  --ds-accent-dim: rgba(24, 24, 27, 0.07);
+  --ds-ok: #16a34a;
+  --ds-ok-dim: rgba(22, 163, 74, 0.12);
+  --ds-warn: #d97706;
+  --ds-warn-dim: rgba(217, 119, 6, 0.12);
+  --ds-danger: #dc2626;
+  --ds-danger-dim: rgba(220, 38, 38, 0.12);
+  --ds-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  --ds-shadow-lift: 0 4px 10px rgba(0, 0, 0, 0.08), 0 32px 64px -20px rgba(0, 0, 0, 0.2);
+}
+
+.dark {
+  --ds-bg: #000000;
+  --ds-panel: #0b0b0d;
+  --ds-panel2: #151517;
+  --ds-elev: #1c1c20;
+  --ds-border: rgba(255, 255, 255, 0.09);
+  --ds-border2: rgba(255, 255, 255, 0.16);
+  --ds-text: #f4f4f6;
+  --ds-muted: #8c8c96;
+  --ds-faint: #5a5a63;
+  --ds-hover: rgba(255, 255, 255, 0.05);
+  --ds-accent: #52525b;
+  --ds-accent2: #e4e4e7;
+  --ds-accent-dim: rgba(228, 228, 231, 0.12);
+  --ds-ok: #4ade80;
+  --ds-ok-dim: rgba(74, 222, 128, 0.16);
+  --ds-warn: #fbbf24;
+  --ds-warn-dim: rgba(251, 191, 36, 0.16);
+  --ds-danger: #f87171;
+  --ds-danger-dim: rgba(248, 113, 113, 0.14);
+  --ds-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --ds-shadow-lift: 0 4px 10px rgba(0, 0, 0, 0.35), 0 40px 80px -24px rgba(0, 0, 0, 0.7);
+}
+
+/* StorePartner cabinet (Owner) + Cashier (same shell class — Cashier's own
+   mobile-first layout still scopes .admin-shell for its tokens, see
+   AdminLayout.tsx). Every value below is a straight alias onto --ds-* —
+   this class no longer carries its own palette. */
 .admin-shell {
-  --admin-sidebar: #f7f8fa;
-  --admin-content: #f1f2f5;
-  --admin-card: #ffffff;
-  --admin-border: rgba(15, 23, 42, 0.08);
-  --admin-text: #0f1115;
-  --admin-text-secondary: rgba(15, 17, 21, 0.58);
-  --admin-text-tertiary: rgba(15, 17, 21, 0.4);
-  --admin-hover: rgba(15, 23, 42, 0.045);
-  --admin-accent: #0284c7;
-  --admin-accent-soft: rgba(2, 132, 199, 0.1);
-  --admin-success: #34d399;
-  --admin-success-dim: rgba(52, 211, 153, 0.13);
-  --admin-danger: #f87171;
-  --admin-danger-dim: rgba(248, 113, 113, 0.13);
-  --admin-warning: #fbbf24;
-  --admin-warning-dim: rgba(251, 191, 36, 0.13);
-  --admin-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 16px 32px -16px rgba(15, 23, 42, 0.12);
-  --admin-shadow-lift: 0 4px 8px rgba(15, 23, 42, 0.06), 0 32px 64px -20px rgba(15, 23, 42, 0.18);
+  --admin-sidebar: var(--ds-panel);
+  --admin-content: var(--ds-bg);
+  --admin-card: var(--ds-panel);
+  --admin-border: var(--ds-border);
+  --admin-text: var(--ds-text);
+  --admin-text-secondary: var(--ds-muted);
+  --admin-text-tertiary: var(--ds-faint);
+  --admin-hover: var(--ds-hover);
+  --admin-accent: var(--ds-accent);
+  --admin-accent-soft: var(--ds-accent-dim);
+  --admin-success: var(--ds-ok);
+  --admin-success-dim: var(--ds-ok-dim);
+  --admin-danger: var(--ds-danger);
+  --admin-danger-dim: var(--ds-danger-dim);
+  --admin-warning: var(--ds-warn);
+  --admin-warning-dim: var(--ds-warn-dim);
+  --admin-shadow: var(--ds-shadow);
+  --admin-shadow-lift: var(--ds-shadow-lift);
   color-scheme: light;
 }
 
 .dark .admin-shell {
-  --admin-sidebar: #0d0d0d;
-  --admin-content: #111111;
-  --admin-card: #1a1a1a;
-  --admin-border: rgba(255, 255, 255, 0.06);
-  --admin-text: #ffffff;
-  --admin-text-secondary: rgba(255, 255, 255, 0.5);
-  --admin-text-tertiary: rgba(255, 255, 255, 0.35);
-  --admin-hover: rgba(255, 255, 255, 0.05);
-  --admin-accent: #38bdf8;
-  --admin-accent-soft: rgba(56, 189, 248, 0.12);
-  --admin-success: #34d399;
-  --admin-success-dim: rgba(52, 211, 153, 0.16);
-  --admin-danger: #f87171;
-  --admin-danger-dim: rgba(248, 113, 113, 0.16);
-  --admin-warning: #fbbf24;
-  --admin-warning-dim: rgba(251, 191, 36, 0.16);
-  --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 20px 40px -20px rgba(0, 0, 0, 0.5);
-  --admin-shadow-lift: 0 4px 8px rgba(0, 0, 0, 0.3), 0 40px 80px -24px rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
 
 /* Platform Admin console (Admin role — store/subscription/user operator, not
-   moderation, see ADMIN_PROMPT.md) — its own token set (near-black panels in
-   dark mode) but shares .admin-shell's blue accent so the Admin surface reads
-   as the same product as the StorePartner cabinet. Same .dark class drives
-   both so the site-wide theme toggle stays in sync everywhere. Status colors
-   are a fixed palette used consistently everywhere: --mod-ok (green) = active,
-   --mod-warn (amber) = needs attention, --mod-danger (red) = blocked/stopped,
-   plain --mod-faint/--mod-panel2 (grey, via Badge's "neutral" variant) = waiting. */
+   moderation, see ADMIN_PROMPT.md) — the design reference the whole shared
+   layer above is drawn from. --mod-accent/-accent2/-accent-dim are the ONLY
+   accent tokens used anywhere in this shell's components (buttons, active
+   nav state, focus rings, badges, links) — recolor --ds-accent above and
+   it's recolored everywhere, not per-component. Status colors are a fixed
+   palette used consistently everywhere: --mod-ok (green) = active,
+   --mod-warn (amber) = needs attention, --mod-danger (red) = blocked/
+   stopped, plain --mod-faint/--mod-panel2 (grey, via Badge's "neutral"
+   variant) = waiting. */
 .mod-shell {
-  --mod-bg: #f5f5f6;
-  --mod-panel: #ffffff;
-  --mod-panel2: #efeff1;
-  --mod-elev: #ffffff;
-  --mod-border: rgba(0, 0, 0, 0.09);
-  --mod-border2: rgba(0, 0, 0, 0.15);
-  --mod-text: #0c0c0e;
-  --mod-muted: #6a6a72;
-  --mod-faint: #9a9aa2;
-  --mod-accent: #0284c7;
-  --mod-accent2: #0284c7;
-  --mod-accent-dim: rgba(2, 132, 199, 0.12);
-  --mod-ok: #16a34a;
-  --mod-ok-dim: rgba(22, 163, 74, 0.12);
-  --mod-warn: #d97706;
-  --mod-warn-dim: rgba(217, 119, 6, 0.12);
-  --mod-danger: #dc2626;
-  --mod-danger-dim: rgba(220, 38, 38, 0.12);
-  --mod-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-  --mod-shadow-lift: 0 4px 10px rgba(0, 0, 0, 0.08), 0 32px 64px -20px rgba(0, 0, 0, 0.2);
+  --mod-bg: var(--ds-bg);
+  --mod-panel: var(--ds-panel);
+  --mod-panel2: var(--ds-panel2);
+  --mod-elev: var(--ds-elev);
+  --mod-border: var(--ds-border);
+  --mod-border2: var(--ds-border2);
+  --mod-text: var(--ds-text);
+  --mod-muted: var(--ds-muted);
+  --mod-faint: var(--ds-faint);
+  --mod-accent: var(--ds-accent);
+  --mod-accent2: var(--ds-accent2);
+  --mod-accent-dim: var(--ds-accent-dim);
+  --mod-ok: var(--ds-ok);
+  --mod-ok-dim: var(--ds-ok-dim);
+  --mod-warn: var(--ds-warn);
+  --mod-warn-dim: var(--ds-warn-dim);
+  --mod-danger: var(--ds-danger);
+  --mod-danger-dim: var(--ds-danger-dim);
+  --mod-shadow: var(--ds-shadow);
+  --mod-shadow-lift: var(--ds-shadow-lift);
   color-scheme: light;
 }
 
 .dark .mod-shell {
-  --mod-bg: #000000;
-  --mod-panel: #0b0b0d;
-  --mod-panel2: #151517;
-  --mod-elev: #1c1c20;
-  --mod-border: rgba(255, 255, 255, 0.09);
-  --mod-border2: rgba(255, 255, 255, 0.16);
-  --mod-text: #f4f4f6;
-  --mod-muted: #8c8c96;
-  --mod-faint: #5a5a63;
-  --mod-accent: #38bdf8;
-  --mod-accent2: #7dd3fc;
-  --mod-accent-dim: rgba(56, 189, 248, 0.16);
-  --mod-ok: #4ade80;
-  --mod-ok-dim: rgba(74, 222, 128, 0.16);
-  --mod-warn: #fbbf24;
-  --mod-warn-dim: rgba(251, 191, 36, 0.16);
-  --mod-danger: #f87171;
-  --mod-danger-dim: rgba(248, 113, 113, 0.14);
-  --mod-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-  --mod-shadow-lift: 0 4px 10px rgba(0, 0, 0, 0.35), 0 40px 80px -24px rgba(0, 0, 0, 0.7);
   color-scheme: dark;
 }
 

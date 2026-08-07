@@ -83,6 +83,26 @@ export function getTopSellingProducts(storeId?: number, limit = 10) {
   )
 }
 
+export interface ProductSearchItem {
+  productId: number
+  name: string
+  barcode: string
+  brandName?: string
+  categoryName?: string
+  price?: number
+  currency?: string
+}
+
+// Backs the shared entity picker (EntityPicker/ProductPicker) -- server-side search by
+// name/barcode/brand at once, so nothing in the UI ever has to ask someone to type a numeric
+// product ID by hand. storeId is optional and, when given, annotates each row with that store's
+// current price.
+export function searchProducts(params: { search?: string; categoryId?: number; storeId?: number; skip?: number; take?: number }) {
+  return apiFetch<{ items: ProductSearchItem[]; totalCount: number }>('/api/products/search', {
+    query: params,
+  })
+}
+
 export interface SubmitNewProductRequest {
   barcode: string
   name: string

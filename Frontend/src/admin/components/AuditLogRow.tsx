@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { ChevronDownIcon, ClockIcon } from './icons'
 import type { AuditLogEntry } from '../../lib/api'
 
@@ -18,18 +18,24 @@ function tryPretty(json?: string) {
 // One expandable row: who / what / which object / when / reason, with an optional before->after
 // diff — shared by the Журнал page (all entries) and each store/user card's "История действий" tab
 // (pre-filtered to that one entity), so the rendering never drifts between the two.
-export function AuditLogRow({ entry, actionLabel }: { entry: AuditLogEntry; actionLabel?: string }) {
+export function AuditLogRow({ entry, actionLabel, extra }: { entry: AuditLogEntry; actionLabel?: string; extra?: ReactNode }) {
   const [expanded, setExpanded] = useState(false)
   const before = tryPretty(entry.beforeStateJson)
   const after = tryPretty(entry.afterStateJson)
   const canExpand = !!(before || after || entry.reason)
 
   return (
-    <div className="rounded-xl border border-[color:var(--mod-border)]">
-      <button
+    <div className="group rounded-xl border border-[color:var(--mod-border)]">
+      {/* A real sibling button (`extra`), not an absolutely-positioned overlay on top of this row —
+          the old overlay drifted onto the timestamp whenever a row's height differed from the
+          pixel offset it was hard-coded against. Also can't nest `extra`'s <button> inside this
+          row's own toggle, so the toggle is a div with onClick, not a <button>, here. */}
+      <div
+        role="button"
+        tabIndex={canExpand ? 0 : -1}
         onClick={() => canExpand && setExpanded((v) => !v)}
-        disabled={!canExpand}
-        className="flex w-full items-center gap-3 px-3.5 py-3 text-left disabled:cursor-default"
+        onKeyDown={(e) => canExpand && (e.key === 'Enter' || e.key === ' ') && setExpanded((v) => !v)}
+        className={`flex w-full items-center gap-3 px-3.5 py-3 text-left ${canExpand ? 'cursor-pointer' : 'cursor-default'}`}
       >
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]">
           <ClockIcon width={14} height={14} />
@@ -42,13 +48,14 @@ export function AuditLogRow({ entry, actionLabel }: { entry: AuditLogEntry; acti
             {entry.details ? ` · ${entry.details}` : ''}
           </div>
         </div>
+        {extra}
         <span className="shrink-0 font-[JetBrains_Mono,monospace] text-[10.5px] text-[color:var(--mod-faint)]">
           {fmtDateTime(entry.occurredAt)}
         </span>
         {canExpand && (
           <ChevronDownIcon width={13} height={13} className={`shrink-0 text-[color:var(--mod-faint)] transition-transform ${expanded ? 'rotate-180' : ''}`} />
         )}
-      </button>
+      </div>
       {expanded && canExpand && (
         <div className="border-t border-[color:var(--mod-border)] px-3.5 py-3">
           {entry.reason && (

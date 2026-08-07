@@ -100,6 +100,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddHostedService<SubscriptionLifecycleJob>();
+        services.AddHostedService<StoreEmployeeInvitationExpiryJob>();
 
         services.Configure<AnthropicOptions>(configuration.GetSection(AnthropicOptions.SectionName));
         // Decided once at startup, not per-call (unlike SmtpEmailSender's per-send check) -- there's

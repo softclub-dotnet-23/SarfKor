@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card } from '../components/Card'
 import { Loading } from '../components/Loading'
@@ -7,6 +7,7 @@ import { EmptyState } from '../components/EmptyState'
 import { Select } from '../components/Select'
 import { Pagination } from '../components/Pagination'
 import { ReasonModal } from '../components/ReasonModal'
+import { FormModal, FormField } from '../components/FormModal'
 import { SubscriptionStatusBadge } from '../components/StatusBadge'
 import { Badge } from '../components/Badge'
 import { CardIcon, ClockIcon, PlusIcon, EditIcon } from '../components/icons'
@@ -177,100 +178,168 @@ function SubscriptionsSection({ subFilter, onSubFilterChange }: { subFilter: Sub
 
 /* ---------- Тарифы ---------- */
 
-function PlanForm({ plan, onSaved, onCancel }: { plan?: SubscriptionPlan; onSaved: () => void; onCancel?: () => void }) {
-  const [name, setName] = useState(plan?.name ?? '')
-  const [code, setCode] = useState(plan?.code ?? '')
-  const [price, setPrice] = useState(String(plan?.monthlyPriceAmount ?? ''))
-  const [currency, setCurrency] = useState(plan?.monthlyPriceCurrency ?? 'TJS')
-  const [maxStores, setMaxStores] = useState(plan?.maxStores ? String(plan.maxStores) : '')
-  const [maxEmployees, setMaxEmployees] = useState(plan?.maxEmployees ? String(plan.maxEmployees) : '')
-  const [features, setFeatures] = useState(plan?.features.join(', ') ?? '')
-  const [isActive, setIsActive] = useState(plan?.isActive ?? true)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    if (!name.trim() || !price || busy) return
-    setBusy(true)
-    setError('')
-    try {
-      const featureList = features.split(',').map((f) => f.trim()).filter(Boolean)
-      if (plan) {
-        await subscriptionsApi.updateSubscriptionPlan(plan.subscriptionPlanId, {
-          name: name.trim(),
-          monthlyPriceAmount: Number(price),
-          monthlyPriceCurrency: currency,
-          maxStores: maxStores ? Number(maxStores) : undefined,
-          maxEmployees: maxEmployees ? Number(maxEmployees) : undefined,
-          features: featureList,
-          isActive,
-        })
-      } else {
-        if (!code.trim()) return
-        await subscriptionsApi.createSubscriptionPlan({
-          name: name.trim(),
-          code: code.trim(),
-          monthlyPriceAmount: Number(price),
-          monthlyPriceCurrency: currency,
-          maxStores: maxStores ? Number(maxStores) : undefined,
-          maxEmployees: maxEmployees ? Number(maxEmployees) : undefined,
-          features: featureList,
-        })
-        setName('')
-        setCode('')
-        setPrice('')
-        setMaxStores('')
-        setMaxEmployees('')
-        setFeatures('')
-      }
-      onSaved()
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось сохранить тариф')
-    } finally {
-      setBusy(false)
-    }
-  }
-
+function PlanFormFields({
+  isEdit, name, setName, code, setCode, price, setPrice, currency, setCurrency,
+  maxStores, setMaxStores, maxEmployees, setMaxEmployees, features, setFeatures, isActive, setIsActive,
+  nameError, priceError, codeError,
+}: {
+  isEdit: boolean
+  name: string; setName: (v: string) => void
+  code: string; setCode: (v: string) => void
+  price: string; setPrice: (v: string) => void
+  currency: string; setCurrency: (v: string) => void
+  maxStores: string; setMaxStores: (v: string) => void
+  maxEmployees: string; setMaxEmployees: (v: string) => void
+  features: string; setFeatures: (v: string) => void
+  isActive: boolean; setIsActive: (v: boolean) => void
+  nameError?: string; priceError?: string; codeError?: string
+}) {
+  const fieldClass = 'w-full rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]'
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
+    <>
+      <FormField label="Название" required error={nameError} scheme="mod">
+        <input value={name} onChange={(e) => setName(e.target.value)} className={fieldClass} />
+      </FormField>
+      {!isEdit && (
+        <FormField label="Код" required error={codeError} scheme="mod">
+          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="standard, pro…" className={fieldClass} />
+        </FormField>
+      )}
       <div className="grid grid-cols-2 gap-2.5">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название" className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]" />
-        {!plan && (
-          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Код (standard, pro…)" className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]" />
-        )}
-        <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min={0} step="0.01" placeholder="Цена / мес" className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]" />
-        <input value={currency} onChange={(e) => setCurrency(e.target.value)} placeholder="Валюта" className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]" />
-        <input value={maxStores} onChange={(e) => setMaxStores(e.target.value)} type="number" min={0} placeholder="Лимит точек (необязательно)" className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]" />
-        <input value={maxEmployees} onChange={(e) => setMaxEmployees(e.target.value)} type="number" min={0} placeholder="Лимит сотрудников (необязательно)" className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]" />
+        <FormField label="Цена / мес" required error={priceError} scheme="mod">
+          <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min={0} step="0.01" className={fieldClass} />
+        </FormField>
+        <FormField label="Валюта" scheme="mod">
+          <input value={currency} onChange={(e) => setCurrency(e.target.value)} className={fieldClass} />
+        </FormField>
       </div>
-      <input value={features} onChange={(e) => setFeatures(e.target.value)} placeholder="Возможности через запятую" className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]" />
-      {plan && (
+      <div className="grid grid-cols-2 gap-2.5">
+        <FormField label="Лимит точек" scheme="mod">
+          <input value={maxStores} onChange={(e) => setMaxStores(e.target.value)} type="number" min={0} placeholder="Без лимита" className={fieldClass} />
+        </FormField>
+        <FormField label="Лимит сотрудников" scheme="mod">
+          <input value={maxEmployees} onChange={(e) => setMaxEmployees(e.target.value)} type="number" min={0} placeholder="Без лимита" className={fieldClass} />
+        </FormField>
+      </div>
+      <FormField label="Возможности" scheme="mod">
+        <input value={features} onChange={(e) => setFeatures(e.target.value)} placeholder="Через запятую" className={fieldClass} />
+      </FormField>
+      {isEdit && (
         <label className="flex items-center gap-2 text-[12.5px] font-semibold text-[color:var(--mod-text)]">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="h-4 w-4 accent-[color:var(--mod-accent)]" />
           Тариф активен (доступен для назначения)
         </label>
       )}
-      {error && <p className="text-[12px] font-medium text-[color:var(--mod-danger)]">{error}</p>}
-      <div className="flex gap-2">
-        <button type="submit" disabled={busy} className="rounded-xl bg-[color:var(--mod-accent)] px-4 py-2.5 text-[12.5px] font-bold text-white disabled:opacity-50">
-          {busy ? 'Секунду…' : plan ? 'Сохранить' : 'Создать тариф'}
-        </button>
-        {onCancel && (
-          <button type="button" onClick={onCancel} className="rounded-xl border border-[color:var(--mod-border)] px-4 py-2.5 text-[12.5px] font-semibold text-[color:var(--mod-text)]">
-            Отмена
-          </button>
-        )}
-      </div>
-    </form>
+    </>
+  )
+}
+
+function PlanFormModal({ plan, onClose, onSaved }: { plan: SubscriptionPlan | 'create' | null; onClose: () => void; onSaved: () => Promise<void> }) {
+  const isEdit = plan !== null && plan !== 'create'
+  const [name, setName] = useState('')
+  const [code, setCode] = useState('')
+  const [price, setPrice] = useState('')
+  const [currency, setCurrency] = useState('TJS')
+  const [maxStores, setMaxStores] = useState('')
+  const [maxEmployees, setMaxEmployees] = useState('')
+  const [features, setFeatures] = useState('')
+  const [isActive, setIsActive] = useState(true)
+  const [nameError, setNameError] = useState('')
+  const [priceError, setPriceError] = useState('')
+  const [codeError, setCodeError] = useState('')
+
+  useEffect(() => {
+    if (isEdit) {
+      const p = plan as SubscriptionPlan
+      setName(p.name)
+      setCode(p.code)
+      setPrice(String(p.monthlyPriceAmount))
+      setCurrency(p.monthlyPriceCurrency)
+      setMaxStores(p.maxStores ? String(p.maxStores) : '')
+      setMaxEmployees(p.maxEmployees ? String(p.maxEmployees) : '')
+      setFeatures(p.features.join(', '))
+      setIsActive(p.isActive)
+    } else {
+      setName('')
+      setCode('')
+      setPrice('')
+      setCurrency('TJS')
+      setMaxStores('')
+      setMaxEmployees('')
+      setFeatures('')
+      setIsActive(true)
+    }
+    setNameError('')
+    setPriceError('')
+    setCodeError('')
+  }, [plan, isEdit])
+
+  async function submit() {
+    let hasError = false
+    if (!name.trim()) {
+      setNameError('Укажите название')
+      hasError = true
+    }
+    const priceNum = Number(price)
+    if (!price || Number.isNaN(priceNum) || priceNum < 0) {
+      setPriceError('Укажите цену')
+      hasError = true
+    }
+    if (!isEdit && !code.trim()) {
+      setCodeError('Укажите код')
+      hasError = true
+    }
+    if (hasError) throw new Error('Проверьте поля формы')
+
+    const featureList = features.split(',').map((f) => f.trim()).filter(Boolean)
+    if (isEdit) {
+      await subscriptionsApi.updateSubscriptionPlan((plan as SubscriptionPlan).subscriptionPlanId, {
+        name: name.trim(),
+        monthlyPriceAmount: priceNum,
+        monthlyPriceCurrency: currency,
+        maxStores: maxStores ? Number(maxStores) : undefined,
+        maxEmployees: maxEmployees ? Number(maxEmployees) : undefined,
+        features: featureList,
+        isActive,
+      })
+    } else {
+      await subscriptionsApi.createSubscriptionPlan({
+        name: name.trim(),
+        code: code.trim(),
+        monthlyPriceAmount: priceNum,
+        monthlyPriceCurrency: currency,
+        maxStores: maxStores ? Number(maxStores) : undefined,
+        maxEmployees: maxEmployees ? Number(maxEmployees) : undefined,
+        features: featureList,
+      })
+    }
+    await onSaved()
+  }
+
+  return (
+    <FormModal
+      open={plan !== null}
+      onClose={onClose}
+      title={isEdit ? 'Изменить тариф' : 'Новый тариф'}
+      isDirty={!!(name || code || price || maxStores || maxEmployees || features)}
+      onSubmit={submit}
+      submitLabel={isEdit ? 'Сохранить' : 'Создать тариф'}
+      scheme="mod"
+    >
+      <PlanFormFields
+        isEdit={isEdit} name={name} setName={setName} code={code} setCode={setCode} price={price} setPrice={setPrice}
+        currency={currency} setCurrency={setCurrency} maxStores={maxStores} setMaxStores={setMaxStores}
+        maxEmployees={maxEmployees} setMaxEmployees={setMaxEmployees} features={features} setFeatures={setFeatures}
+        isActive={isActive} setIsActive={setIsActive} nameError={nameError} priceError={priceError} codeError={codeError}
+      />
+    </FormModal>
   )
 }
 
 function PlansSection() {
   const [plans, setPlans] = useState<SubscriptionPlan[] | null>(null)
   const [error, setError] = useState('')
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [showCreate, setShowCreate] = useState(false)
+  const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | 'create' | null>(null)
 
   const load = useCallback(async () => {
     setError('')
@@ -287,50 +356,42 @@ function PlansSection() {
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex justify-end">
+        <button
+          onClick={() => setEditingPlan('create')}
+          className="flex items-center gap-1.5 rounded-xl bg-[color:var(--mod-accent)] px-4 py-2.5 text-[13px] font-bold text-white transition-transform hover:brightness-110 active:scale-95"
+        >
+          <PlusIcon width={15} height={15} />
+          Новый тариф
+        </button>
+      </div>
+
       {plans === null && !error && <Loading scheme="mod" />}
       {error && <ErrorState scheme="mod" message={error} onRetry={load} />}
       {plans &&
-        plans.map((p) =>
-          editingId === p.subscriptionPlanId ? (
-            <Card key={p.subscriptionPlanId} scheme="mod" className="p-4">
-              <PlanForm plan={p} onSaved={() => { setEditingId(null); load() }} onCancel={() => setEditingId(null)} />
-            </Card>
-          ) : (
-            <Card key={p.subscriptionPlanId} scheme="mod" className="flex items-center justify-between gap-3 p-4">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-[color:var(--mod-text)]">{p.name}</span>
-                  <Badge scheme="mod" variant={p.isActive ? 'success' : 'neutral'} size="sm">
-                    {p.isActive ? 'Активен' : 'Отключён'}
-                  </Badge>
-                </div>
-                <div className="mt-0.5 font-[JetBrains_Mono,monospace] text-[11.5px] text-[color:var(--mod-faint)]">
-                  {p.code} · {p.monthlyPriceAmount} {p.monthlyPriceCurrency}/мес
-                  {p.maxStores ? ` · до ${p.maxStores} точек` : ''}
-                  {p.maxEmployees ? ` · до ${p.maxEmployees} сотрудников` : ''}
-                </div>
-                {p.features.length > 0 && <div className="mt-1 text-[12px] text-[color:var(--mod-muted)]">{p.features.join(' · ')}</div>}
+        plans.map((p) => (
+          <Card key={p.subscriptionPlanId} scheme="mod" className="flex items-center justify-between gap-3 p-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-[color:var(--mod-text)]">{p.name}</span>
+                <Badge scheme="mod" variant={p.isActive ? 'success' : 'neutral'} size="sm">
+                  {p.isActive ? 'Активен' : 'Отключён'}
+                </Badge>
               </div>
-              <button onClick={() => setEditingId(p.subscriptionPlanId)} className="shrink-0 grid h-9 w-9 place-items-center rounded-lg text-[color:var(--mod-muted)] hover:bg-[color:var(--mod-panel2)]">
-                <EditIcon width={16} height={16} />
-              </button>
-            </Card>
-          ),
-        )}
+              <div className="mt-0.5 font-[JetBrains_Mono,monospace] text-[11.5px] text-[color:var(--mod-faint)]">
+                {p.code} · {p.monthlyPriceAmount} {p.monthlyPriceCurrency}/мес
+                {p.maxStores ? ` · до ${p.maxStores} точек` : ''}
+                {p.maxEmployees ? ` · до ${p.maxEmployees} сотрудников` : ''}
+              </div>
+              {p.features.length > 0 && <div className="mt-1 text-[12px] text-[color:var(--mod-muted)]">{p.features.join(' · ')}</div>}
+            </div>
+            <button onClick={() => setEditingPlan(p)} className="shrink-0 grid h-9 w-9 place-items-center rounded-lg text-[color:var(--mod-muted)] hover:bg-[color:var(--mod-panel2)]">
+              <EditIcon width={16} height={16} />
+            </button>
+          </Card>
+        ))}
 
-      {showCreate ? (
-        <Card scheme="mod" className="p-4">
-          <PlanForm onSaved={() => { setShowCreate(false); load() }} onCancel={() => setShowCreate(false)} />
-        </Card>
-      ) : (
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-[color:var(--mod-border2)] py-4 text-[13px] font-bold text-[color:var(--mod-muted)] transition-colors hover:border-[color:var(--mod-accent)] hover:text-[color:var(--mod-accent2)]"
-        >
-          <PlusIcon width={16} height={16} />
-          Новый тариф
-        </button>
-      )}
+      <PlanFormModal plan={editingPlan} onClose={() => setEditingPlan(null)} onSaved={async () => { await load(); setEditingPlan(null) }} />
     </div>
   )
 }

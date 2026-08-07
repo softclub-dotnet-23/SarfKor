@@ -80,8 +80,8 @@ export function LineChart({ data }: LineChartProps) {
             <stop offset="100%" stopColor="var(--admin-accent)" stopOpacity={0} />
           </linearGradient>
           <linearGradient id={lineId} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#0ea5e9" />
-            <stop offset="100%" stopColor="#38bdf8" />
+            <stop offset="0%" stopColor="var(--admin-accent)" />
+            <stop offset="100%" stopColor="var(--admin-text)" />
           </linearGradient>
         </defs>
         <path d={areaD} fill={`url(#${gradientId})`} opacity={drawn} />

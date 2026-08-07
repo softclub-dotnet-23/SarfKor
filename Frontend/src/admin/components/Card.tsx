@@ -3,7 +3,7 @@ import clsx from 'clsx'
 
 const SCHEMES = {
   admin: {
-    surface: 'rounded-[18px] bg-[color:var(--admin-card)] ring-1 ring-[color:var(--admin-border)] [box-shadow:var(--admin-shadow)]',
+    surface: 'rounded-2xl bg-[color:var(--admin-card)] ring-1 ring-[color:var(--admin-border)] [box-shadow:var(--admin-shadow)]',
     lift: 'hover:[box-shadow:var(--admin-shadow-lift)]',
   },
   mod: {

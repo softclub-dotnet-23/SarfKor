@@ -6,6 +6,7 @@ using Application.Products.Queries.CompareStoresForShoppingList;
 using Application.Products.Queries.GetMostScannedProducts;
 using Application.Products.Queries.GetTopSellingProducts;
 using Application.Products.Queries.ScanBarcode;
+using Application.Products.Queries.SearchProducts;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -96,6 +97,29 @@ public sealed class ProductsController : ControllerBase
 
         var result = await handler.Handle(query, cancellationToken);
         return Ok(result);
+    }
+
+    // Backs the shared entity picker (searchable product select) used across the StorePartner and
+    // Cashier cabinets instead of manual numeric product-ID entry — see SearchProductsQuery.
+    [HttpGet("search")]
+    [EnableRateLimiting("scan")]
+    public async Task<IActionResult> Search(
+        string? search,
+        int? categoryId,
+        int? storeId,
+        int? skip,
+        int? take,
+        [FromServices] IQueryHandler<SearchProductsQuery, SearchProductsResult> handler,
+        [FromServices] IValidator<SearchProductsQuery> validator,
+        CancellationToken cancellationToken)
+    {
+        var query = new SearchProductsQuery(search, categoryId, storeId, skip ?? 0, take ?? 20);
+
+        var validationResult = await validator.ValidateAsync(query, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        return Ok(await handler.Handle(query, cancellationToken));
     }
 
     [HttpGet("compare-basket")]

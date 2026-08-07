@@ -6,6 +6,7 @@ import { Loading } from './Loading'
 import { ErrorState } from './ErrorState'
 import { EmptyState } from './EmptyState'
 import { Select } from './Select'
+import { DateField } from './DateField'
 import { AuditLogRow } from './AuditLogRow'
 import { CheckIcon, StoreIcon, UsersIcon, ShieldIcon, ClockIcon } from './icons'
 import {
@@ -336,18 +337,8 @@ function SubscriptionTab({ detail, onChanged }: { detail: AdminStoreDetail; onCh
               { value: 'Other', label: 'Другое' },
             ]}
           />
-          <input
-            type="date"
-            value={payFrom}
-            onChange={(e) => setPayFrom(e.target.value)}
-            className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
-          />
-          <input
-            type="date"
-            value={payTo}
-            onChange={(e) => setPayTo(e.target.value)}
-            className="rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
-          />
+          <DateField value={payFrom} onChange={setPayFrom} outputFormat="dateOnly" title="Начало периода" />
+          <DateField value={payTo} onChange={setPayTo} outputFormat="dateOnly" title="Конец периода" />
           <input
             value={payComment}
             onChange={(e) => setPayComment(e.target.value)}

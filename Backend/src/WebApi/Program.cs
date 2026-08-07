@@ -79,6 +79,8 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddMemoryCache();
 builder.Services.Configure<Application.Subscriptions.SubscriptionOptions>(
     builder.Configuration.GetSection(Application.Subscriptions.SubscriptionOptions.SectionName));
+builder.Services.Configure<Application.Stores.StoreEmployeeInvitationOptions>(
+    builder.Configuration.GetSection(Application.Stores.StoreEmployeeInvitationOptions.SectionName));
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -153,9 +155,16 @@ builder.Services.AddRateLimiter(options =>
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1) }));
 
-    // Принятие приглашения кассира — неаутентифицированный, создаёт аккаунт, токен угадываем по перебору.
+    // Принятие приглашения кассира и публичная проверка токена — неаутентифицированные, создают
+    // аккаунт / открывают контекст приглашения, токен угадываем по перебору.
     options.AddPolicy("invite-accept", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1) }));
+
+    // Повторная отправка письма-приглашения кассиру — аутентифицированное действие владельца, но
+    // само шлёт письмо, поэтому отдельный, более жёсткий лимит, чем обычные partner-write.
+    options.AddPolicy("invite-resend", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1) }));
 
     // Пользовательский контент (цены, жалобы, сверка чека) — против спама/накрутки.
@@ -306,7 +315,7 @@ public sealed record LoginRequest(string Email, string Password);
 public sealed record UpdateUserProfileRequest(string DisplayName, string? AvatarReference, string PreferredLanguage);
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public sealed record RecordUserConsentRequest(Domain.Identity.ConsentType Type, bool IsGranted);
-public sealed record AddStoreEmployeeRequest(string EmployeeEmail, Domain.Stores.StoreEmployeeRole Role);
+public sealed record CreateStoreEmployeeInvitationRequest(string Email, Domain.Stores.StoreEmployeeRole Role);
 public sealed record ConfirmAdminInvitationRequest(string Email, string Code, string Password);
 public sealed record OpenCashierShiftRequest(int StoreId, decimal OpeningCash, string Currency);
 public sealed record CloseCashierShiftRequest(decimal ClosingCash);

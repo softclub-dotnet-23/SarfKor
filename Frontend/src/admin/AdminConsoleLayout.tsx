@@ -5,33 +5,36 @@ import clsx from 'clsx'
 import { LogoMark } from '../components/Logo'
 import { useTheme } from '../theme/ThemeProvider'
 import { useThemeTransition } from '../theme/useThemeTransition'
+import { useT } from '../i18n/translations'
 import { SunIcon, MoonIcon } from '../components/icons'
 import { LogOutIcon, GridIcon, StoreIcon, CardIcon, UsersIcon, TagIcon, ClockIcon, MailIcon } from './components/icons'
 import { AdminModal } from './components/AdminModal'
 import { Input } from './components/Input'
 import { AssistantPanel } from './components/AssistantPanel'
+import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { useAuth } from '../auth/AuthContext'
 import { adminApi, ApiError } from '../lib/api'
 
 const NAV_ITEMS = [
-  { to: '/admin/overview', num: '01', label: 'Обзор', icon: GridIcon },
-  { to: '/admin/stores', num: '02', label: 'Магазины', icon: StoreIcon },
-  { to: '/admin/subscriptions', num: '03', label: 'Подписки', icon: CardIcon },
-  { to: '/admin/users', num: '04', label: 'Пользователи', icon: UsersIcon },
-  { to: '/admin/reference', num: '05', label: 'Справочники', icon: TagIcon },
-  { to: '/admin/audit-log', num: '06', label: 'Журнал', icon: ClockIcon },
-]
+  { to: '/admin/overview', num: '01', key: 'nav.overview', icon: GridIcon },
+  { to: '/admin/stores', num: '02', key: 'nav.stores', icon: StoreIcon },
+  { to: '/admin/subscriptions', num: '03', key: 'nav.subscriptions', icon: CardIcon },
+  { to: '/admin/users', num: '04', key: 'nav.users', icon: UsersIcon },
+  { to: '/admin/reference', num: '05', key: 'nav.reference', icon: TagIcon },
+  { to: '/admin/audit-log', num: '06', key: 'nav.auditLog', icon: ClockIcon },
+] as const
 
-const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
-  '/admin/overview': { title: 'Обзор', subtitle: 'Состояние платформы: магазины, подписки, выручка' },
-  '/admin/stores': { title: 'Магазины', subtitle: 'Подключённые магазины, статусы и подписки' },
-  '/admin/subscriptions': { title: 'Подписки', subtitle: 'Тарифы, подписки магазинов и платежи' },
-  '/admin/users': { title: 'Пользователи', subtitle: 'Аккаунты, рейтинг доверия и блокировки' },
-  '/admin/reference': { title: 'Справочники', subtitle: 'Категории, бренды и налоговые ставки' },
-  '/admin/audit-log': { title: 'Журнал', subtitle: 'Действия администраторов платформы' },
+const PAGE_TITLE_KEYS: Record<string, { title: 'page.overview.title' | 'page.stores.title' | 'page.subscriptions.title' | 'page.users.title' | 'page.reference.title' | 'page.auditLog.title'; subtitle: 'page.overview.subtitle' | 'page.stores.subtitle' | 'page.subscriptions.subtitle' | 'page.users.subtitle' | 'page.reference.subtitle' | 'page.auditLog.subtitle' }> = {
+  '/admin/overview': { title: 'page.overview.title', subtitle: 'page.overview.subtitle' },
+  '/admin/stores': { title: 'page.stores.title', subtitle: 'page.stores.subtitle' },
+  '/admin/subscriptions': { title: 'page.subscriptions.title', subtitle: 'page.subscriptions.subtitle' },
+  '/admin/users': { title: 'page.users.title', subtitle: 'page.users.subtitle' },
+  '/admin/reference': { title: 'page.reference.title', subtitle: 'page.reference.subtitle' },
+  '/admin/audit-log': { title: 'page.auditLog.title', subtitle: 'page.auditLog.subtitle' },
 }
 
 function InviteAdminModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT()
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -61,27 +64,24 @@ function InviteAdminModal({ open, onClose }: { open: boolean; onClose: () => voi
   }
 
   return (
-    <AdminModal open={open} onClose={handleClose} title="Пригласить администратора" scheme="mod">
+    <AdminModal open={open} onClose={handleClose} title={t('invite.title')} scheme="mod">
       {done ? (
         <div className="py-2">
           <p className="text-[13.5px] text-[color:var(--mod-text)]">
-            Приглашение отправлено на <b>{email}</b>. Ссылка для подтверждения придёт на почту.
+            {t('invite.doneText')} <b>{email}</b>. {t('invite.doneHint')}
           </p>
           <button
             onClick={handleClose}
             className="mt-4 w-full rounded-xl bg-[color:var(--mod-accent)] py-2.5 text-[13px] font-bold text-white"
           >
-            Готово
+            {t('invite.doneButton')}
           </button>
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
-          <p className="mb-4 text-[13px] leading-relaxed text-[color:var(--mod-muted)]">
-            Новый администратор получит письмо со ссылкой для завершения регистрации — так каждая запись в журнале
-            действий указывает на реального человека.
-          </p>
+          <p className="mb-4 text-[13px] leading-relaxed text-[color:var(--mod-muted)]">{t('invite.description')}</p>
           <label className="mb-1.5 block text-[11.5px] font-semibold uppercase tracking-wide text-[color:var(--mod-faint)]">
-            Email
+            {t('invite.emailLabel')}
           </label>
           <Input
             scheme="mod"
@@ -99,14 +99,14 @@ function InviteAdminModal({ open, onClose }: { open: boolean; onClose: () => voi
               onClick={handleClose}
               className="rounded-xl border border-[color:var(--mod-border)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--mod-text)] hover:bg-[color:var(--mod-panel2)]"
             >
-              Отмена
+              {t('invite.cancel')}
             </button>
             <button
               type="submit"
               disabled={busy || !email.trim()}
               className="rounded-xl bg-[color:var(--mod-accent)] px-4 py-2.5 text-[13px] font-bold text-white transition-transform hover:brightness-110 active:scale-95 disabled:opacity-50"
             >
-              {busy ? 'Секунду…' : 'Отправить приглашение'}
+              {busy ? t('invite.busy') : t('invite.submit')}
             </button>
           </div>
         </form>
@@ -137,11 +137,12 @@ export function AdminConsoleLayout() {
   const { user, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const { runThemeTransition } = useThemeTransition()
+  const t = useT()
   const location = useLocation()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)
   const isDark = theme === 'dark'
-  const page = PAGE_TITLES[location.pathname] ?? PAGE_TITLES['/admin/overview']
+  const pageKeys = PAGE_TITLE_KEYS[location.pathname] ?? PAGE_TITLE_KEYS['/admin/overview']
 
   return (
     <div className="mod-shell flex h-screen w-full overflow-hidden bg-[color:var(--mod-bg)] text-[color:var(--mod-text)]">
@@ -154,7 +155,7 @@ export function AdminConsoleLayout() {
       >
         <div className="flex items-center gap-2.5 px-5 pb-4 pt-5">
           <div className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] bg-[color:var(--mod-accent)]">
-            <LogoMark size={20} />
+            <LogoMark size={20} mono />
           </div>
           <div className="flex flex-col leading-none">
             <span className="text-[16px] font-extrabold tracking-tight">Sarfkor</span>
@@ -172,27 +173,19 @@ export function AdminConsoleLayout() {
               onClick={() => setMobileNavOpen(false)}
               className={({ isActive }) =>
                 clsx(
-                  'relative flex items-center gap-3 rounded-[11px] px-3 py-2.5 text-[13.5px] font-semibold transition-colors duration-200',
-                  isActive ? 'text-[color:var(--mod-text)]' : 'text-[color:var(--mod-muted)] hover:bg-[color:var(--mod-panel2)] hover:text-[color:var(--mod-text)]',
+                  'relative flex items-center gap-3 rounded-[11px] px-3 py-2.5 text-[13.5px] font-semibold transition-colors duration-150',
+                  isActive
+                    ? // Current page: solid pill background + full-contrast text only — must stay visually
+                      // distinct from hover on every other row, or you can't tell which page you're on
+                      // (bug report: hovering a different item made it indistinguishable from the active one).
+                      'bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-text)]'
+                    : 'text-[color:var(--mod-muted)] hover:bg-[color:var(--mod-accent-dim)]/50 hover:text-[color:var(--mod-text)]',
                 )
               }
             >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <motion.span
-                      layoutId="mod-nav-pill"
-                      className="absolute inset-0 rounded-[11px] bg-[color:var(--mod-accent-dim)] shadow-[inset_3px_0_0_var(--mod-accent)]"
-                      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    />
-                  )}
-                  <span className="relative z-10 shrink-0 font-[JetBrains_Mono,monospace] text-[11px] font-bold text-[color:var(--mod-faint)]">
-                    {item.num}
-                  </span>
-                  <item.icon width={17} height={17} className="relative z-10 shrink-0 opacity-90" />
-                  <span className="relative z-10 truncate">{item.label}</span>
-                </>
-              )}
+              <span className="shrink-0 font-[JetBrains_Mono,monospace] text-[11px] font-bold text-[color:var(--mod-faint)]">{item.num}</span>
+              <item.icon width={17} height={17} className="shrink-0 opacity-90" />
+              <span className="truncate">{t(item.key)}</span>
             </NavLink>
           ))}
         </nav>
@@ -203,7 +196,7 @@ export function AdminConsoleLayout() {
             className="flex w-full items-center gap-3 rounded-[11px] px-3 py-2.5 text-left text-[13px] font-semibold text-[color:var(--mod-muted)] transition-colors hover:bg-[color:var(--mod-panel2)] hover:text-[color:var(--mod-text)]"
           >
             <MailIcon width={17} height={17} className="shrink-0" />
-            Пригласить админа
+            {t('shell.inviteAdmin')}
           </button>
         </div>
 
@@ -214,11 +207,11 @@ export function AdminConsoleLayout() {
             </div>
             <div className="min-w-0 flex-1 leading-tight">
               <div className="truncate text-[13px] font-bold">{user?.email}</div>
-              <div className="text-[11px] font-semibold text-[color:var(--mod-accent2)]">Администратор</div>
+              <div className="text-[11px] font-semibold text-[color:var(--mod-accent2)]">{t('shell.administrator')}</div>
             </div>
             <button
               onClick={logout}
-              aria-label="Выйти"
+              aria-label={t('shell.logout')}
               className="flex shrink-0 items-center justify-center text-[color:var(--mod-muted)] hover:text-[color:var(--mod-text)]"
             >
               <LogOutIcon width={16} height={16} />
@@ -246,7 +239,7 @@ export function AdminConsoleLayout() {
           <div className="flex min-w-0 items-center gap-3">
             <button
               onClick={() => setMobileNavOpen(true)}
-              aria-label="Меню"
+              aria-label={t('shell.menu')}
               className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[color:var(--mod-muted)] hover:bg-[color:var(--mod-panel2)] lg:hidden"
             >
               <span className="flex w-4 flex-col gap-[4px]">
@@ -255,17 +248,18 @@ export function AdminConsoleLayout() {
                 <span className="block h-[1.5px] w-full bg-current" />
               </span>
             </button>
-            <h1 className="truncate text-[18px] font-extrabold tracking-tight">{page.title}</h1>
-            <span className="hidden truncate text-[12px] font-medium text-[color:var(--mod-muted)] sm:inline">{page.subtitle}</span>
+            <h1 className="truncate text-[18px] font-extrabold tracking-tight">{t(pageKeys.title)}</h1>
+            <span className="hidden truncate text-[12px] font-medium text-[color:var(--mod-muted)] sm:inline">{t(pageKeys.subtitle)}</span>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <div className="hidden items-center gap-1.5 rounded-[9px] border border-[color:var(--mod-border)] px-2.5 py-1.5 font-[JetBrains_Mono,monospace] text-[11px] font-semibold text-[color:var(--mod-muted)] sm:flex">
               <span className="h-[7px] w-[7px] rounded-full bg-[color:var(--mod-ok)]" style={{ animation: 'mod-live-ping 1.6s ease-in-out infinite' }} />
               LIVE
             </div>
+            <LanguageSwitcher scheme="mod" />
             <button
               onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
-              aria-label="Переключить тему"
+              aria-label={t('shell.toggleTheme')}
               className="grid h-9 w-9 place-items-center rounded-[10px] border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] text-[color:var(--mod-text)]"
             >
               {isDark ? <SunIcon width={16} height={16} /> : <MoonIcon width={16} height={16} />}

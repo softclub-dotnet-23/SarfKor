@@ -18,4 +18,11 @@ public interface IProductRepository
     /// transactional core of MergeBrandsCommand (ADMIN_PROMPT.md §2.8: "слияние обязано быть
     /// транзакционным"). Returns how many rows moved, for the audit log.</summary>
     Task<int> ReassignBrandAsync(int fromBrandId, int toBrandId, CancellationToken cancellationToken);
+
+    /// <summary>Server-side search backing the shared entity picker — name/barcode/brand
+    /// simultaneously, case-insensitive substring, exact-barcode match ranked first, optional
+    /// category filter, paginated. See ProductConfiguration for the trigram index this relies on
+    /// to stay fast past a few thousand rows.</summary>
+    Task<(IReadOnlyList<Product> Items, int TotalCount)> SearchAsync(
+        string? search, int? categoryId, int skip, int take, CancellationToken cancellationToken);
 }

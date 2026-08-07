@@ -1,6 +1,7 @@
 export { apiFetch, apiUpload, apiFetchBlob, ApiError, getTokens, setTokens, clearTokens, refreshTokens } from './client'
 export { decodeJwt, rolesFromToken } from './jwt'
 export * as authApi from './auth'
+export type { AuthResult, AcceptStoreEmployeeInvitationOutcome, GetInviteOutcome, InviteInfo } from './auth'
 export * as storesApi from './stores'
 export * as productsApi from './products'
 export * as salesApi from './sales'
@@ -38,7 +39,7 @@ export type {
   ReturnLineDetail,
 } from './sales'
 export type { StockLevel } from './inventory'
-export type { ScanBarcodeResult, ScanResultStore, StoreBasket, MostScannedProduct } from './products'
+export type { ScanBarcodeResult, ScanResultStore, StoreBasket, MostScannedProduct, ProductSearchItem } from './products'
 export type { Favorite, FavoriteType } from './favorites'
 export type { PriceAlert } from './priceAlerts'
 export type { ShoppingList, ShoppingListItem } from './shoppingLists'
@@ -50,6 +51,9 @@ export type {
   ReorderAlert,
   StoreEmployee,
   StoreEmployeeRole,
+  StoreEmployeeInvitation,
+  StoreEmployeeInvitationStatus,
+  CreateStoreEmployeeInvitationOutcome,
 } from './stores'
 export type {
   StoreStatus,

@@ -27,7 +27,11 @@ function fmtDate(iso: string) {
 
 function KpiTile({ label, value, icon, to }: { label: string; value: string | number; icon: React.ReactNode; to?: string }) {
   const body = (
-    <Card scheme="mod" interactive={!!to} className="p-5">
+    <Card
+      scheme="mod"
+      interactive={!!to}
+      className={`p-5 ${to ? 'transition-colors duration-150 hover:bg-[color:var(--mod-accent-dim)]' : ''}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <span className="text-[11.5px] font-semibold leading-tight text-[color:var(--mod-muted)]">{label}</span>
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]">
@@ -69,7 +73,7 @@ function AttentionBlock<T>({
           {title}
         </div>
         {items.length > 0 && (
-          <Link to={to} className="text-[11.5px] font-semibold text-[color:var(--mod-accent2)] hover:underline">
+          <Link to={to} className="text-[11.5px] font-semibold text-[color:var(--mod-muted)] hover:text-[color:var(--mod-text)] hover:underline">
             Все ({items.length})
           </Link>
         )}

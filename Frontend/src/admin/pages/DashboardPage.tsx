@@ -83,23 +83,21 @@ function KpiCard({
   value,
   suffix,
   icon,
-  accent,
 }: {
   label: string
   value: number
   suffix?: string
   icon: React.ReactNode
-  accent: string
 }) {
   return (
     <Card className="p-5">
-      <div className="mb-3.5 flex items-center justify-between">
-        <span className="text-[13px] font-medium text-[color:var(--admin-text-secondary)]">{label}</span>
-        <span className="grid h-9 w-9 place-items-center rounded-[10px]" style={{ background: `${accent}22`, color: accent }}>
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-[11.5px] font-semibold leading-tight text-[color:var(--admin-text-secondary)]">{label}</span>
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]">
           {icon}
         </span>
       </div>
-      <div className="whitespace-nowrap text-[28px] font-extrabold leading-none tracking-tight text-[color:var(--admin-text)]">
+      <div className="mt-3 whitespace-nowrap font-[JetBrains_Mono,monospace] text-[27px] font-bold tracking-tight text-[color:var(--admin-text)]">
         {fmt(value)}
         {suffix ? <span className="ml-1 text-base font-semibold text-[color:var(--admin-text-tertiary)]">{suffix}</span> : null}
       </div>
@@ -133,20 +131,18 @@ export function DashboardPage() {
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 xl:flex-row">
       <div className="flex min-w-0 flex-1 flex-col gap-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <KpiCard label="Продано сегодня" value={dashboard.todaySalesCount} icon={<PackageIcon width={18} height={18} />} accent="#38bdf8" />
+          <KpiCard label="Продано сегодня" value={dashboard.todaySalesCount} icon={<PackageIcon width={18} height={18} />} />
           <KpiCard
             label="Себестоимость сегодня"
             value={profitToday.totalCost}
             suffix={profitToday.currency}
             icon={<PackageIcon width={18} height={18} />}
-            accent="#fbbf24"
           />
           <KpiCard
             label="Выручка сегодня"
             value={dashboard.todayRevenue}
             suffix={dashboard.currency}
             icon={<RevenueIcon width={18} height={18} />}
-            accent="#34d399"
           />
         </div>
 
@@ -167,7 +163,7 @@ export function DashboardPage() {
           <Card className="flex flex-col items-center p-6">
             <div className="mb-1 self-start text-[16px] font-bold text-[color:var(--admin-text)]">Маржинальность</div>
             <div className="mb-5 self-start text-xs text-[color:var(--admin-text-tertiary)]">С начала месяца</div>
-            <RingChart value={marginPct} label="маржа" colorFrom="#0ea5e9" colorTo="#38bdf8" />
+            <RingChart value={marginPct} label="маржа" colorFrom="var(--admin-accent)" colorTo="var(--admin-text)" />
             <div className="mt-4 text-[28px] font-extrabold tracking-tight text-[color:var(--admin-text)]">
               {fmt(profitMonth.profit)} <span className="text-base font-medium text-[color:var(--admin-text-tertiary)]">{profitMonth.currency}</span>
             </div>
@@ -180,7 +176,7 @@ export function DashboardPage() {
             <div className="mb-5 self-start text-xs text-[color:var(--admin-text-tertiary)]">
               Настраивается в разделе «Настройки»
             </div>
-            <RingChart value={goalPct} label="выполнено" colorFrom="#38bdf8" colorTo="#818cf8" />
+            <RingChart value={goalPct} label="выполнено" colorFrom="var(--admin-accent)" colorTo="var(--admin-text)" />
             <div className="mt-4 flex items-center gap-4">
               <div className="text-center">
                 <div className="text-[22px] font-extrabold text-[color:var(--admin-text)]">{dashboard.todaySalesCount}</div>

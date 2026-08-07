@@ -1,17 +1,23 @@
-export function LogoMark({ size = 36 }: { size?: number }) {
+// mono: skips the brand-blue gradient plate, painting only the white "S" glyph on a transparent
+// background — for surfaces (the platform-Admin console) whose whole palette is deliberately
+// neutral-grey with color reserved for status, where the brand-blue square would be a stray blue
+// with no meaning. Every other caller (public site, login, StorePartner cabinet) keeps the gradient.
+export function LogoMark({ size = 36, mono = false }: { size?: number; mono?: boolean }) {
   return (
     <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="36" height="36" rx="10" fill="url(#logo-gradient)" />
+      {!mono && <rect width="36" height="36" rx="10" fill="url(#logo-gradient)" />}
       <path
         d="M22.6 13.4c-.9-.7-2.2-1.1-3.6-1.1-2.6 0-4.2 1.1-4.2 2.9 0 1.9 1.8 2.4 3.7 2.8 2.6.5 5.5 1.1 5.5 4.3 0 2.9-2.4 4.6-5.8 4.6-2.2 0-4.3-.7-5.7-2.1l1.3-1.8c1.1 1.1 2.7 1.7 4.5 1.7 1.9 0 3.2-.8 3.2-2.2 0-1.5-1.5-1.9-3.6-2.4-2.7-.6-5.5-1.3-5.5-4.6 0-2.7 2.3-4.4 5.5-4.4 2.1 0 3.8.6 5.1 1.7l-1.4 1.6Z"
         fill="white"
       />
-      <defs>
-        <linearGradient id="logo-gradient" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#4C8CFF" />
-          <stop offset="1" stopColor="#2F6FEB" />
-        </linearGradient>
-      </defs>
+      {!mono && (
+        <defs>
+          <linearGradient id="logo-gradient" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#4C8CFF" />
+            <stop offset="1" stopColor="#2F6FEB" />
+          </linearGradient>
+        </defs>
+      )}
     </svg>
   )
 }

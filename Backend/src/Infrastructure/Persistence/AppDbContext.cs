@@ -115,6 +115,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        // Backs ProductConfiguration's trigram index — plain btree can't accelerate a `%term%`
+        // substring ILIKE, gin_trgm_ops can. Needed once per database.
+        modelBuilder.HasPostgresExtension("pg_trgm");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 }

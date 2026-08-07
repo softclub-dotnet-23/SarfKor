@@ -85,21 +85,50 @@ export interface StoreEmployee {
   addedAt: string
 }
 
-export type AddStoreEmployeeOutcome = 'Added' | 'StoreNotFound' | 'Forbidden' | 'AlreadyEmployed' | 'Invited'
-
-// The owner only has the employee's email to go on (there's no user directory) -- if nobody's
-// registered with it yet, the backend sends them an invite email instead of failing (Invited).
-export function addStoreEmployee(storeId: number, employeeEmail: string, role: StoreEmployeeRole = 'Cashier') {
-  return apiFetch<{ outcome: AddStoreEmployeeOutcome; storeEmployeeId?: number }>(`/api/stores/${storeId}/employees`, {
-    method: 'POST',
-    body: { employeeEmail, role },
-  })
-}
-
 export function removeStoreEmployee(storeEmployeeId: number) {
   return apiFetch<{ outcome: string }>(`/api/store-employees/${storeEmployeeId}`, { method: 'DELETE' })
 }
 
 export function getStoreEmployees(storeId: number) {
   return apiFetch<{ outcome: string; employees?: StoreEmployee[] }>(`/api/stores/${storeId}/employees`)
+}
+
+// Every new employee — existing account or not — now goes through an emailed link they click and
+// confirm themselves; there is no more direct "add and attach immediately" path (see
+// AcceptInvitePage / the /invite/:token route). Outcome deliberately never distinguishes "email
+// belongs to an existing account" from "brand new" (email enumeration) — only AlreadyEmployed
+// (already on *this* store's own team, which the owner can already see) is a distinct case.
+export type CreateStoreEmployeeInvitationOutcome = 'Sent' | 'StoreNotFound' | 'Forbidden' | 'AlreadyEmployed'
+
+export function createStoreEmployeeInvitation(storeId: number, email: string, role: StoreEmployeeRole) {
+  return apiFetch<{ outcome: CreateStoreEmployeeInvitationOutcome; invitationId?: number }>(
+    `/api/stores/${storeId}/employee-invitations`,
+    { method: 'POST', body: { email, role } },
+  )
+}
+
+export type StoreEmployeeInvitationStatus = 'Pending' | 'Accepted' | 'Revoked' | 'Expired'
+
+export interface StoreEmployeeInvitation {
+  invitationId: number
+  email: string
+  role: StoreEmployeeRole
+  status: StoreEmployeeInvitationStatus
+  expiresAt: string
+  createdAt: string
+  lastSentAt: string
+}
+
+export function getStoreEmployeeInvitations(storeId: number, status?: StoreEmployeeInvitationStatus) {
+  return apiFetch<{ outcome: string; invitations?: StoreEmployeeInvitation[] }>(`/api/stores/${storeId}/employee-invitations`, {
+    query: { status },
+  })
+}
+
+export function revokeStoreEmployeeInvitation(invitationId: number) {
+  return apiFetch<{ outcome: string }>(`/api/store-employee-invitations/${invitationId}/revoke`, { method: 'POST' })
+}
+
+export function resendStoreEmployeeInvitation(invitationId: number) {
+  return apiFetch<{ outcome: string }>(`/api/store-employee-invitations/${invitationId}/resend`, { method: 'POST' })
 }

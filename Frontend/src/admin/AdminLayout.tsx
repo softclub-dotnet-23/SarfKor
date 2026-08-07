@@ -13,6 +13,10 @@ import { useAvatarUrl } from '../lib/useAvatarUrl'
 import { AssistantPanel } from './components/AssistantPanel'
 import { NotificationBell } from './components/NotificationBell'
 import { CommandPalette, type CommandPaletteItem } from './components/CommandPalette'
+import { LanguageSwitcher } from './components/LanguageSwitcher'
+import { CashierShell } from './CashierShell'
+import { useT } from '../i18n/translations'
+import { useLocaleFormat } from '../i18n/format'
 import {
   GridIcon,
   RegisterIcon,
@@ -30,29 +34,31 @@ import {
 const SIDEBAR_COLLAPSED_KEY = 'sarfkor-sidebar-collapsed'
 
 const NAV_ITEMS = [
-  { to: '/admin', label: 'Дашборд', icon: GridIcon, end: true, ownerOnly: true },
-  { to: '/admin/pos', label: 'Касса', icon: RegisterIcon, ownerOnly: false },
-  { to: '/admin/inventory', label: 'Склад', icon: PackageIcon, ownerOnly: false },
-  { to: '/admin/supply', label: 'Поставки', icon: TruckIcon, ownerOnly: true },
-  { to: '/admin/marketing', label: 'Маркетинг', icon: TagIcon, ownerOnly: true },
-  { to: '/admin/staff', label: 'Сотрудники', icon: UsersIcon, ownerOnly: true },
-  { to: '/admin/reports', label: 'Отчёты', icon: ReportIcon, ownerOnly: true },
-  { to: '/admin/settings', label: 'Настройки', icon: SettingsIcon, ownerOnly: true },
-]
+  { to: '/admin', num: '01', key: 'partner.nav.dashboard', icon: GridIcon, end: true, ownerOnly: true },
+  { to: '/admin/pos', num: '02', key: 'partner.nav.pos', icon: RegisterIcon, end: false, ownerOnly: false },
+  { to: '/admin/inventory', num: '03', key: 'partner.nav.inventory', icon: PackageIcon, end: false, ownerOnly: false },
+  { to: '/admin/supply', num: '04', key: 'partner.nav.supply', icon: TruckIcon, end: false, ownerOnly: true },
+  { to: '/admin/marketing', num: '05', key: 'partner.nav.marketing', icon: TagIcon, end: false, ownerOnly: true },
+  { to: '/admin/staff', num: '06', key: 'partner.nav.staff', icon: UsersIcon, end: false, ownerOnly: true },
+  { to: '/admin/reports', num: '07', key: 'partner.nav.reports', icon: ReportIcon, end: false, ownerOnly: true },
+  { to: '/admin/settings', num: '08', key: 'partner.nav.settings', icon: SettingsIcon, end: false, ownerOnly: true },
+] as const
 
-const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
-  '/admin': { title: 'Дашборд', subtitle: 'Обзор магазина за сегодня' },
-  '/admin/pos': { title: 'Касса', subtitle: 'Сканируйте штрихкод и оформляйте продажи' },
-  '/admin/inventory': { title: 'Склад', subtitle: 'Остатки и приход товаров' },
-  '/admin/supply': { title: 'Поставки', subtitle: 'Поставщики, заказы и перемещения между магазинами' },
-  '/admin/marketing': { title: 'Маркетинг', subtitle: 'Акции, наборы товаров, скоро истекает и ответы на отзывы' },
-  '/admin/staff': { title: 'Сотрудники', subtitle: 'Сотрудники магазина и кассовые смены' },
-  '/admin/reports': { title: 'Отчёты', subtitle: 'Выручка, прибыль и динамика продаж' },
-  '/admin/settings': { title: 'Настройки', subtitle: 'Магазин, профиль и безопасность' },
+const PAGE_TITLE_KEYS: Record<string, { title: 'partner.page.dashboard.title' | 'partner.page.pos.title' | 'partner.page.inventory.title' | 'partner.page.supply.title' | 'partner.page.marketing.title' | 'partner.page.staff.title' | 'partner.page.reports.title' | 'partner.page.settings.title'; subtitle: 'partner.page.dashboard.subtitle' | 'partner.page.pos.subtitle' | 'partner.page.inventory.subtitle' | 'partner.page.supply.subtitle' | 'partner.page.marketing.subtitle' | 'partner.page.staff.subtitle' | 'partner.page.reports.subtitle' | 'partner.page.settings.subtitle' }> = {
+  '/admin': { title: 'partner.page.dashboard.title', subtitle: 'partner.page.dashboard.subtitle' },
+  '/admin/pos': { title: 'partner.page.pos.title', subtitle: 'partner.page.pos.subtitle' },
+  '/admin/inventory': { title: 'partner.page.inventory.title', subtitle: 'partner.page.inventory.subtitle' },
+  '/admin/supply': { title: 'partner.page.supply.title', subtitle: 'partner.page.supply.subtitle' },
+  '/admin/marketing': { title: 'partner.page.marketing.title', subtitle: 'partner.page.marketing.subtitle' },
+  '/admin/staff': { title: 'partner.page.staff.title', subtitle: 'partner.page.staff.subtitle' },
+  '/admin/reports': { title: 'partner.page.reports.title', subtitle: 'partner.page.reports.subtitle' },
+  '/admin/settings': { title: 'partner.page.settings.title', subtitle: 'partner.page.settings.subtitle' },
 }
 
-function ShiftCard({ collapsed }: { collapsed: boolean }) {
+export function ShiftCard({ collapsed }: { collapsed: boolean }) {
   const { storeId, user } = useAuth()
+  const t = useT()
+  const { time } = useLocaleFormat()
   const [shifts, setShifts] = useState<CashierShift[] | null>(null)
   const [amount, setAmount] = useState('')
   const [busy, setBusy] = useState(false)
@@ -87,7 +93,7 @@ function ShiftCard({ collapsed }: { collapsed: boolean }) {
       setAmount('')
       await load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось обновить смену')
+      setError(err instanceof ApiError ? err.message : t('partner.shift.updateError'))
     } finally {
       setBusy(false)
     }
@@ -99,11 +105,11 @@ function ShiftCard({ collapsed }: { collapsed: boolean }) {
     <div className="mt-3 rounded-2xl bg-[color:var(--admin-hover)] p-4">
       <div className="mb-2.5 flex items-center justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
-          Смена
+          {t('partner.shift.title')}
         </span>
         <button
           onClick={load}
-          aria-label="Обновить"
+          aria-label={t('partner.shell.refresh')}
           className="grid h-7 w-7 place-items-center rounded-lg bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]"
         >
           <RefreshIcon width={14} height={14} />
@@ -111,13 +117,13 @@ function ShiftCard({ collapsed }: { collapsed: boolean }) {
       </div>
       <div className="mb-1 truncate text-[13px] font-semibold text-[color:var(--admin-text)]">{user?.email}</div>
       <div className="mb-3 text-xs text-[color:var(--admin-text-tertiary)]">
-        {myOpenShift ? `На смене с ${new Date(myOpenShift.startedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'Смена не открыта'}
+        {myOpenShift ? t('partner.shift.onSince', { time: time(myOpenShift.startedAt) }) : t('partner.shift.notOpen')}
       </div>
       <input
         type="number"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
-        placeholder={myOpenShift ? 'Сумма в кассе' : 'Начальная сумма'}
+        placeholder={myOpenShift ? t('partner.shift.amountInDrawer') : t('partner.shift.openingAmount')}
         className="mb-2 w-full rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-2.5 py-1.5 text-[12px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
       />
       {error && <div className="mb-2 text-[11px] font-medium text-[color:var(--admin-danger)]">{error}</div>}
@@ -129,7 +135,7 @@ function ShiftCard({ collapsed }: { collapsed: boolean }) {
           myOpenShift ? 'bg-[color:var(--admin-danger)]' : 'bg-[color:var(--admin-accent)]',
         )}
       >
-        {busy ? 'Секунду…' : myOpenShift ? 'Закрыть смену' : 'Открыть смену'}
+        {busy ? t('common.saving') : myOpenShift ? t('partner.shift.close') : t('partner.shift.open')}
       </button>
     </div>
   )
@@ -156,6 +162,17 @@ function PageTransition({ pathKey, children }: { pathKey: string; children: Reac
 }
 
 export function AdminLayout() {
+  const { currentStoreRole } = useAuth()
+  // Cashier: phone-in-hand, standing, one route (pos/inventory) at a time — a
+  // desktop sidebar shell is the wrong tool entirely, not just a restyle of
+  // this one. StorePartner (Owner) keeps the dense desktop console below.
+  if (currentStoreRole === 'Cashier') {
+    return (
+      <ProfileProvider>
+        <CashierShell />
+      </ProfileProvider>
+    )
+  }
   return (
     <ProfileProvider>
       <AdminLayoutInner />
@@ -168,15 +185,12 @@ function AdminLayoutInner() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1')
   const { theme, toggleTheme } = useTheme()
   const { runThemeTransition } = useThemeTransition()
+  const t = useT()
   const isDark = theme === 'dark'
   const location = useLocation()
   const navigate = useNavigate()
-  const { user, logout, currentStoreRole } = useAuth()
-  const { profile } = useProfile()
-  const avatarUrl = useAvatarUrl(!!profile?.avatarReference, profile?.avatarReference)
-  const page = PAGE_TITLES[location.pathname] ?? PAGE_TITLES['/admin']
-  const initial = user?.email?.charAt(0).toUpperCase() ?? '?'
-  const visibleNavItems = NAV_ITEMS.filter((item) => currentStoreRole !== 'Cashier' || !item.ownerOnly)
+  const { user, logout } = useAuth()
+  const pageKeys = PAGE_TITLE_KEYS[location.pathname] ?? PAGE_TITLE_KEYS['/admin']
 
   function toggleCollapsed() {
     setCollapsed((c) => {
@@ -193,22 +207,22 @@ function AdminLayoutInner() {
   }
 
   const paletteItems: CommandPaletteItem[] = [
-    ...visibleNavItems.map((item) => ({
+    ...NAV_ITEMS.map((item) => ({
       id: item.to,
-      label: item.label,
+      label: t(item.key),
       icon: item.icon,
       action: () => navigate(item.to),
     })),
     {
       id: 'toggle-theme',
-      label: isDark ? 'Светлая тема' : 'Тёмная тема',
+      label: isDark ? t('common.lightTheme') : t('common.darkTheme'),
       icon: isDark ? SunIcon : MoonIcon,
-      hint: 'Оформление',
+      hint: t('common.appearance'),
       action: () => toggleTheme(),
     },
     {
       id: 'logout',
-      label: 'Выйти',
+      label: t('shell.logout'),
       icon: LogOutIcon,
       action: handleLogout,
     },
@@ -216,77 +230,102 @@ function AdminLayoutInner() {
 
   return (
     <div className="admin-shell flex h-screen w-full overflow-hidden bg-[color:var(--admin-content)] text-[color:var(--admin-text)]">
-      {/* Sidebar */}
+      {/* Sidebar — same structure as the platform Admin console: logo plate +
+          role chip, numbered nav rows, feature block, user card at the
+          bottom. The collapse toggle is a StorePartner-only feature (the
+          reference shell doesn't have one) kept for functional parity with
+          before, just restyled to match. */}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-40 flex w-[240px] shrink-0 flex-col overflow-y-auto overflow-x-hidden border-r border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-4 pb-5 pt-6 transition-[transform,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] [box-shadow:var(--admin-shadow)] lg:static lg:shadow-none lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-[246px] shrink-0 flex-col overflow-y-auto overflow-x-hidden border-r border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] transition-[transform,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:static lg:translate-x-0',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full',
-          collapsed ? 'lg:w-[76px]' : 'lg:w-[240px]',
+          collapsed ? 'lg:w-[76px]' : 'lg:w-[246px]',
         )}
       >
-        <div className={clsx('mb-8 flex items-center', collapsed ? 'flex-col gap-3 px-0' : 'justify-between px-2')}>
-          <Link to="/" className="flex items-center gap-2.5 overflow-hidden">
-            <LogoMark size={28} />
-            {!collapsed && <span className="whitespace-nowrap text-[19px] font-extrabold tracking-tight text-[color:var(--admin-text)]">Sarfkor</span>}
+        <div className={clsx('flex items-center gap-2.5 pb-4 pt-5', collapsed ? 'flex-col px-3' : 'px-5')}>
+          <Link to="/" className="flex shrink-0 items-center gap-2.5 overflow-hidden">
+            <div className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] bg-[color:var(--admin-accent)]">
+              <LogoMark size={20} mono />
+            </div>
+            {!collapsed && (
+              <div className="flex flex-col leading-none">
+                <span className="whitespace-nowrap text-[16px] font-extrabold tracking-tight text-[color:var(--admin-text)]">Sarfkor</span>
+                <span className="mt-1 w-fit rounded-[5px] bg-[color:var(--admin-accent-soft)] px-1.5 py-0.5 font-[JetBrains_Mono,monospace] text-[9.5px] font-semibold uppercase tracking-[.12em] text-[color:var(--admin-accent)]">
+                  {t('partner.shell.owner')}
+                </span>
+              </div>
+            )}
           </Link>
           <button
             onClick={toggleCollapsed}
-            aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
+            aria-label={collapsed ? t('partner.shell.expandMenu') : t('partner.shell.collapseMenu')}
             aria-expanded={!collapsed}
-            className="hidden h-7 w-7 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)] lg:grid"
+            className={clsx(
+              'hidden h-7 w-7 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)] lg:grid',
+              !collapsed && 'ml-auto',
+            )}
           >
             <ChevronLeftIcon width={14} height={14} className={clsx('transition-transform duration-300', collapsed && 'rotate-180')} />
           </button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1">
-          {visibleNavItems.map((item) => (
+        <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
+          {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? t(item.key) : undefined}
               onClick={() => setMobileNavOpen(false)}
               className={({ isActive }) =>
                 clsx(
-                  'relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[14px] font-medium transition-colors duration-200',
+                  'relative flex items-center gap-3 rounded-[11px] px-3 py-2.5 text-[13.5px] font-semibold transition-colors duration-150',
                   collapsed && 'justify-center px-0',
                   isActive
-                    ? 'font-semibold text-[color:var(--admin-accent)]'
-                    : 'text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]',
+                    ? 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-text)]'
+                    : 'text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-accent-soft)]/50 hover:text-[color:var(--admin-text)]',
                 )
               }
             >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <motion.span
-                      layoutId="admin-nav-pill"
-                      className="absolute inset-0 rounded-xl bg-[color:var(--admin-accent-soft)]"
-                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                    />
-                  )}
-                  <item.icon width={18} height={18} className="relative z-10 shrink-0" />
-                  {!collapsed && <span className="relative z-10 truncate">{item.label}</span>}
-                </>
+              {!collapsed && (
+                <span className="shrink-0 font-[JetBrains_Mono,monospace] text-[11px] font-bold text-[color:var(--admin-text-tertiary)]">{item.num}</span>
               )}
+              <item.icon width={17} height={17} className="shrink-0 opacity-90" />
+              {!collapsed && <span className="truncate">{t(item.key)}</span>}
             </NavLink>
           ))}
         </nav>
 
         <ShiftCard collapsed={collapsed} />
 
-        <button
-          onClick={handleLogout}
-          title={collapsed ? 'Выйти' : undefined}
-          className={clsx(
-            'mt-2 flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-[14px] font-medium text-[color:var(--admin-text-tertiary)] transition-colors hover:bg-[color:var(--admin-hover)] hover:text-[color:var(--admin-text)]',
-            collapsed && 'justify-center px-0',
-          )}
-        >
-          <LogOutIcon width={18} height={18} className="shrink-0" />
-          {!collapsed && 'Выйти'}
-        </button>
+        <div className="border-t border-[color:var(--admin-border)] p-3">
+          <Link
+            to="/admin/settings"
+            className={clsx(
+              'flex items-center gap-2.5 rounded-[11px] bg-[color:var(--admin-hover)] px-2.5 py-2.5',
+              collapsed && 'flex-col gap-1.5 px-1',
+            )}
+          >
+            <UserAvatar collapsed={collapsed} />
+            {!collapsed && (
+              <div className="min-w-0 flex-1 leading-tight">
+                <div className="truncate text-[13px] font-bold text-[color:var(--admin-text)]">{user?.email}</div>
+                <div className="text-[11px] font-semibold text-[color:var(--admin-accent)]">{t('partner.shell.owner')}</div>
+              </div>
+            )}
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                handleLogout()
+              }}
+              aria-label={t('shell.logout')}
+              title={t('shell.logout')}
+              className="flex shrink-0 items-center justify-center text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text)]"
+            >
+              <LogOutIcon width={16} height={16} />
+            </button>
+          </Link>
+        </div>
       </aside>
 
       <AnimatePresence>
@@ -305,62 +344,37 @@ function AdminLayoutInner() {
 
       {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="relative z-10 flex shrink-0 items-center gap-4 border-b border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-6 py-4 [box-shadow:0_1px_0_var(--admin-border),0_4px_16px_-8px_rgba(0,0,0,0.12)]">
-          <button
-            onClick={() => setMobileNavOpen(true)}
-            aria-label="Меню"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)] lg:hidden"
-          >
-            <span className="flex w-4 flex-col gap-[4px]">
-              <span className="block h-[1.5px] w-full bg-current" />
-              <span className="block h-[1.5px] w-full bg-current" />
-              <span className="block h-[1.5px] w-full bg-current" />
-            </span>
-          </button>
-
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[17px] font-extrabold tracking-tight text-[color:var(--admin-text)]">
-              {page.title}
-            </h1>
-            <p className="truncate text-[13px] text-[color:var(--admin-text-tertiary)]">{page.subtitle}</p>
-          </div>
-
-          <div className="hidden w-64 shrink-0 md:block">
-            <CommandPalette items={paletteItems} />
-          </div>
-
-          <NotificationBell />
-
-          <button
-            onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
-            aria-label="Переключить тему"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)]"
-          >
-            {isDark ? <SunIcon width={17} height={17} /> : <MoonIcon width={17} height={17} />}
-          </button>
-
-          <Link
-            to="/admin/settings"
-            className="hidden shrink-0 items-center gap-2.5 border-l border-[color:var(--admin-border)] pl-4 sm:flex"
-          >
-            <div
-              className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-xl text-[15px] font-bold text-white [box-shadow:var(--admin-shadow)]"
-              style={{
-                background:
-                  'linear-gradient(135deg, var(--admin-accent), color-mix(in srgb, var(--admin-accent) 65%, black))',
-              }}
+        <header className="flex h-[62px] shrink-0 items-center justify-between gap-3 border-b border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              onClick={() => setMobileNavOpen(true)}
+              aria-label={t('shell.menu')}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)] lg:hidden"
             >
-              {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : initial}
+              <span className="flex w-4 flex-col gap-[4px]">
+                <span className="block h-[1.5px] w-full bg-current" />
+                <span className="block h-[1.5px] w-full bg-current" />
+                <span className="block h-[1.5px] w-full bg-current" />
+              </span>
+            </button>
+            <h1 className="truncate text-[18px] font-extrabold tracking-tight text-[color:var(--admin-text)]">{t(pageKeys.title)}</h1>
+            <span className="hidden truncate text-[12px] font-medium text-[color:var(--admin-text-tertiary)] sm:inline">{t(pageKeys.subtitle)}</span>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="hidden w-56 xl:block">
+              <CommandPalette items={paletteItems} />
             </div>
-            <div className="hidden lg:block">
-              <div className="max-w-[160px] truncate text-[13px] font-semibold leading-tight text-[color:var(--admin-text)]">
-                {profile?.displayName || user?.email}
-              </div>
-              <div className="text-[11px] leading-tight text-[color:var(--admin-text-tertiary)]">
-                {currentStoreRole === 'Cashier' ? 'Кассир' : user?.roles.includes('StorePartner') ? 'Владелец' : 'Пользователь'}
-              </div>
-            </div>
-          </Link>
+            <NotificationBell />
+            <LanguageSwitcher scheme="admin" />
+            <button
+              onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
+              aria-label={t('shell.toggleTheme')}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] text-[color:var(--admin-text)]"
+            >
+              {isDark ? <SunIcon width={16} height={16} /> : <MoonIcon width={16} height={16} />}
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
@@ -371,6 +385,23 @@ function AdminLayoutInner() {
       </div>
 
       <AssistantPanel />
+    </div>
+  )
+}
+
+function UserAvatar({ collapsed }: { collapsed: boolean }) {
+  const { user } = useAuth()
+  const { profile } = useProfile()
+  const avatarUrl = useAvatarUrl(!!profile?.avatarReference, profile?.avatarReference)
+  const initial = user?.email?.charAt(0).toUpperCase() ?? '?'
+  return (
+    <div
+      className={clsx(
+        'grid shrink-0 place-items-center overflow-hidden rounded-full bg-[color:var(--admin-accent-soft)] text-[13px] font-bold text-[color:var(--admin-accent)]',
+        collapsed ? 'h-8 w-8' : 'h-9 w-9',
+      )}
+    >
+      {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : initial}
     </div>
   )
 }

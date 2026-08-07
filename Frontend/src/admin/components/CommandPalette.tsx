@@ -1,157 +1,268 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { createPortal } from 'react-dom'
-import { SearchIcon, CommandIcon, type IconProps } from './icons'
+import { useReducedMotion } from 'framer-motion'
+import {
+  GridIcon,
+  RegisterIcon,
+  PackageIcon,
+  UsersIcon,
+  ReportIcon,
+  SettingsIcon,
+  TruckIcon,
+  TagIcon,
+} from './icons'
 
-export interface CommandPaletteItem {
+const EASE = [0.16, 1, 0.3, 1] as const
+
+interface PaletteItem {
   id: string
   label: string
-  hint?: string
-  icon: ComponentType<IconProps>
+  sub?: string
+  icon: (p: { width: number; height: number }) => React.ReactNode
   action: () => void
+  keys?: string[]
 }
 
-/**
- * Header search box + the Cmd/Ctrl-K palette it opens — one component instead of two, since the
- * header's search field was previously a static, non-functional placeholder input (typing into it
- * did nothing). Filters `items` client-side; nothing here fabricates data, `items` is always
- * built by the caller from the same NAV_ITEMS/role list already driving the sidebar.
- */
-export function CommandPalette({ items }: { items: CommandPaletteItem[] }) {
+function SearchIcon() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+  )
+}
+
+function ArrowReturnIcon() {
+  return (
+    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 10 4 15 9 20"/>
+      <path d="M20 4v7a4 4 0 01-4 4H4"/>
+    </svg>
+  )
+}
+
+function useFocusTrap(ref: React.RefObject<HTMLElement | null>, active: boolean) {
+  useEffect(() => {
+    if (!active) return
+    const el = ref.current
+    if (!el) return
+    const focusable = el.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    )
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus() }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus() }
+      }
+    }
+    el.addEventListener('keydown', onKey)
+    return () => el.removeEventListener('keydown', onKey)
+  }, [active, ref])
+}
+
+export function CommandPalette() {
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [activeIndex, setActiveIndex] = useState(0)
+  const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const reduce = useReducedMotion()
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return items
-    return items.filter((i) => i.label.toLowerCase().includes(q))
-  }, [items, query])
+  const allItems: PaletteItem[] = [
+    { id: 'dash', label: 'Дашборд', sub: 'Главная страница кабинета', icon: GridIcon, action: () => navigate('/admin') },
+    { id: 'pos', label: 'Касса', sub: 'Открыть POS-кассу', icon: RegisterIcon, action: () => navigate('/admin/pos') },
+    { id: 'inv', label: 'Склад', sub: 'Инвентаризация и остатки', icon: PackageIcon, action: () => navigate('/admin/inventory') },
+    { id: 'sup', label: 'Поставки', sub: 'Поставщики и закупки', icon: TruckIcon, action: () => navigate('/admin/supply') },
+    { id: 'mkt', label: 'Маркетинг', sub: 'Акции и лояльность', icon: TagIcon, action: () => navigate('/admin/marketing') },
+    { id: 'staff', label: 'Сотрудники', sub: 'Управление персоналом', icon: UsersIcon, action: () => navigate('/admin/staff') },
+    { id: 'rep', label: 'Отчёты', sub: 'Продажи, прибыль, аналитика', icon: ReportIcon, action: () => navigate('/admin/reports') },
+    { id: 'set', label: 'Настройки', sub: 'Магазин, пароль, тема', icon: SettingsIcon, action: () => navigate('/admin/settings') },
+  ]
 
+  const q = query.trim().toLowerCase()
+  const items = q
+    ? allItems.filter((it) => it.label.toLowerCase().includes(q) || it.sub?.toLowerCase().includes(q))
+    : allItems
+
+  function close() {
+    setOpen(false)
+    setQuery('')
+    setActive(0)
+  }
+
+  function confirm(idx: number) {
+    const item = items[idx]
+    if (!item) return
+    item.action()
+    close()
+  }
+
+  // Open on custom event (sidebar button) + Ctrl/Cmd+K
   useEffect(() => {
-    function onGlobalKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    function onEvent() { setOpen(true) }
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault()
         setOpen((v) => !v)
       }
+      if (e.key === 'Escape') close()
     }
-    document.addEventListener('keydown', onGlobalKey)
-    return () => document.removeEventListener('keydown', onGlobalKey)
+    document.addEventListener('sarfkor:open-palette', onEvent as EventListener)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('sarfkor:open-palette', onEvent as EventListener)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [])
 
+  // Focus input when palette opens
   useEffect(() => {
-    if (!open) return
-    setQuery('')
-    setActiveIndex(0)
-    // Portal content isn't mounted on the same tick this effect runs.
-    const id = requestAnimationFrame(() => inputRef.current?.focus())
-    document.body.style.overflow = 'hidden'
-    return () => {
-      cancelAnimationFrame(id)
-      document.body.style.overflow = ''
+    if (open) {
+      setActive(0)
+      setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [open])
 
+  // Clamp active when results change
   useEffect(() => {
-    setActiveIndex(0)
-  }, [query])
+    setActive((v) => Math.min(v, Math.max(items.length - 1, 0)))
+  }, [items.length])
 
-  function runItem(item: CommandPaletteItem | undefined) {
-    if (!item) return
-    setOpen(false)
-    item.action()
-  }
+  useFocusTrap(containerRef, open)
 
-  function onKeyDown(e: ReactKeyboardEvent) {
-    if (e.key === 'Escape') {
-      setOpen(false)
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setActiveIndex((i) => Math.max(i - 1, 0))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      runItem(filtered[activeIndex])
-    }
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((v) => (v + 1) % Math.max(items.length, 1)) }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setActive((v) => (v - 1 + Math.max(items.length, 1)) % Math.max(items.length, 1)) }
+    if (e.key === 'Enter') { e.preventDefault(); confirm(active) }
   }
 
   return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-2.5 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2 pl-3.5 pr-3 text-left text-[13px] text-[color:var(--admin-text-tertiary)] transition-colors hover:border-[color:var(--admin-accent)]"
-      >
-        <SearchIcon width={16} height={16} className="shrink-0" />
-        <span className="flex-1 truncate">Поиск...</span>
-        <span className="hidden shrink-0 items-center gap-0.5 rounded-md bg-[color:var(--admin-card)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--admin-text-tertiary)] ring-1 ring-[color:var(--admin-border)] sm:flex">
-          <CommandIcon width={10} height={10} />K
-        </span>
-      </button>
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduce ? 0 : 0.18 }}
+            className="fixed inset-0 z-[200]"
+            style={{ background: 'color-mix(in srgb, var(--admin-content) 70%, transparent)', backdropFilter: 'blur(8px)' }}
+            onClick={close}
+          />
 
-      {createPortal(
-        <AnimatePresence>
-          {open && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="admin-shell fixed inset-0 z-[100] flex items-start justify-center bg-black/50 px-4 pt-[12vh] backdrop-blur-sm"
-              onClick={() => setOpen(false)}
-            >
-              <motion.div
-                initial={{ opacity: 0, y: -12, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={onKeyDown}
-                className="w-full max-w-[540px] overflow-hidden rounded-2xl bg-[color:var(--admin-card)] ring-1 ring-[color:var(--admin-border)] [box-shadow:var(--admin-shadow-lift)]"
-              >
-                <div className="flex items-center gap-3 border-b border-[color:var(--admin-border)] px-4 py-3.5">
-                  <SearchIcon width={17} height={17} className="shrink-0 text-[color:var(--admin-text-tertiary)]" />
-                  <input
-                    ref={inputRef}
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Перейти на страницу..."
-                    className="w-full border-0 bg-transparent text-[15px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)]"
-                  />
-                  <kbd className="shrink-0 rounded-md bg-[color:var(--admin-hover)] px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--admin-text-tertiary)]">
-                    Esc
-                  </kbd>
+          {/* Panel */}
+          <motion.div
+            key="panel"
+            ref={containerRef}
+            initial={{ opacity: 0, y: reduce ? 0 : -16, scale: reduce ? 1 : 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: reduce ? 0 : -8, scale: reduce ? 1 : 0.97 }}
+            transition={{ duration: reduce ? 0 : 0.22, ease: EASE }}
+            role="dialog"
+            aria-modal
+            aria-label="Командная палитра"
+            className="fixed left-1/2 top-[15vh] z-[201] w-full max-w-[520px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)]"
+            style={{ boxShadow: '0 24px 80px -8px rgba(0,0,0,0.35), 0 0 0 1px var(--admin-border)' }}
+            onKeyDown={onKeyDown}
+          >
+            {/* Search row */}
+            <div className="flex items-center gap-3 border-b border-[color:var(--admin-border)] px-4 py-3.5">
+              <span className="shrink-0 text-[color:var(--admin-text-tertiary)]"><SearchIcon /></span>
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); setActive(0) }}
+                placeholder="Перейти в раздел…"
+                className="min-w-0 flex-1 bg-transparent text-[14px] text-[color:var(--admin-text)] placeholder:text-[color:var(--admin-text-tertiary)] outline-none"
+              />
+              {query && (
+                <button
+                  onClick={() => setQuery('')}
+                  className="shrink-0 text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text-secondary)]"
+                  tabIndex={-1}
+                >
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              )}
+            </div>
+
+            {/* Results */}
+            <div className="overflow-y-auto" style={{ maxHeight: 360 }}>
+              {items.length === 0 && (
+                <div className="px-4 py-8 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">
+                  Ничего не найдено
                 </div>
-
-                <div className="max-h-[360px] overflow-y-auto p-2">
-                  {filtered.length === 0 && (
-                    <p className="px-3 py-8 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">Ничего не найдено</p>
-                  )}
-                  {filtered.map((item, i) => (
-                    <button
-                      key={item.id}
-                      onMouseEnter={() => setActiveIndex(i)}
-                      onClick={() => runItem(item)}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13.5px] font-medium transition-colors ${
-                        i === activeIndex
-                          ? 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]'
-                          : 'text-[color:var(--admin-text-secondary)]'
-                      }`}
+              )}
+              {items.map((item, i) => {
+                const isActive = i === active
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => confirm(i)}
+                    onMouseEnter={() => setActive(i)}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                    style={{
+                      background: isActive ? 'var(--admin-accent-soft)' : 'transparent',
+                    }}
+                  >
+                    <span
+                      className="grid h-7 w-7 shrink-0 place-items-center rounded-lg"
+                      style={{
+                        background: isActive ? 'color-mix(in srgb, var(--admin-accent) 14%, transparent)' : 'var(--admin-hover)',
+                        color: isActive ? 'var(--admin-text)' : 'var(--admin-text-tertiary)',
+                      }}
                     >
-                      <item.icon width={16} height={16} className="shrink-0" />
-                      <span className="flex-1 truncate">{item.label}</span>
-                      {item.hint && <span className="shrink-0 text-[11px] text-[color:var(--admin-text-tertiary)]">{item.hint}</span>}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body,
+                      <item.icon width={14} height={14} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className="block text-[13.5px] font-semibold leading-tight"
+                        style={{ color: isActive ? 'var(--admin-text)' : 'var(--admin-text-secondary)' }}
+                      >
+                        {item.label}
+                      </span>
+                      {item.sub && (
+                        <span className="block text-[11.5px] leading-tight text-[color:var(--admin-text-tertiary)]">
+                          {item.sub}
+                        </span>
+                      )}
+                    </span>
+                    {isActive && (
+                      <span className="shrink-0 text-[color:var(--admin-text-tertiary)]">
+                        <ArrowReturnIcon />
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Footer hint */}
+            <div className="flex items-center gap-4 border-t border-[color:var(--admin-border)] px-4 py-2.5">
+              <span className="flex items-center gap-1.5 text-[11px] text-[color:var(--admin-text-tertiary)]">
+                <kbd className="rounded border border-[color:var(--admin-border)] px-1 py-0.5 text-[9px] font-bold">↑↓</kbd>
+                выбрать
+              </span>
+              <span className="flex items-center gap-1.5 text-[11px] text-[color:var(--admin-text-tertiary)]">
+                <kbd className="rounded border border-[color:var(--admin-border)] px-1 py-0.5 text-[9px] font-bold">↵</kbd>
+                перейти
+              </span>
+              <span className="flex items-center gap-1.5 text-[11px] text-[color:var(--admin-text-tertiary)]">
+                <kbd className="rounded border border-[color:var(--admin-border)] px-1 py-0.5 text-[9px] font-bold">Esc</kbd>
+                закрыть
+              </span>
+            </div>
+          </motion.div>
+        </>
       )}
-    </>
+    </AnimatePresence>
   )
 }

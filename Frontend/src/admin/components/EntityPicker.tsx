@@ -93,7 +93,7 @@ const FOCUSABLE_ROW = 'min-h-11'
 
 export function EntityPicker<T>(props: EntityPickerProps<T>) {
   const { fetchPage, getId, getLabel, renderOption, placeholder = 'Найти…', scheme = 'admin', disabled, ariaLabel, headerAction, pageSize = 20, searchDebounceMs = 300, className = '', emptyHint } = props
-  const t = SCHEMES[scheme]
+  const c = SCHEMES[scheme]
   const isMobile = useIsMobile()
   const listId = useId()
 

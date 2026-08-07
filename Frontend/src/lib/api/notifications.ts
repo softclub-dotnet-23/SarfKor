@@ -2,7 +2,7 @@ import { apiFetch } from './client'
 
 export type NotificationType = 'LowStock' | 'PriceDrop' | 'ReportResolved' | 'ExpiringOfferPublished'
 
-export interface AppNotification {
+export interface Notification {
   notificationId: number
   type: NotificationType
   message: string
@@ -10,10 +10,14 @@ export interface AppNotification {
   createdAt: string
 }
 
+export interface GetNotificationsResult {
+  notifications: Notification[]
+}
+
 export function getNotifications() {
-  return apiFetch<{ notifications: AppNotification[] }>('/api/notifications')
+  return apiFetch<GetNotificationsResult>('/api/notifications')
 }
 
 export function markNotificationAsRead(notificationId: number) {
-  return apiFetch<void>(`/api/notifications/${notificationId}/read`, { method: 'POST' })
+  return apiFetch<{ outcome: string }>(`/api/notifications/${notificationId}/read`, { method: 'POST' })
 }

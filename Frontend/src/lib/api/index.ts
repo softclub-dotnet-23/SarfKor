@@ -24,8 +24,8 @@ export * as expiringOffersApi from './expiringOffers'
 export * as favoritesApi from './favorites'
 export * as priceAlertsApi from './priceAlerts'
 export * as shoppingListsApi from './shoppingLists'
-export * as assistantApi from './assistant'
 export * as notificationsApi from './notifications'
+export * as assistantApi from './assistant'
 export type {
   CashierShift,
   ProcessSaleRequest,
@@ -85,5 +85,5 @@ export type { StockTransfer } from './stockTransfers'
 export type { Promotion, PromotionDiscountType, CreatePromotionInput } from './promotions'
 export type { ProductBundle, BundleItem } from './bundles'
 export type { ExpiringOffer } from './expiringOffers'
+export type { Notification, NotificationType } from './notifications'
 export type { AssistantChatMessage, ProposedAction, AssistantChatResult, ConfirmActionResult } from './assistant'
-export type { AppNotification, NotificationType } from './notifications'

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { LogoMark } from '../../components/Logo'
 import { subscribeToCustomerDisplay, type CustomerDisplayState } from '../lib/customerDisplay'
@@ -13,16 +13,21 @@ function fmt(n: number) {
 export function CustomerDisplayPage() {
   const [state, setState] = useState<CustomerDisplayState | null>(null)
   const [justCompleted, setJustCompleted] = useState<{ amount: number; currency: string } | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const unsubscribe = subscribeToCustomerDisplay((next) => {
       if (next.completedTotal) {
         setJustCompleted(next.completedTotal)
-        setTimeout(() => setJustCompleted(null), 4000)
+        if (timerRef.current) clearTimeout(timerRef.current)
+        timerRef.current = setTimeout(() => setJustCompleted(null), 4000)
       }
       setState(next)
     })
-    return unsubscribe
+    return () => {
+      unsubscribe()
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
   }, [])
 
   const lines = state?.lines ?? []
@@ -87,8 +92,8 @@ export function CustomerDisplayPage() {
             )}
 
             <div className="mt-6 flex items-center justify-between rounded-2xl bg-[color:var(--admin-accent)] px-8 py-6">
-              <span className="text-[24px] font-bold text-white">Итого</span>
-              <span className="text-[44px] font-extrabold text-white">
+              <span className="text-[24px] font-bold text-[color:var(--admin-accent-fg)]">Итого</span>
+              <span className="text-[44px] font-extrabold text-[color:var(--admin-accent-fg)]">
                 {fmt(total)} {currency}
               </span>
             </div>

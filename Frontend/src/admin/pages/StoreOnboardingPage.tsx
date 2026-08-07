@@ -2,16 +2,20 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { storesApi, ApiError } from '../../lib/api'
-import { StoreIcon } from '../components/icons'
+import { LogoMark } from '../../components/Logo'
+import { useTheme } from '../../theme/ThemeProvider'
+import { useThemeTransition } from '../../theme/useThemeTransition'
+import { SunIcon, MoonIcon } from '../../components/icons'
 
-// Dushanbe city center — a sane default so the form is usable without
-// waiting on geolocation permission.
 const DEFAULT_LAT = 38.5598
 const DEFAULT_LNG = 68.787
 
 export function StoreOnboardingPage() {
   const { hasRole, storeId, myStores, setStoreId, refreshRoles, refreshMyStores, logout } = useAuth()
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useTheme()
+  const { runThemeTransition } = useThemeTransition()
+  const isDark = theme === 'dark'
 
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
@@ -21,22 +25,17 @@ export function StoreOnboardingPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [storesLoading, setStoresLoading] = useState(false)
-
   const [manualStoreId, setManualStoreId] = useState('')
   const [showManualEntry, setShowManualEntry] = useState(false)
 
-  // A StorePartner landing here means GET /api/me/stores either hasn't run yet for this
-  // session or came back with 2+ stores (a single match is auto-adopted by AuthContext,
-  // which skips this screen entirely) — refresh once so a stale/empty list doesn't strand
-  // a real multi-store owner on the "create a new store" form.
   useEffect(() => {
     if (!hasRole('StorePartner') || myStores !== null) return
     setStoresLoading(true)
     refreshMyStores().finally(() => setStoresLoading(false))
   }, [hasRole, myStores, refreshMyStores])
 
-  function pickStore(pickedStoreId: number) {
-    setStoreId(pickedStoreId)
+  function pickStore(id: number) {
+    setStoreId(id)
     navigate('/admin', { replace: true })
   }
 
@@ -44,11 +43,7 @@ export function StoreOnboardingPage() {
     if (!navigator.geolocation) return
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLat(pos.coords.latitude)
-        setLng(pos.coords.longitude)
-        setLocating(false)
-      },
+      (pos) => { setLat(pos.coords.latitude); setLng(pos.coords.longitude); setLocating(false) },
       () => setLocating(false),
       { timeout: 8000 },
     )
@@ -65,8 +60,6 @@ export function StoreOnboardingPage() {
     try {
       const result = await storesApi.createStore({ name: name.trim(), address: address.trim(), latitude: lat, longitude: lng })
       setStoreId(result.storeId)
-      // Creating a store grants StorePartner server-side, but the JWT already
-      // in hand doesn't carry that claim yet — refresh to get a token that does.
       await refreshRoles()
       // myStores must include the new store before navigating, or RequireStore sees
       // storeId set but myStores still empty, calls that stale, and bounces back here.
@@ -82,10 +75,7 @@ export function StoreOnboardingPage() {
   function handleUseManualId(e: FormEvent) {
     e.preventDefault()
     const id = Number(manualStoreId)
-    if (!Number.isFinite(id) || id <= 0) {
-      setError('Введите корректный ID магазина')
-      return
-    }
+    if (!Number.isFinite(id) || id <= 0) { setError('Введите корректный ID магазина'); return }
     setStoreId(id)
     navigate('/admin', { replace: true })
   }
@@ -94,158 +84,194 @@ export function StoreOnboardingPage() {
   const hasPickableStores = !!myStores && myStores.length > 0
 
   return (
-    <div className="admin-shell flex min-h-screen items-center justify-center bg-[color:var(--admin-content)] p-6 text-[color:var(--admin-text)]">
-      <div className="w-full max-w-md rounded-[22px] bg-[color:var(--admin-card)] p-8 ring-1 ring-[color:var(--admin-border)] [box-shadow:var(--admin-shadow-lift)]">
-        <span
-          className="mb-5 grid h-12 w-12 place-items-center rounded-2xl text-white"
-          style={{
-            background:
-              'linear-gradient(135deg, var(--admin-accent), color-mix(in srgb, var(--admin-accent) 65%, black))',
-          }}
-        >
-          <StoreIcon width={22} height={22} />
-        </span>
-
-        {storesLoading && (
-          <div className="mb-6 text-[13px] text-[color:var(--admin-text-tertiary)]">Ищем ваши магазины…</div>
-        )}
-
-        {hasPickableStores && (
-          <div className="mb-6 border-b border-[color:var(--admin-border)] pb-6">
-            <h2 className="mb-1 text-[15px] font-bold text-[color:var(--admin-text)]">Выберите магазин</h2>
-            <p className="mb-3 text-[12.5px] text-[color:var(--admin-text-tertiary)]">
-              Этот браузер их ещё не запоминал — выберите, с каким работать сейчас.
-            </p>
-            <div className="flex flex-col gap-2">
-              {myStores!.map((s) => (
-                <button
-                  key={s.storeId}
-                  onClick={() => pickStore(s.storeId)}
-                  className="flex items-center justify-between gap-3 rounded-xl bg-[color:var(--admin-hover)] px-4 py-3 text-left hover:bg-[color:var(--admin-border)]"
-                >
-                  <span className="min-w-0 truncate text-[13.5px] font-semibold text-[color:var(--admin-text)]">{s.name}</span>
-                  <span className="shrink-0 rounded-full bg-[color:var(--admin-accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--admin-accent)]">
-                    {s.role === 'Owner' ? 'Владелец' : 'Кассир'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {alreadyPartnerWithoutStore && !hasPickableStores && !storesLoading && (
-          <div className="mb-6 rounded-xl bg-[color:var(--admin-warning-dim)] p-4 text-[12.5px] leading-relaxed text-[color:var(--admin-text-secondary)]">
-            У вашего аккаунта есть права партнёра, но за ним пока не числится ни одного магазина. Создайте новый ниже
-            {!showManualEntry && (
-              <>
-                {' '}
-                или{' '}
-                <button type="button" onClick={() => setShowManualEntry(true)} className="font-semibold text-[color:var(--admin-accent)] underline">
-                  введите ID вручную
-                </button>
-              </>
-            )}
-            .
-          </div>
-        )}
-
-        {showManualEntry && (
-          <form onSubmit={handleUseManualId} className="mb-6 flex gap-2 border-b border-[color:var(--admin-border)] pb-6">
-            <input
-              value={manualStoreId}
-              onChange={(e) => setManualStoreId(e.target.value)}
-              placeholder="ID магазина"
-              inputMode="numeric"
-              className="flex-1 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
-            />
-            <button
-              type="submit"
-              className="shrink-0 rounded-xl bg-[color:var(--admin-hover)] px-4 py-2.5 text-[13px] font-semibold text-[color:var(--admin-text)] hover:bg-[color:var(--admin-border)]"
-            >
-              Продолжить
-            </button>
-          </form>
-        )}
-
-        <h1 className="mb-1.5 text-[20px] font-extrabold tracking-tight">
-          {hasPickableStores ? 'Или создайте ещё один' : 'Создайте свой магазин'}
-        </h1>
-        <p className="mb-6 text-[13px] text-[color:var(--admin-text-tertiary)]">
-          Это займёт минуту — после создания сразу откроется панель управления
-        </p>
-
-        <form onSubmit={handleCreate} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Название магазина</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Магазин «Дилшод»"
-              className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Адрес</span>
-            <input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="ул. Рудаки, 123, Душанбе"
-              className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]"
-            />
-          </label>
-
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Широта</span>
-              <input
-                type="number"
-                step="0.0001"
-                value={lat}
-                onChange={(e) => setLat(Number(e.target.value))}
-                className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Долгота</span>
-              <input
-                type="number"
-                step="0.0001"
-                value={lng}
-                onChange={(e) => setLng(Number(e.target.value))}
-                className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
-              />
-            </label>
-          </div>
-
+    <div className="admin-shell flex min-h-screen flex-col bg-[color:var(--admin-content)] text-[color:var(--admin-text)]">
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-[color:var(--admin-border)]">
+        <div className="flex items-center gap-2.5">
+          <LogoMark size={24} />
+          <span className="text-[15px] font-extrabold tracking-tight">Sarfkor</span>
+        </div>
+        <div className="flex items-center gap-3">
           <button
-            type="button"
-            onClick={useMyLocation}
-            disabled={locating}
-            className="self-start text-[12px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80 disabled:opacity-50"
+            onClick={(e) => runThemeTransition(e.currentTarget, toggleTheme)}
+            aria-label="Переключить тему"
+            className="grid h-8 w-8 place-items-center rounded-full text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-hover)] transition-colors"
           >
-            {locating ? 'Определяем…' : 'Определить моё местоположение'}
+            {isDark ? <SunIcon width={15} height={15} /> : <MoonIcon width={15} height={15} />}
           </button>
+          <button
+            onClick={logout}
+            className="text-[12px] font-medium text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text)] transition-colors"
+          >
+            Выйти
+          </button>
+        </div>
+      </div>
 
-          {error && (
-            <div className="rounded-lg bg-[color:var(--admin-danger-dim)] px-3.5 py-2.5 text-[12.5px] font-medium text-[color:var(--admin-danger)]">{error}</div>
+      {/* Content */}
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div
+          className="w-full max-w-[440px] rounded-[28px] border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] p-8"
+          style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), var(--admin-shadow-lift)' }}
+        >
+          {/* Header */}
+          <div className="mb-8">
+            <div className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[color:var(--admin-text-tertiary)] mb-2">
+              Sarfkor / Партнёр
+            </div>
+            <h1 className="text-[28px] font-black tracking-tighter text-[color:var(--admin-text)]">
+              {hasPickableStores ? 'Выберите магазин' : 'Создайте магазин'}
+            </h1>
+            <p className="mt-1.5 text-[13px] text-[color:var(--admin-text-secondary)]">
+              {hasPickableStores
+                ? 'У вас уже есть магазины — выберите один или создайте новый'
+                : 'Это займёт минуту — после этого сразу откроется панель управления'}
+            </p>
+          </div>
+
+          {storesLoading && (
+            <div className="mb-6 text-[12.5px] text-[color:var(--admin-text-tertiary)]">Ищем ваши магазины…</div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-1 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-60"
-          >
-            {loading ? 'Создаём…' : 'Создать магазин'}
-          </button>
-        </form>
+          {/* Existing stores picker */}
+          {hasPickableStores && (
+            <div className="mb-6">
+              <div className="flex flex-col gap-2">
+                {myStores!.map((s) => (
+                  <button
+                    key={s.storeId}
+                    onClick={() => pickStore(s.storeId)}
+                    className="group flex items-center justify-between gap-3 rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-4 py-3.5 text-left transition-all hover:border-[color:var(--admin-border-strong)] hover:bg-[color:var(--admin-card)]"
+                  >
+                    <div>
+                      <div className="text-[14px] font-bold text-[color:var(--admin-text)]">{s.name}</div>
+                      <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">ID #{s.storeId}</div>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-[color:var(--admin-border)] px-2.5 py-1 text-[10.5px] font-semibold text-[color:var(--admin-text-secondary)]">
+                      {s.role === 'Owner' ? 'Владелец' : 'Кассир'}
+                    </span>
+                  </button>
+                ))}
+              </div>
 
-        <button
-          onClick={logout}
-          className="mt-5 w-full text-center text-[12px] font-medium text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text)]"
-        >
-          Выйти из аккаунта
-        </button>
+              <div className="my-6 flex items-center gap-3">
+                <div className="h-px flex-1 bg-[color:var(--admin-border)]" />
+                <span className="text-[11px] text-[color:var(--admin-text-tertiary)]">или</span>
+                <div className="h-px flex-1 bg-[color:var(--admin-border)]" />
+              </div>
+
+              <h2 className="mb-5 text-[16px] font-extrabold tracking-tight text-[color:var(--admin-text)]">
+                Создать ещё один
+              </h2>
+            </div>
+          )}
+
+          {alreadyPartnerWithoutStore && !hasPickableStores && !storesLoading && (
+            <div className="mb-6 rounded-2xl border border-[color:var(--admin-warning-dim)] bg-[color:var(--admin-warning-dim)] px-4 py-3 text-[12.5px] leading-relaxed text-[color:var(--admin-text-secondary)]">
+              У аккаунта есть права партнёра, но магазин не найден.{' '}
+              {!showManualEntry && (
+                <button
+                  type="button"
+                  onClick={() => setShowManualEntry(true)}
+                  className="font-semibold text-[color:var(--admin-text)] underline underline-offset-2"
+                >
+                  Ввести ID вручную
+                </button>
+              )}
+            </div>
+          )}
+
+          {showManualEntry && (
+            <form onSubmit={handleUseManualId} className="mb-6 flex gap-2">
+              <input
+                value={manualStoreId}
+                onChange={(e) => setManualStoreId(e.target.value)}
+                placeholder="ID магазина"
+                inputMode="numeric"
+                className="flex-1 rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-4 py-3 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]"
+              />
+              <button
+                type="submit"
+                className="shrink-0 rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-4 py-3 text-[13px] font-semibold text-[color:var(--admin-text)] hover:bg-[color:var(--admin-card)] transition-colors"
+              >
+                →
+              </button>
+            </form>
+          )}
+
+          {/* Create form */}
+          <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-[color:var(--admin-text-tertiary)]">
+                Название
+              </span>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Магазин «Дилшод»"
+                className="rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-4 py-3 text-[14px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)] transition-colors"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-[color:var(--admin-text-tertiary)]">
+                Адрес
+              </span>
+              <input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="ул. Рудаки, 123, Душанбе"
+                className="rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-4 py-3 text-[14px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)] transition-colors"
+              />
+            </label>
+
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-[color:var(--admin-text-tertiary)]">Широта</span>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={lat}
+                  onChange={(e) => setLat(Number(e.target.value))}
+                  className="rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-4 py-3 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-border-strong)] transition-colors"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-[color:var(--admin-text-tertiary)]">Долгота</span>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={lng}
+                  onChange={(e) => setLng(Number(e.target.value))}
+                  className="rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-4 py-3 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-border-strong)] transition-colors"
+                />
+              </label>
+            </div>
+
+            <button
+              type="button"
+              onClick={useMyLocation}
+              disabled={locating}
+              className="self-start text-[12px] font-semibold text-[color:var(--admin-text-secondary)] underline underline-offset-2 hover:text-[color:var(--admin-text)] disabled:opacity-40 transition-colors"
+            >
+              {locating ? 'Определяем…' : '↗ Использовать моё местоположение'}
+            </button>
+
+            {error && (
+              <div className="rounded-2xl border border-[color:var(--admin-danger-dim)] bg-[color:var(--admin-danger-dim)] px-4 py-3 text-[12.5px] font-medium text-[color:var(--admin-danger)]">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-1 rounded-2xl bg-[color:var(--admin-accent)] py-3.5 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40"
+            >
+              {loading ? 'Создаём…' : 'Создать магазин →'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )

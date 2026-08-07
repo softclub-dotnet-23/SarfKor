@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import {
   productsApi,
   shoppingListsApi,
@@ -20,14 +20,6 @@ import {
   useAsync,
 } from '../ui'
 
-/**
- * Shopping lists, and the one query that makes them worth keeping: compare-basket
- * asks the backend which single store is cheapest for the whole basket, which no
- * amount of client-side summing of individual scans can answer correctly.
- *
- * Items carry a productId and a quantity and nothing else — the backend has no
- * product-by-id route — so the rows say "Товар #123" rather than inventing a name.
- */
 export function ListsPage() {
   const lists = useAsync(() => shoppingListsApi.getShoppingLists(), [])
   const [name, setName] = useState('')
@@ -126,8 +118,22 @@ function ListCard({
   const [basket, setBasket] = useState<StoreBasket[] | null>(null)
   const [comparing, setComparing] = useState(false)
   const [err, setErr] = useState('')
+  const [names, setNames] = useState<Record<number, string>>({})
 
   const productIds = list.items.map((it) => it.productId)
+
+  useEffect(() => {
+    const ids = [...new Set(productIds)]
+    if (ids.length === 0) return
+    Promise.allSettled(ids.map((id) => productsApi.getProductById(id))).then((results) => {
+      const resolved: Record<number, string> = {}
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled') resolved[ids[i]] = r.value.productName
+      })
+      setNames(resolved)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function compare() {
     if (productIds.length === 0) return
@@ -178,7 +184,7 @@ function ListCard({
                 style={{ borderColor: LINE }}
               >
                 <span className="min-w-0 truncate text-[14px] text-[color:var(--app-text-primary)]">
-                  Товар #{it.productId}
+                  {names[it.productId] ?? `Товар #${it.productId}`}
                   <span className="ml-2 text-[12px]" style={{ color: TXT.rest }}>
                     × {it.quantity}
                   </span>

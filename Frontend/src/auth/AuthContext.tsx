@@ -58,6 +58,11 @@ function userFromAccessToken(accessToken: string): AuthUser | null {
 }
 
 function friendlyAuthError(err: unknown, fallback: string, mode: 'login' | 'register' | 'confirm' = 'login'): string {
+  // TypeError from fetch() itself — server down, CORS blocked, or no network.
+  // Must be checked before ApiError because TypeError is not an ApiError.
+  if (err instanceof TypeError && err.message.toLowerCase().includes('fetch')) {
+    return 'Не удаётся связаться с сервером'
+  }
   if (err instanceof ApiError) {
     if (err.status === 401) return 'Неверный email или пароль'
     if (err.status === 429) return 'Слишком много попыток. Подождите немного и попробуйте снова'

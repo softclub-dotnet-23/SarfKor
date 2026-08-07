@@ -16,17 +16,17 @@ public sealed class UpdateUserProfileCommandHandler(
             profile = new UserProfile
             {
                 UserId = command.UserId,
-                DisplayName = command.DisplayName,
+                DisplayName = command.DisplayName ?? string.Empty,
                 AvatarReference = command.AvatarReference,
-                PreferredLanguage = command.PreferredLanguage
+                PreferredLanguage = command.PreferredLanguage ?? "ru"
             };
             userProfileRepository.Add(profile);
         }
         else
         {
-            profile.DisplayName = command.DisplayName;
-            profile.AvatarReference = command.AvatarReference;
-            profile.PreferredLanguage = command.PreferredLanguage;
+            if (command.DisplayName is not null) profile.DisplayName = command.DisplayName;
+            if (command.AvatarReference is not null) profile.AvatarReference = command.AvatarReference;
+            if (command.PreferredLanguage is not null) profile.PreferredLanguage = command.PreferredLanguage;
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);

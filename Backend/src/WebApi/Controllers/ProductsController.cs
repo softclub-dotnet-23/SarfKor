@@ -4,6 +4,7 @@ using Application.Products.Commands.RecordScan;
 using Application.Products.Commands.SubmitNewProduct;
 using Application.Products.Queries.CompareStoresForShoppingList;
 using Application.Products.Queries.GetMostScannedProducts;
+using Application.Products.Queries.GetProductById;
 using Application.Products.Queries.GetTopSellingProducts;
 using Application.Products.Queries.ScanBarcode;
 using Application.Products.Queries.SearchProducts;
@@ -18,6 +19,23 @@ namespace WebApi.Controllers;
 [Route("api/products")]
 public sealed class ProductsController : ControllerBase
 {
+    [HttpGet("{productId:int}")]
+    public async Task<IActionResult> GetProduct(
+        int productId,
+        [FromServices] IQueryHandler<GetProductByIdQuery, GetProductByIdResult?> handler,
+        [FromServices] IValidator<GetProductByIdQuery> validator,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetProductByIdQuery(productId);
+
+        var validationResult = await validator.ValidateAsync(query, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(query, cancellationToken);
+        return result is null ? NotFound() : Ok(result);
+    }
+
     [HttpGet("scan/{barcode}")]
     [EnableRateLimiting("scan")]
     public async Task<IActionResult> ScanBarcode(

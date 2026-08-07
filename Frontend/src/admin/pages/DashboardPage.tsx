@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Card } from '../components/Card'
 import { LineChart } from '../components/LineChart'
-import { RingChart } from '../components/RingChart'
 import { Loading } from '../components/Loading'
 import { ErrorState } from '../components/ErrorState'
-import { RevenueIcon, PackageIcon, AlertIcon, ClockIcon } from '../components/icons'
+import { Panel, SectionHeader, Row, RowDivider, EmptyRow } from '../cabinet/components/primitives'
+import { AlertIcon, ClockIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { storesApi, salesApi, ApiError, type StoreDashboard, type ProfitReport, type ReorderAlert, type CashierShift } from '../../lib/api'
 import { daysAgo, firstOfMonth, today, weekdayLabel } from '../lib/dates'
@@ -42,11 +41,7 @@ function useDashboardData(storeId: number) {
         salesApi.getCashierShifts(storeId),
       ])
       if (dashboard.outcome === 'Forbidden' || dashboard.outcome === 'StoreNotFound') {
-        setError(
-          dashboard.outcome === 'Forbidden'
-            ? 'У вас нет доступа к этому магазину'
-            : 'Магазин не найден — возможно, ID устарел',
-        )
+        setError(dashboard.outcome === 'Forbidden' ? 'Нет доступа к этому магазину' : 'Магазин не найден')
         setLoading(false)
         return
       }
@@ -59,7 +54,7 @@ function useDashboardData(storeId: number) {
         shifts: shiftsRes.shifts ?? [],
       })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить данные дашборда')
+      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить данные')
     } finally {
       setLoading(false)
     }
@@ -67,41 +62,43 @@ function useDashboardData(storeId: number) {
 
   useEffect(() => {
     load()
-    // A light auto-refresh keeps KPIs current without hammering the API on
-    // every render — 60s is a reasonable "feels live" cadence for a
-    // real backend that isn't rate-limited on these read endpoints, but
-    // shouldn't be polled aggressively either.
-    const interval = setInterval(load, 60000)
+    const interval = setInterval(load, 60_000)
     return () => clearInterval(interval)
   }, [load])
 
   return { data, loading, error, reload: load }
 }
 
-function KpiCard({
+/** Flat KPI: 32/500 number, 12/400 muted label, no icon, hairline left rule. */
+function KpiStat({
   label,
   value,
   suffix,
-  icon,
+  sub,
+  accentColor,
 }: {
   label: string
-  value: number
+  value: string
   suffix?: string
-  icon: React.ReactNode
+  sub?: string
+  accentColor?: string
 }) {
   return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-[11.5px] font-semibold leading-tight text-[color:var(--admin-text-secondary)]">{label}</span>
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]">
-          {icon}
-        </span>
+    <div className="relative pl-4">
+      <span
+        className="absolute inset-y-1 left-0 w-[2px] rounded-full"
+        style={{ background: accentColor ?? 'var(--admin-text-tertiary)' }}
+        aria-hidden
+      />
+      <div className="text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">{label}</div>
+      <div className="mt-1.5 flex items-end gap-1.5 leading-none">
+        <span className="text-[32px] font-[500] tabular-nums text-[color:var(--admin-text)]">{value}</span>
+        {suffix && (
+          <span className="mb-0.5 text-[13px] font-[400] text-[color:var(--admin-text-tertiary)]">{suffix}</span>
+        )}
       </div>
-      <div className="mt-3 whitespace-nowrap font-[JetBrains_Mono,monospace] text-[27px] font-bold tracking-tight text-[color:var(--admin-text)]">
-        {fmt(value)}
-        {suffix ? <span className="ml-1 text-base font-semibold text-[color:var(--admin-text-tertiary)]">{suffix}</span> : null}
-      </div>
-    </Card>
+      {sub && <div className="mt-1 text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">{sub}</div>}
+    </div>
   )
 }
 
@@ -110,15 +107,12 @@ export function DashboardPage() {
   const { data, loading, error, reload } = useDashboardData(storeId!)
   const [dailyGoal] = useState(() => Number(localStorage.getItem(DAILY_GOAL_KEY)) || 150)
 
-  if (loading) {
-    return <Loading label="Загружаем данные магазина…" />
-  }
-
+  if (loading) return <Loading label="Загружаем данные магазина…" />
   if (error || !data) {
     return (
-      <Card>
+      <Panel>
         <ErrorState message={error || 'Нет данных'} onRetry={reload} />
-      </Card>
+      </Panel>
     )
   }
 
@@ -128,148 +122,137 @@ export function DashboardPage() {
   const recentShifts = [...shifts].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, 4)
 
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-col gap-6 xl:flex-row">
-      <div className="flex min-w-0 flex-1 flex-col gap-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <KpiCard label="Продано сегодня" value={dashboard.todaySalesCount} icon={<PackageIcon width={18} height={18} />} />
-          <KpiCard
-            label="Себестоимость сегодня"
-            value={profitToday.totalCost}
-            suffix={profitToday.currency}
-            icon={<PackageIcon width={18} height={18} />}
-          />
-          <KpiCard
-            label="Выручка сегодня"
-            value={dashboard.todayRevenue}
-            suffix={dashboard.currency}
-            icon={<RevenueIcon width={18} height={18} />}
-          />
-        </div>
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-5 xl:flex-row">
+      {/* Left column */}
+      <div className="flex min-w-0 flex-1 flex-col gap-5">
 
-        <Card className="p-6">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <div className="text-[16px] font-bold text-[color:var(--admin-text)]">Выручка за 7 дней</div>
-              <div className="mt-0.5 text-xs text-[color:var(--admin-text-tertiary)]">По данным /reports/daily-sales</div>
-            </div>
-            <button onClick={reload} className="text-xs font-semibold text-[color:var(--admin-accent)] hover:opacity-80">
-              Обновить
-            </button>
+        {/* Hero KPI strip — today's numbers */}
+        <Panel>
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
+            <KpiStat
+              label="Продано сегодня"
+              value={fmt(dashboard.todaySalesCount)}
+              sub="позиций"
+              accentColor="var(--admin-accent)"
+            />
+            <KpiStat
+              label="Выручка сегодня"
+              value={fmt(dashboard.todayRevenue)}
+              suffix={dashboard.currency}
+              sub={`себестоимость ${fmt(profitToday.totalCost)}`}
+              accentColor="#38bdf8"
+            />
+            <KpiStat
+              label="Прибыль сегодня"
+              value={fmt(profitToday.profit)}
+              suffix={profitToday.currency}
+              sub={profitToday.revenue > 0 ? `маржа ${Math.round((profitToday.profit / profitToday.revenue) * 100)}%` : undefined}
+              accentColor="var(--admin-success)"
+            />
           </div>
-          <LineChart data={week} />
-        </Card>
+        </Panel>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <Card className="flex flex-col items-center p-6">
-            <div className="mb-1 self-start text-[16px] font-bold text-[color:var(--admin-text)]">Маржинальность</div>
-            <div className="mb-5 self-start text-xs text-[color:var(--admin-text-tertiary)]">С начала месяца</div>
-            <RingChart value={marginPct} label="маржа" colorFrom="var(--admin-accent)" colorTo="var(--admin-text)" />
-            <div className="mt-4 text-[28px] font-extrabold tracking-tight text-[color:var(--admin-text)]">
-              {fmt(profitMonth.profit)} <span className="text-base font-medium text-[color:var(--admin-text-tertiary)]">{profitMonth.currency}</span>
+        {/* Revenue chart */}
+        <Panel>
+          <SectionHeader
+            eyebrow="Ежедневные продажи"
+            title="Выручка за 7 дней"
+            action={
+              <button
+                onClick={reload}
+                className="text-[12px] font-[400] text-[color:var(--admin-text-tertiary)] transition-colors hover:text-[color:var(--admin-text)]"
+              >
+                Обновить
+              </button>
+            }
+          />
+          <LineChart data={week} />
+        </Panel>
+
+        {/* Month overview */}
+        <Panel>
+          <SectionHeader eyebrow="Текущий месяц" title="Финансовый итог" />
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+            <KpiStat label="Выручка" value={fmt(profitMonth.revenue)} suffix={profitMonth.currency} />
+            <KpiStat label="Себестоимость" value={fmt(profitMonth.totalCost)} suffix={profitMonth.currency} />
+            <KpiStat label="Прибыль" value={fmt(profitMonth.profit)} suffix={profitMonth.currency} accentColor="var(--admin-success)" />
+            <KpiStat
+              label="Маржинальность"
+              value={`${marginPct}`}
+              suffix="%"
+              accentColor={marginPct >= 20 ? 'var(--admin-success)' : 'var(--admin-text-tertiary)'}
+            />
+          </div>
+
+          {/* Goal progress */}
+          <div className="mt-8 border-t border-[color:var(--admin-border)] pt-6">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">
+                Цель дня — {dashboard.todaySalesCount} / {dailyGoal} позиций
+              </span>
+              <span className="text-[14px] font-[500] text-[color:var(--admin-text)]">{goalPct}%</span>
             </div>
-            <div className="mt-1 text-xs text-[color:var(--admin-text-tertiary)]">
-              Выручка {fmt(profitMonth.revenue)} · себестоимость {fmt(profitMonth.totalCost)}
+            <div className="h-1 w-full overflow-hidden rounded-full bg-[color:var(--admin-border)]">
+              <div
+                className="h-full rounded-full bg-[color:var(--admin-accent)] transition-all duration-700"
+                style={{ width: `${goalPct}%` }}
+              />
             </div>
-          </Card>
-          <Card className="flex flex-col items-center p-6">
-            <div className="mb-1 self-start text-[16px] font-bold text-[color:var(--admin-text)]">Цель дня</div>
-            <div className="mb-5 self-start text-xs text-[color:var(--admin-text-tertiary)]">
-              Настраивается в разделе «Настройки»
-            </div>
-            <RingChart value={goalPct} label="выполнено" colorFrom="var(--admin-accent)" colorTo="var(--admin-text)" />
-            <div className="mt-4 flex items-center gap-4">
-              <div className="text-center">
-                <div className="text-[22px] font-extrabold text-[color:var(--admin-text)]">{dashboard.todaySalesCount}</div>
-                <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">продано</div>
-              </div>
-              <div className="h-8 w-px bg-[color:var(--admin-border)]" />
-              <div className="text-center">
-                <div className="text-[22px] font-extrabold text-[color:var(--admin-text-tertiary)]">{dailyGoal}</div>
-                <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">цель</div>
-              </div>
-            </div>
-          </Card>
-        </div>
+          </div>
+        </Panel>
       </div>
 
-      {/* Right panel */}
+      {/* Right column */}
       <div className="flex w-full flex-col gap-5 xl:w-[300px] xl:shrink-0">
-        <Card className="p-5">
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
-            Магазин
+        {/* Store KPI */}
+        <Panel>
+          <div className="text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">
+            Магазин #{storeId} · склад
           </div>
-          <div className="mb-1 text-[16px] font-extrabold text-[color:var(--admin-text)]">ID: {storeId}</div>
-          <div className="text-[12px] text-[color:var(--admin-text-tertiary)]">
-            {dashboard.productsInStockCount} товаров на складе
+          <div className="mt-2 text-[32px] font-[500] tabular-nums leading-none text-[color:var(--admin-text)]">
+            {fmt(dashboard.productsInStockCount)}
           </div>
-        </Card>
+          <div className="mt-1 text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">позиций в наличии</div>
+        </Panel>
 
-        <div>
-          <div className="mb-3.5 flex items-center justify-between">
-            <span className="text-[14px] font-bold text-[color:var(--admin-text)]">Последние смены</span>
-          </div>
-          <div className="flex flex-col gap-2.5">
-            {recentShifts.length === 0 && (
-              <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">Ещё не было ни одной смены</p>
-            )}
-            {recentShifts.map((shift) => (
-              <div
-                key={shift.cashierShiftId}
-                className="flex items-center gap-3 rounded-[14px] bg-[color:var(--admin-card)] p-3 ring-1 ring-[color:var(--admin-border)]"
-              >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]">
-                  <ClockIcon width={16} height={16} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12.5px] font-semibold text-[color:var(--admin-text)]">
-                    {new Date(shift.startedAt).toLocaleDateString('ru-RU')}
-                  </div>
-                  <div className="mt-0.5 truncate text-[11px] text-[color:var(--admin-text-tertiary)]">
-                    {shift.endedAt
-                      ? shift.closingCash !== undefined && shift.expectedCash !== undefined
-                        ? `Закрыта · расхождение ${fmt(shift.closingCash - shift.expectedCash)}`
-                        : 'Закрыта'
-                      : 'Открыта'}
-                  </div>
-                </div>
-                <div className="shrink-0 text-[13px] font-bold text-[color:var(--admin-text)]">
-                  {fmt(shift.openingCash)} {shift.currency}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Recent shifts */}
+        <Panel>
+          <SectionHeader title="Последние смены" />
+          {recentShifts.length === 0 && <EmptyRow>Смен ещё не было</EmptyRow>}
+          {recentShifts.map((shift, i) => (
+            <div key={shift.cashierShiftId}>
+              {i > 0 && <RowDivider />}
+              <Row
+                icon={<ClockIcon width={14} height={14} />}
+                iconTone={shift.endedAt ? 'neutral' : 'accent'}
+                title={new Date(shift.startedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                subtitle={
+                  shift.endedAt
+                    ? `Закрыта · ${new Date(shift.endedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Открыта сейчас'
+                }
+                trailing={`${fmt(shift.openingCash)} ${shift.currency}`}
+              />
+            </div>
+          ))}
+        </Panel>
 
-        <div>
-          <div className="mb-3.5 flex items-center justify-between">
-            <span className="text-[14px] font-bold text-[color:var(--admin-text)]">Требует внимания</span>
-          </div>
-          <div className="flex flex-col gap-2.5">
-            {alerts.length === 0 && (
-              <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">
-                Нет товаров ниже порога — либо правила дозаказа ещё не настроены
-              </p>
-            )}
-            {alerts.map((alert) => (
-              <div
-                key={alert.productId}
-                className="flex items-center gap-3 rounded-[14px] bg-[color:var(--admin-card)] p-3 ring-1 ring-[color:var(--admin-border)]"
-              >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[color:var(--admin-warning-dim)] text-[color:var(--admin-warning)]">
-                  <AlertIcon width={16} height={16} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-semibold text-[color:var(--admin-text)]">
-                    Товар #{alert.productId}
-                  </div>
-                  <div className="mt-0.5 text-[11px] font-medium text-[color:var(--admin-warning)]">
-                    Осталось {alert.currentQuantity} из {alert.thresholdQuantity}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Reorder alerts */}
+        <Panel>
+          <SectionHeader title="Низкий остаток" />
+          {alerts.length === 0 && <EmptyRow>Всё в норме</EmptyRow>}
+          {alerts.map((alert, i) => (
+            <div key={alert.productId}>
+              {i > 0 && <RowDivider />}
+              <Row
+                icon={<AlertIcon width={14} height={14} />}
+                iconTone="warning"
+                title={alert.productName}
+                subtitle={`Осталось ${alert.currentQuantity} из ${alert.thresholdQuantity}`}
+              />
+            </div>
+          ))}
+        </Panel>
       </div>
     </div>
   )

@@ -43,7 +43,7 @@ public interface IAuthService
     /// absent from the result, not an error.</summary>
     Task<IReadOnlyDictionary<string, string>> GetEmailsByUserIdsAsync(IReadOnlyCollection<string> userIds, CancellationToken cancellationToken);
 
-    /// <summary>Null if no account exists for the email — callers must not let that distinguish the response they give back (email enumeration). Reuses the same 6-digit-code mechanics as registration confirmation (same hash/expiry/attempt fields on ApplicationUser), not Identity's opaque token provider.</summary>
+    /// <summary>Null if no account exists for the email — callers must not let that distinguish the response they give back (email enumeration). Reuses the same 6-digit-code mechanics as registration confirmation (same hash/expiry/attempt fields on ApplicationUser), not Identity's opaque token provider — replaces an earlier token-link design because a typed code is far more reliable on mobile than a clicked email link (SMTP delivery is already flaky enough, see WORKLOG).</summary>
     Task<string?> GeneratePasswordResetCodeAsync(string email, CancellationToken cancellationToken);
     Task<bool> ResetPasswordAsync(string email, string code, string newPassword, CancellationToken cancellationToken);
 

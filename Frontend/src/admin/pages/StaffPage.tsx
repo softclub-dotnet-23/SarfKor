@@ -349,12 +349,11 @@ export function StaffPage() {
   ]
 
   useEffect(() => {
-    if (!storeId) return
+    if (!storeId) { setLoading(false); return }
     let cancelled = false
     async function load() {
-      // Independent try/catch per endpoint — cost/profit-adjacent metrics like cashier
-      // anomalies are owner-only (see the "Роли и доступ" note below), so a 403 there
-      // shouldn't blank out the shifts/KPI sections a non-owner employee can still see.
+      // Independent try/catch per endpoint — a 403 on cashier anomalies (owner-only)
+      // must not blank out the shifts/KPI sections a non-owner employee can still see.
       try {
         const shiftsRes = await salesApi.getCashierShifts(storeId!)
         if (cancelled) return

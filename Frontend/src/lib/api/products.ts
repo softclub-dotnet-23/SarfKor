@@ -15,6 +15,19 @@ export interface ScanBarcodeResult {
   stores: ScanResultStore[]
 }
 
+export interface ProductDetail {
+  productId: number
+  productName: string
+  barcode: string
+  categoryId: number
+  brandId: number
+  countryOfOrigin: string
+}
+
+export function getProductById(productId: number) {
+  return apiFetch<ProductDetail>(`/api/products/${productId}`)
+}
+
 // Only exact-barcode lookup exists on the backend today — there is no
 // name/keyword product search endpoint (see Backend audit notes).
 // auth defaults to true here (not false): the backend accepts this endpoint anonymously,

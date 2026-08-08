@@ -25,6 +25,24 @@
   --shadow-brand: 0 1px 2px color-mix(in srgb, var(--color-brand) 40%, transparent),
     0 12px 28px -8px color-mix(in srgb, var(--color-brand) 45%, transparent);
 
+  /* z-index scale — single source of truth. Every stacking layer in the project references one of
+     these (as a plain Tailwind z-<name> utility, since --z-index-* is a themed namespace) instead
+     of a bare number scattered per component. Order matters: z-popover sits ABOVE z-modal on
+     purpose — Select/CategoryPicker/EntityPicker/SectionSelect portal their open panel to
+     document.body, so once portaled they're always siblings of an open modal, not descendants of
+     it, and must out-rank it to stay usable inside a "Новая налоговая ставка"-style form. */
+  --z-index-base: 0;
+  --z-index-raised: 10;
+  --z-index-bottom-nav: 20;
+  --z-index-drawer-backdrop: 30;
+  --z-index-drawer: 40;
+  --z-index-header-popover: 50;
+  --z-index-modal: 100;
+  --z-index-popover: 110;
+  --z-index-toast: 200;
+  --z-index-command-palette-backdrop: 210;
+  --z-index-command-palette: 220;
+
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-ring: pulse-ring 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 

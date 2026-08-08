@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useIsMobile } from '../../hooks/useMediaQuery'
 import { lockBodyScroll, unlockBodyScroll } from '../../lib/scrollLock'
+import { useFloatingPosition } from '../../lib/useFloatingPosition'
 import { Loading } from './Loading'
 import { SearchIcon, XIcon, ChevronDownIcon, AlertIcon } from './icons'
 
@@ -25,7 +26,10 @@ const SCHEMES = {
     chip: 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]',
     border: 'border-[color:var(--admin-border)]',
     retryBtn: 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
-    sheetBg: 'bg-[color:var(--admin-card)]',
+    // Opaque page background, not the translucent --admin-card "glass" tone -- see SectionSelect.tsx
+    // for why: a full-screen sheet needs a solid surface, and --admin-card at ~4.5% alpha in dark
+    // mode let the page underneath show straight through it.
+    sheetBg: 'bg-[color:var(--admin-content)]',
   },
 } as const
 
@@ -90,10 +94,12 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
   const [activeIndex, setActiveIndex] = useState(-1)
 
   const rootRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const requestIdRef = useRef(0)
+  const pos = useFloatingPosition(rootRef, open && !isMobile)
 
   const selectedList: T[] = useMemo(
     () => (props.multiple ? props.value : props.value ? [props.value] : []),
@@ -156,7 +162,9 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
   useEffect(() => {
     if (!open) return
     function onDocClick(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) closePanel()
+      const target = e.target as Node
+      if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      closePanel()
     }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
@@ -365,19 +373,25 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
         <ChevronDownIcon width={14} height={14} className={`shrink-0 transition-transform ${c.chevron} ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      <AnimatePresence>
-        {open && !isMobile && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute z-30 mt-1.5 flex max-h-[70vh] w-full min-w-[320px] flex-col overflow-hidden rounded-xl border ${c.panel}`}
-          >
-            {panelBody}
-          </motion.div>
+      {!isMobile &&
+        createPortal(
+          <AnimatePresence>
+            {open && pos && (
+              <motion.div
+                ref={panelRef}
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                style={{ position: 'fixed', left: pos.left, width: Math.max(pos.width, 320), top: pos.top, bottom: pos.bottom, maxHeight: pos.maxHeight }}
+                className={`z-popover flex flex-col overflow-hidden rounded-xl border ${c.panel}`}
+              >
+                {panelBody}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
 
       {isMobile &&
         createPortal(
@@ -388,7 +402,7 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: '100%' }}
                 transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-                className={`${'admin-shell'} fixed inset-0 z-100 flex flex-col ${c.sheetBg}`}
+                className={`${'admin-shell'} fixed inset-0 z-modal flex flex-col ${c.sheetBg}`}
                 role="dialog"
                 aria-modal="true"
                 aria-label={ariaLabel}

@@ -52,7 +52,7 @@ export function LanguageSwitcher({ scheme = 'admin' }: { scheme?: keyof typeof S
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={clsx('absolute right-0 z-30 mt-1.5 w-28 overflow-hidden rounded-xl border p-1', t.panel)}
+            className={clsx('absolute right-0 z-header-popover mt-1.5 w-28 overflow-hidden rounded-xl border p-1', t.panel)}
           >
             {options.map((o) => (
               <button

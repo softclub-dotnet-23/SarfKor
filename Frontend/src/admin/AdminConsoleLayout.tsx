@@ -150,7 +150,7 @@ export function AdminConsoleLayout() {
       {/* Sidebar */}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-40 flex w-[246px] shrink-0 flex-col overflow-y-auto border-r border-[color:var(--admin-border)] bg-[color:var(--admin-card)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-drawer flex w-[246px] shrink-0 flex-col overflow-y-auto border-r border-[color:var(--admin-border)] bg-[color:var(--admin-card)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:static lg:translate-x-0',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -227,7 +227,7 @@ export function AdminConsoleLayout() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-30 bg-black/45 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-drawer-backdrop bg-black/45 backdrop-blur-sm lg:hidden"
             onClick={() => setMobileNavOpen(false)}
             aria-hidden
           />

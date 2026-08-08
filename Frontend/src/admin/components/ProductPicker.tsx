@@ -82,7 +82,7 @@ function ScanButton({ onDetected }: { onDetected: (code: string) => void }) {
         <CameraIcon width={17} height={17} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-40 mt-2 w-[min(320px,80vw)]">
+        <div className="absolute right-0 top-full z-header-popover mt-2 w-[min(320px,80vw)]">
           <BarcodeScannerView videoRef={scanner.videoRef} phase={scanner.phase} onStart={scanner.start} className="aspect-video w-full" />
         </div>
       )}

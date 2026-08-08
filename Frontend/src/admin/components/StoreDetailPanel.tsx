@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useState } from 'react'
-import { SidePanel, PanelTabs, FieldRow } from './SidePanel'
+import { SidePanel, FieldRow } from './SidePanel'
+import { SectionSelect } from './SectionSelect'
 import { ReasonModal } from './ReasonModal'
 import { StoreStatusBadge, SubscriptionStatusBadge } from './StatusBadge'
 import { Loading } from './Loading'
@@ -8,7 +9,7 @@ import { EmptyState } from './EmptyState'
 import { Select } from './Select'
 import { DateField } from './DateField'
 import { AuditLogRow } from './AuditLogRow'
-import { CheckIcon, StoreIcon, UsersIcon, ShieldIcon, ClockIcon } from './icons'
+import { CheckIcon, StoreIcon, UsersIcon, ShieldIcon, ClockIcon, CardIcon, SettingsIcon } from './icons'
 import {
   adminApi,
   subscriptionsApi,
@@ -24,13 +25,13 @@ import {
 
 type TabId = 'profile' | 'subscription' | 'employees' | 'locations' | 'diagnostics' | 'history'
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'profile', label: 'Профиль' },
-  { id: 'subscription', label: 'Подписка и платежи' },
-  { id: 'employees', label: 'Сотрудники' },
-  { id: 'locations', label: 'Торговые точки' },
-  { id: 'diagnostics', label: 'Диагностика' },
-  { id: 'history', label: 'История' },
+const TABS = [
+  { value: 'profile' as const, label: 'Профиль', icon: <ShieldIcon width={15} height={15} /> },
+  { value: 'subscription' as const, label: 'Подписка и платежи', icon: <CardIcon width={15} height={15} /> },
+  { value: 'employees' as const, label: 'Сотрудники', icon: <UsersIcon width={15} height={15} /> },
+  { value: 'locations' as const, label: 'Торговые точки', icon: <StoreIcon width={15} height={15} /> },
+  { value: 'diagnostics' as const, label: 'Диагностика', icon: <SettingsIcon width={15} height={15} /> },
+  { value: 'history' as const, label: 'История', icon: <ClockIcon width={15} height={15} /> },
 ]
 
 const TRANSITIONS: Record<StoreStatus, { to: StoreStatus; label: string; danger: boolean }[]> = {
@@ -621,7 +622,9 @@ export function StoreDetailPanel({ storeId, onClose, onNavigateToStore }: { stor
       {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
       {detail && (
         <>
-          <PanelTabs tabs={TABS} active={tab} onChange={setTab} />
+          <div className="mb-5">
+            <SectionSelect value={tab} onChange={setTab} options={TABS} ariaLabel="Раздел карточки магазина" />
+          </div>
           {tab === 'profile' && <ProfileTab detail={detail} onChanged={load} />}
           {tab === 'subscription' && <SubscriptionTab detail={detail} onChanged={load} />}
           {tab === 'employees' && <EmployeesTab storeId={storeId} />}

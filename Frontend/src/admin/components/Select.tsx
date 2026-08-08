@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useFloatingPosition } from '../../lib/useFloatingPosition'
 import { ChevronDownIcon, CheckIcon } from './icons'
 
 export interface SelectOption {
@@ -36,6 +38,9 @@ interface SelectProps {
   size?: keyof typeof SIZES
 }
 
+// The panel portals to document.body (see useFloatingPosition) instead of rendering `absolute`
+// inside this component's own subtree — otherwise a caller inside a modal's overflow-y-auto body
+// (e.g. TaxRateFormFields' category select) gets its dropdown clipped by the modal edge.
 export function Select({
   value,
   onChange,
@@ -48,13 +53,17 @@ export function Select({
 }: SelectProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const t = SCHEMES[scheme]
   const selected = options.find((o) => o.value === value)
+  const pos = useFloatingPosition(rootRef, open)
 
   useEffect(() => {
     if (!open) return
     function onDocClick(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      setOpen(false)
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false)
@@ -80,38 +89,43 @@ export function Select({
         <span className={`truncate ${selected ? '' : t.placeholder}`}>{selected ? selected.label : placeholder}</span>
         <ChevronDownIcon width={14} height={14} className={`shrink-0 transition-transform ${t.chevron} ${open ? 'rotate-180' : ''}`} />
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            role="listbox"
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute z-30 mt-1.5 max-h-60 w-full min-w-fit overflow-auto rounded-xl border p-1 ${t.panel}`}
-          >
-            {options.length === 0 && <div className={`px-3 py-2 text-[13px] ${t.empty}`}>Нет вариантов</div>}
-            {options.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                role="option"
-                aria-selected={o.value === value}
-                onClick={() => {
-                  onChange(o.value)
-                  setOpen(false)
-                }}
-                className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-[13px] font-medium transition-colors ${
-                  o.value === value ? t.optionSelected : t.option
-                }`}
-              >
-                <span className="truncate">{o.label}</span>
-                {o.value === value && <CheckIcon width={14} height={14} className="shrink-0" />}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {open && pos && (
+            <motion.div
+              ref={panelRef}
+              role="listbox"
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              style={{ position: 'fixed', left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom, maxHeight: pos.maxHeight }}
+              className={`z-popover overflow-auto rounded-xl border p-1 ${t.panel}`}
+            >
+              {options.length === 0 && <div className={`px-3 py-2 text-[13px] ${t.empty}`}>Нет вариантов</div>}
+              {options.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  role="option"
+                  aria-selected={o.value === value}
+                  onClick={() => {
+                    onChange(o.value)
+                    setOpen(false)
+                  }}
+                  className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-[13px] font-medium transition-colors ${
+                    o.value === value ? t.optionSelected : t.option
+                  }`}
+                >
+                  <span className="truncate">{o.label}</span>
+                  {o.value === value && <CheckIcon width={14} height={14} className="shrink-0" />}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </div>
   )
 }

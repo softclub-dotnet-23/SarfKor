@@ -100,7 +100,7 @@ export function AssistantPanel() {
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? 'Закрыть ассистента' : 'Открыть ассистента'}
-        className="fixed bottom-6 right-6 z-50 grid h-14 w-14 place-items-center rounded-full bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)] shadow-[0_10px_30px_-6px_rgba(0,0,0,0.35)] transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-6 right-6 z-header-popover grid h-14 w-14 place-items-center rounded-full bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)] shadow-[0_10px_30px_-6px_rgba(0,0,0,0.35)] transition-transform hover:scale-105 active:scale-95"
       >
         {open ? <XIcon width={22} height={22} /> : <ChatIcon width={22} height={22} />}
       </button>
@@ -112,7 +112,7 @@ export function AssistantPanel() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 340, damping: 30 }}
-            className="fixed bottom-24 right-6 z-50 flex h-[520px] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[20px] bg-[color:var(--admin-card)] shadow-2xl ring-1 ring-[color:var(--admin-border)]"
+            className="fixed bottom-24 right-6 z-header-popover flex h-[520px] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[20px] bg-[color:var(--admin-card)] shadow-2xl ring-1 ring-[color:var(--admin-border)]"
           >
             <div className="flex items-center justify-between border-b border-[color:var(--admin-border)] px-4 py-3">
               <div>

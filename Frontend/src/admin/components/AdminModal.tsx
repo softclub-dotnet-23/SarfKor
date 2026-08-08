@@ -44,7 +44,7 @@ export function AdminModal({ open, onClose, title, children, scheme = 'admin' }:
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className={`${t.shell} fixed inset-0 z-100 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm`}
+          className={`${t.shell} fixed inset-0 z-modal flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm`}
           onClick={onClose}
         >
           <motion.div

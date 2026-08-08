@@ -5,6 +5,7 @@ import { Loading } from '../components/Loading'
 import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { EmptyState } from '../components/EmptyState'
 import { Select } from '../components/Select'
+import { SectionSelect } from '../components/SectionSelect'
 import { Badge } from '../components/Badge'
 import { DateField } from '../components/DateField'
 import { FormModal, FormField } from '../components/FormModal'
@@ -221,12 +222,11 @@ function CategoryNode({ node, depth, byParent, onEdit }: {
   )
 }
 
-function CategoriesSection() {
+function CategoriesSection({ createOpen, onCloseCreate }: { createOpen: boolean; onCloseCreate: () => void }) {
   const [categories, setCategories] = useState<Category[] | null>(null)
   const [error, setError] = useState('')
   const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
 
   const load = useCallback(async () => {
     setError('')
@@ -246,7 +246,13 @@ function CategoriesSection() {
   const byParent = useMemo(() => {
     const map = new Map<number | undefined, Category[]>()
     for (const c of categories ?? []) {
-      const key = c.parentCategoryId
+      // The API serializes "no parent" as JSON null, not an omitted field -- Category's TS type
+      // marks parentCategoryId optional, but at runtime the value IS null, never undefined. Using
+      // `c.parentCategoryId` directly as the map key meant root categories were filed under the
+      // key `null` while the lookup below asked for `undefined`, a different Map key -- so `roots`
+      // was always empty and the tree silently rendered "Категорий нет" no matter how much data
+      // came back. Normalizing null -> undefined here makes insertion and lookup agree.
+      const key = c.parentCategoryId ?? undefined
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(c)
     }
@@ -258,20 +264,18 @@ function CategoriesSection() {
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
-        <AddButton onClick={() => setCreateOpen(true)}>Добавить категорию</AddButton>
-      </div>
-
       <Card scheme="admin" className="p-3">
         {categories === null && !error && <Loading scheme="admin" />}
         {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
-        {categories && roots.length === 0 && <EmptyState scheme="admin" title="Категорий нет" />}
+        {categories && roots.length === 0 && (
+          <EmptyState scheme="admin" tone="neutral" icon={<GridIcon width={22} height={22} />} title="Категорий нет" body="Добавьте первую категорию" />
+        )}
         {roots.map((r) => (
           <CategoryNode key={r.categoryId} node={r} depth={0} byParent={byParent} onEdit={setEditingCategory} />
         ))}
       </Card>
 
-      <CreateCategoryModal open={createOpen} onClose={() => setCreateOpen(false)} all={categories ?? []} onCreated={load} />
+      <CreateCategoryModal open={createOpen} onClose={onCloseCreate} all={categories ?? []} onCreated={load} />
       <EditCategoryModal category={editingCategory} all={categories ?? []} onClose={() => setEditingCategory(null)} onSaved={async () => { await load(); setEditingCategory(null) }} />
     </div>
   )
@@ -561,12 +565,11 @@ function CreateTaxRateModal({ open, onClose, categories, onCreated }: { open: bo
   )
 }
 
-function TaxRatesSection() {
+function TaxRatesSection({ createOpen, onCloseCreate }: { createOpen: boolean; onCloseCreate: () => void }) {
   const [rates, setRates] = useState<TaxRate[] | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [error, setError] = useState('')
   const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
-  const [createOpen, setCreateOpen] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
   const load = useCallback(async () => {
@@ -602,9 +605,6 @@ function TaxRatesSection() {
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
-        <AddButton onClick={() => setCreateOpen(true)}>Добавить ставку</AddButton>
-      </div>
       {deleteError && <p className="mb-3 text-[12px] font-medium text-[color:var(--admin-danger)]">{deleteError}</p>}
 
       <Card scheme="admin" className="overflow-hidden">
@@ -645,44 +645,37 @@ function TaxRatesSection() {
         )}
       </Card>
 
-      <CreateTaxRateModal open={createOpen} onClose={() => setCreateOpen(false)} categories={categories} onCreated={load} />
+      <CreateTaxRateModal open={createOpen} onClose={onCloseCreate} categories={categories} onCreated={load} />
     </div>
   )
 }
 
 /* ---------- page ---------- */
 
+const TAB_OPTIONS = [
+  { value: 'categories' as const, label: 'Категории', icon: <GridIcon width={15} height={15} /> },
+  { value: 'brands' as const, label: 'Бренды', icon: <TagIcon width={15} height={15} /> },
+  { value: 'tax-rates' as const, label: 'Налоговые ставки', icon: <PercentIcon width={15} height={15} /> },
+]
+
 export function AdminReferencePage() {
   const [params, setParams] = useSearchParams()
   const tabParam = params.get('tab')
   const tab: MainTab = tabParam === 'brands' || tabParam === 'tax-rates' ? tabParam : 'categories'
+  const [createOpen, setCreateOpen] = useState(false)
+
+  const addLabel = tab === 'categories' ? 'Добавить категорию' : tab === 'tax-rates' ? 'Добавить ставку' : null
 
   return (
     <div style={{ animation: 'mod-fade-in .3s ease' }}>
-      <div className="mb-4 flex gap-1 rounded-lg bg-[color:var(--admin-hover)] p-1" style={{ width: 'fit-content' }}>
-        {(
-          [
-            ['categories', 'Категории', GridIcon],
-            ['brands', 'Бренды', TagIcon],
-            ['tax-rates', 'Налоговые ставки', PercentIcon],
-          ] as [MainTab, string, typeof GridIcon][]
-        ).map(([id, label, Icon]) => (
-          <button
-            key={id}
-            onClick={() => setParams(id === 'categories' ? {} : { tab: id })}
-            className={`flex items-center gap-1.5 rounded-md px-4 py-2 text-[12.5px] font-bold transition-colors ${
-              tab === id ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]' : 'text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]'
-            }`}
-          >
-            <Icon width={14} height={14} />
-            {label}
-          </button>
-        ))}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <SectionSelect value={tab} onChange={(v) => setParams(v === 'categories' ? {} : { tab: v })} options={TAB_OPTIONS} ariaLabel="Раздел справочников" />
+        {addLabel && <AddButton onClick={() => setCreateOpen(true)}>{addLabel}</AddButton>}
       </div>
 
-      {tab === 'categories' && <CategoriesSection />}
+      {tab === 'categories' && <CategoriesSection createOpen={createOpen} onCloseCreate={() => setCreateOpen(false)} />}
       {tab === 'brands' && <BrandsSection />}
-      {tab === 'tax-rates' && <TaxRatesSection />}
+      {tab === 'tax-rates' && <TaxRatesSection createOpen={createOpen} onCloseCreate={() => setCreateOpen(false)} />}
     </div>
   )
 }

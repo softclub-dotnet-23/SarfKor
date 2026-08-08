@@ -143,7 +143,7 @@ function Field({
       >
         {label}
       </span>
-      {action && <span className="absolute right-0 top-0 z-10">{action}</span>}
+      {action && <span className="absolute right-0 top-0 z-raised">{action}</span>}
       <input
         ref={inputRef}
         {...input}
@@ -430,7 +430,7 @@ function AuthPage({ mode }: { mode: Mode }) {
           </div>
 
           {/* top bar */}
-          <div className="relative z-10 flex shrink-0 items-center justify-between px-6 py-6 sm:px-10 lg:px-14 xl:px-20">
+          <div className="relative z-raised flex shrink-0 items-center justify-between px-6 py-6 sm:px-10 lg:px-14 xl:px-20">
             <Link to="/" className="flex items-center gap-2.5 lg:hidden">
               <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[color:var(--admin-text)] text-[15px] font-extrabold tracking-tight text-[color:var(--admin-content)]">
                 S

@@ -24,7 +24,7 @@ export function SidePanel({ open, onClose, title, subtitle, children }: { open: 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="admin-shell fixed inset-0 z-100 flex justify-end bg-black/50 backdrop-blur-sm"
+          className="admin-shell fixed inset-0 z-modal flex justify-end bg-black/50 backdrop-blur-sm"
           onClick={onClose}
         >
           <motion.div
@@ -50,24 +50,6 @@ export function SidePanel({ open, onClose, title, subtitle, children }: { open: 
       )}
     </AnimatePresence>,
     document.body,
-  )
-}
-
-export function PanelTabs<T extends string>({ tabs, active, onChange }: { tabs: { id: T; label: string }[]; active: T; onChange: (id: T) => void }) {
-  return (
-    <div className="mb-5 flex flex-wrap gap-1 rounded-xl bg-[color:var(--admin-hover)] p-1">
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => onChange(t.id)}
-          className={`rounded-lg px-3 py-2 text-[12.5px] font-bold transition-colors ${
-            active === t.id ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]' : 'text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]'
-          }`}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
   )
 }
 

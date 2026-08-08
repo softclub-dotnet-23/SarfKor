@@ -120,7 +120,7 @@ export function NotificationBell({ collapsed }: { collapsed: boolean }) {
             // In expanded mode: absolute bottom-full.
             className={clsx(
               'w-[300px] overflow-hidden rounded-[12px] border border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)]',
-              !collapsed && 'absolute bottom-full left-0 mb-2 z-50',
+              !collapsed && 'absolute bottom-full left-0 mb-2 z-header-popover',
             )}
             style={{ boxShadow: 'var(--admin-shadow-lift)', ...(collapsed ? fixedStyle : {}) }}
           >

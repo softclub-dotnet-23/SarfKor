@@ -5,12 +5,14 @@ import { Loading } from '../components/Loading'
 import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { EmptyState } from '../components/EmptyState'
 import { Select } from '../components/Select'
+import { SectionSelect } from '../components/SectionSelect'
 import { Pagination } from '../components/Pagination'
 import { ReasonModal } from '../components/ReasonModal'
 import { FormModal, FormField } from '../components/FormModal'
 import { SubscriptionStatusBadge } from '../components/StatusBadge'
 import { Badge } from '../components/Badge'
-import { CardIcon, ClockIcon, PlusIcon, EditIcon } from '../components/icons'
+import { CardIcon, ClockIcon, EditIcon, TagIcon, CashIcon } from '../components/icons'
+import { AddButton } from '../components/Button'
 import {
   subscriptionsApi,
   type SubscriptionStatus,
@@ -338,7 +340,7 @@ function PlanFormModal({ plan, onClose, onSaved }: { plan: SubscriptionPlan | 'c
   )
 }
 
-function PlansSection() {
+function PlansSection({ createOpen, onCloseCreate }: { createOpen: boolean; onCloseCreate: () => void }) {
   const [plans, setPlans] = useState<SubscriptionPlan[] | null>(null)
   const [error, setError] = useState('')
   const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
@@ -359,18 +361,19 @@ function PlansSection() {
     load()
   }, [load])
 
+  // The page-level "Новый тариф" button (next to the section selector) and this section's own
+  // per-row "Редактировать" both open the same FormModal -- create is just edit with no plan yet.
+  useEffect(() => {
+    if (createOpen) setEditingPlan('create')
+  }, [createOpen])
+
+  function closeModal() {
+    setEditingPlan(null)
+    onCloseCreate()
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
-        <button
-          onClick={() => setEditingPlan('create')}
-          className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[13px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:brightness-110 active:scale-95"
-        >
-          <PlusIcon width={15} height={15} />
-          Новый тариф
-        </button>
-      </div>
-
       {plans === null && !error && <Loading scheme="admin" />}
       {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
       {plans &&
@@ -396,7 +399,7 @@ function PlansSection() {
           </Card>
         ))}
 
-      <PlanFormModal plan={editingPlan} onClose={() => setEditingPlan(null)} onSaved={async () => { await load(); setEditingPlan(null) }} />
+      <PlanFormModal plan={editingPlan} onClose={closeModal} onSaved={async () => { await load(); closeModal() }} />
     </div>
   )
 }
@@ -497,11 +500,18 @@ function PaymentsSection() {
 
 /* ---------- page ---------- */
 
+const MAIN_TAB_OPTIONS = [
+  { value: 'subscriptions' as const, label: 'Подписки', icon: <CardIcon width={15} height={15} /> },
+  { value: 'plans' as const, label: 'Тарифы', icon: <TagIcon width={15} height={15} /> },
+  { value: 'payments' as const, label: 'Платежи', icon: <CashIcon width={15} height={15} /> },
+]
+
 export function AdminSubscriptionsPage() {
   const [params, setParams] = useSearchParams()
   const tabParam = params.get('tab')
   const mainTab: MainTab = tabParam === 'plans' || tabParam === 'payments' ? tabParam : 'subscriptions'
   const subFilter: SubFilter = tabParam === 'expiring' || tabParam === 'pastdue' ? tabParam : 'all'
+  const [createOpen, setCreateOpen] = useState(false)
 
   function setMainTab(t: MainTab) {
     setParams(t === 'subscriptions' ? {} : { tab: t })
@@ -512,28 +522,13 @@ export function AdminSubscriptionsPage() {
 
   return (
     <div style={{ animation: 'mod-fade-in .3s ease' }}>
-      <div className="mb-4 flex gap-1 rounded-lg bg-[color:var(--admin-hover)] p-1" style={{ width: 'fit-content' }}>
-        {(
-          [
-            ['subscriptions', 'Подписки'],
-            ['plans', 'Тарифы'],
-            ['payments', 'Платежи'],
-          ] as [MainTab, string][]
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setMainTab(id)}
-            className={`rounded-md px-4 py-2 text-[12.5px] font-bold transition-colors ${
-              mainTab === id ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]' : 'text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <SectionSelect value={mainTab} onChange={setMainTab} options={MAIN_TAB_OPTIONS} ariaLabel="Раздел подписок" />
+        {mainTab === 'plans' && <AddButton onClick={() => setCreateOpen(true)}>Новый тариф</AddButton>}
       </div>
 
       {mainTab === 'subscriptions' && <SubscriptionsSection subFilter={subFilter} onSubFilterChange={setSubFilter} />}
-      {mainTab === 'plans' && <PlansSection />}
+      {mainTab === 'plans' && <PlansSection createOpen={createOpen} onCloseCreate={() => setCreateOpen(false)} />}
       {mainTab === 'payments' && <PaymentsSection />}
     </div>
   )

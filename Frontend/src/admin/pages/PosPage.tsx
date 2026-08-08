@@ -417,7 +417,7 @@ function BundlePicker({ storeId, onAdd }: { storeId: number; onAdd: (bundle: Pro
         Набор
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-10 mt-1.5 w-64 rounded-xl bg-[color:var(--admin-card)] p-2 shadow-lg ring-1 ring-[color:var(--admin-border)]">
+        <div className="absolute left-0 top-full z-header-popover mt-1.5 w-64 rounded-xl bg-[color:var(--admin-card)] p-2 shadow-lg ring-1 ring-[color:var(--admin-border)]">
           {bundles === null && <div className="p-2 text-[12px] text-[color:var(--admin-text-tertiary)]">Загрузка…</div>}
           {bundles && bundles.length === 0 && <div className="p-2 text-[12px] text-[color:var(--admin-text-tertiary)]">В магазине нет наборов</div>}
           {bundles?.map((b) => (

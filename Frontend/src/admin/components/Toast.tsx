@@ -28,7 +28,7 @@ export function Toast({ open, children, variant = 'success', scheme = 'admin' }:
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.97 }}
           transition={{ type: 'spring', stiffness: 340, damping: 30 }}
-          className="pointer-events-none fixed inset-x-0 bottom-6 z-[200] flex justify-center px-4"
+          className="pointer-events-none fixed inset-x-0 bottom-6 z-toast flex justify-center px-4"
         >
           <div
             className="pointer-events-auto flex items-center gap-2.5 rounded-full px-5 py-3 text-[13px] font-semibold text-white shadow-2xl backdrop-blur-xl"

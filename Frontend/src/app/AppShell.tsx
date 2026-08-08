@@ -165,7 +165,7 @@ function AppNotificationBell({ direction = 'up' }: { direction?: 'up' | 'down' }
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.18, ease: EASE }}
-            className={`absolute z-50 w-[280px] overflow-hidden rounded-2xl border ${
+            className={`absolute z-header-popover w-[280px] overflow-hidden rounded-2xl border ${
               direction === 'down' ? 'top-full left-0 mt-2' : 'bottom-full left-0 mb-2'
             }`}
             style={{
@@ -246,14 +246,14 @@ function AppShellInner() {
       {/* one soft key light, fixed to the viewport so pages scroll through it */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 z-0"
+        className="pointer-events-none fixed inset-0 z-base"
         style={{
           background:
             'radial-gradient(90vmax 70vmax at 78% -10%, color-mix(in srgb, var(--app-text-primary) 5.5%, transparent), transparent 60%)',
         }}
       />
 
-      <div className="relative z-10 lg:grid lg:grid-cols-[264px_1fr]">
+      <div className="relative z-raised lg:grid lg:grid-cols-[264px_1fr]">
         {/* ── RAIL (desktop) ───────────────────────────────────── */}
         <aside
           className="sticky top-0 hidden h-screen flex-col justify-between border-r px-8 py-10 lg:flex"
@@ -371,7 +371,7 @@ function AppShellInner() {
 
       {/* ── BOTTOM BAR (mobile) ────────────────────────────────── */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 border-t px-2 pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-bottom-nav border-t px-2 pb-[env(safe-area-inset-bottom)] lg:hidden"
         style={{
           borderColor: LINE,
           background: 'color-mix(in srgb, var(--bg-app) 92%, transparent)',

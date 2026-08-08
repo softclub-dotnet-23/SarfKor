@@ -646,7 +646,7 @@ export function CabinetShell() {
       {/* ── MOBILE BOTTOM NAV ─────────────────────────────────────────────── */}
       <nav
         aria-label="Мобильная навигация"
-        className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-[color:var(--admin-border)] px-1 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 md:hidden"
+        className="fixed inset-x-0 bottom-0 z-bottom-nav flex items-center justify-around border-t border-[color:var(--admin-border)] px-1 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 md:hidden"
         style={{
           background: 'color-mix(in srgb, var(--admin-sidebar) 95%, transparent)',
           backdropFilter: 'blur(24px)',

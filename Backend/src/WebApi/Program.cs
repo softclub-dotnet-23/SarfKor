@@ -379,7 +379,6 @@ public sealed record UpdateStoreTaxSettingsRequest(bool IsVatPayer, Domain.Store
 public sealed record InviteAdminRequest(string Email);
 public sealed record BlockUserRequest(string Reason);
 public sealed record UnblockUserRequest(string Reason);
-public sealed record AdjustTrustScoreRequest(double Delta, string Reason);
 public sealed record CreateSubscriptionPlanRequest(
     string Name, string Code, decimal MonthlyPriceAmount, string MonthlyPriceCurrency,
     int? MaxStores, int? MaxEmployees, IReadOnlyList<string>? Features);

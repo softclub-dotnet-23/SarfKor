@@ -9,7 +9,8 @@ import { XIcon } from './icons'
 const SCHEMES = {
   admin: {
     shell: 'admin-shell',
-    panel: 'bg-[color:var(--admin-card)] ring-1 ring-[color:var(--admin-border)]',
+    // --admin-sidebar (opaque), not --admin-card (translucent glass) -- see SidePanel.tsx for why.
+    panel: 'bg-[color:var(--admin-sidebar)] ring-1 ring-[color:var(--admin-border)]',
     title: 'text-[color:var(--admin-text)]',
     close: 'text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]',
   },

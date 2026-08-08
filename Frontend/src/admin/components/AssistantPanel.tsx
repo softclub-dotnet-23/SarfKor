@@ -112,7 +112,12 @@ export function AssistantPanel() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 340, damping: 30 }}
-            className="fixed bottom-24 right-6 z-header-popover flex h-[520px] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[20px] bg-[color:var(--admin-card)] shadow-2xl ring-1 ring-[color:var(--admin-border)]"
+            // --admin-sidebar, not --admin-card: this panel floats directly over arbitrary page
+            // content (a data table, a form), not over the page's own uniform background, so it
+            // needs a genuinely opaque surface -- --admin-card is a translucent "glass" tone (alpha
+            // 0.045 in dark mode) meant for a card sitting IN the page flow, and used here it let
+            // the table underneath show straight through the chat window.
+            className="fixed bottom-24 right-6 z-header-popover flex h-[520px] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[20px] bg-[color:var(--admin-sidebar)] shadow-2xl ring-1 ring-[color:var(--admin-border)]"
           >
             <div className="flex items-center justify-between border-b border-[color:var(--admin-border)] px-4 py-3">
               <div>

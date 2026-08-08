@@ -33,7 +33,12 @@ export function SidePanel({ open, onClose, title, subtitle, children }: { open: 
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 34 }}
             onClick={(e) => e.stopPropagation()}
-            className="flex h-full w-full max-w-[640px] flex-col bg-[color:var(--admin-card)] shadow-2xl"
+            // --admin-sidebar (opaque), not --admin-card (translucent glass, ~4.5% alpha in dark
+            // mode) -- this panel floats over the page's own content (a table, a form), and
+            // --admin-card let that content show straight through it. A ring pairs with the
+            // shadow so the panel still reads as a distinct surface on backgrounds close to
+            // --admin-sidebar's own tone.
+            className="flex h-full w-full max-w-[640px] flex-col bg-[color:var(--admin-sidebar)] shadow-2xl ring-1 ring-[color:var(--admin-border)]"
           >
             <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[color:var(--admin-border)] px-6 py-4">
               <div className="min-w-0">

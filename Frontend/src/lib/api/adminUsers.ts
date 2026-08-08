@@ -64,23 +64,3 @@ export function getTrustScores(params: { skip?: number; take?: number }) {
   return apiFetch<{ scores: TrustScoreListItem[]; totalCount: number }>('/api/admin/users/trust-scores', { query: params })
 }
 
-export interface TrustScoreAdjustment {
-  delta: number
-  reason: string
-  isManual: boolean
-  performedByAdminUserId?: string
-  occurredAt: string
-}
-
-export function getTrustScoreHistory(userId: string) {
-  return apiFetch<{ currentScore?: number; history: TrustScoreAdjustment[] }>(
-    `/api/admin/users/${encodeURIComponent(userId)}/trust-score-history`,
-  )
-}
-
-export function adjustTrustScore(userId: string, delta: number, reason: string) {
-  return apiFetch<{ newScore: number }>(`/api/admin/users/${encodeURIComponent(userId)}/trust-score/adjust`, {
-    method: 'POST',
-    body: { delta, reason },
-  })
-}

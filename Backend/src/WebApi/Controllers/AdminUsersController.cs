@@ -4,7 +4,6 @@ using Application.Identity.Commands.BlockUser;
 using Application.Identity.Commands.UnblockUser;
 using Application.Identity.Queries.GetUserDetail;
 using Application.Identity.Queries.GetUsers;
-using Application.Reputation.Commands.AdjustTrustScore;
 using Application.Reputation.Queries.GetTrustScoreHistory;
 using Application.Reputation.Queries.GetTrustScores;
 using FluentValidation;
@@ -131,25 +130,5 @@ public sealed class AdminUsersController : ControllerBase
             return this.ToValidationProblem(validationResult);
 
         return Ok(await handler.Handle(query, cancellationToken));
-    }
-
-    [HttpPost("{userId}/trust-score/adjust")]
-    public async Task<IActionResult> AdjustTrustScore(
-        string userId,
-        AdjustTrustScoreRequest request,
-        [FromServices] ICommandHandler<AdjustTrustScoreCommand, AdjustTrustScoreResult> handler,
-        [FromServices] IValidator<AdjustTrustScoreCommand> validator,
-        CancellationToken cancellationToken)
-    {
-        var adminUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (adminUserId is null)
-            return Unauthorized();
-
-        var command = new AdjustTrustScoreCommand(userId, request.Delta, request.Reason, adminUserId, HttpContext.Connection.RemoteIpAddress?.ToString());
-        var validationResult = await validator.ValidateAsync(command, cancellationToken);
-        if (!validationResult.IsValid)
-            return this.ToValidationProblem(validationResult);
-
-        return Ok(await handler.Handle(command, cancellationToken));
     }
 }

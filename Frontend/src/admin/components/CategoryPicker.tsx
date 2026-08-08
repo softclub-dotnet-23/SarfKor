@@ -13,7 +13,10 @@ const SCHEMES = {
     trigger: 'border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] text-[color:var(--admin-text)] focus-visible:border-[color:var(--admin-accent)]',
     placeholder: 'text-[color:var(--admin-text-tertiary)]',
     chevron: 'text-[color:var(--admin-text-tertiary)]',
-    panel: 'border-[color:var(--admin-border)] bg-[color:var(--admin-card)] shadow-[var(--admin-shadow)]',
+    // Opaque --admin-sidebar, not the translucent --admin-card "glass" tone -- this panel portals
+    // to document.body and floats over arbitrary page content (a table, a form), so it needs a
+    // surface that reads as solid regardless of what's behind it.
+    panel: 'border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] shadow-[var(--admin-shadow)]',
     searchField: 'border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] text-[color:var(--admin-text)] placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]',
     row: 'text-[color:var(--admin-text)] hover:bg-[color:var(--admin-hover)]',
     rowSelected: 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]',
@@ -264,7 +267,12 @@ export function CategoryPicker({ value, onChange, scheme = 'admin', placeholder 
                 exit={{ opacity: 0, y: -6, scale: 0.98 }}
                 transition={{ duration: 0.15, ease: 'easeOut' }}
                 style={{ position: 'fixed', left: pos.left, width: Math.max(pos.width, 280), top: pos.top, bottom: pos.bottom, maxHeight: pos.maxHeight }}
-                className={clsx('z-popover flex flex-col overflow-hidden rounded-xl border', t.panel)}
+                // admin-shell: portaled to document.body, outside the page's own .admin-shell
+                // wrapper, so without re-declaring the scope here every --admin-* custom property
+                // below (including t.panel's background) is undefined at this node -- the panel
+                // rendered as a plain white box with black text (the browser's own UA defaults)
+                // instead of the current theme's surface.
+                className={clsx('admin-shell z-popover flex flex-col overflow-hidden rounded-xl border', t.panel)}
               >
                 {panelBody}
               </motion.div>

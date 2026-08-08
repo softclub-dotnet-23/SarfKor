@@ -15,7 +15,10 @@ const SCHEMES = {
     trigger: 'border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] text-[color:var(--admin-text)] focus-visible:border-[color:var(--admin-accent)]',
     placeholder: 'text-[color:var(--admin-text-tertiary)]',
     chevron: 'text-[color:var(--admin-text-tertiary)]',
-    panel: 'border-[color:var(--admin-border)] bg-[color:var(--admin-card)] shadow-[var(--admin-shadow)]',
+    // Opaque --admin-sidebar, not the translucent --admin-card "glass" tone -- this panel portals
+    // to document.body and floats over arbitrary page content, so it needs a surface that reads
+    // as solid regardless of what's behind it.
+    panel: 'border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] shadow-[var(--admin-shadow)]',
     searchField: 'border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] text-[color:var(--admin-text)] placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]',
     option: 'text-[color:var(--admin-text)]',
     optionActive: 'bg-[color:var(--admin-accent-soft)]',
@@ -384,7 +387,10 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
                 exit={{ opacity: 0, y: -6, scale: 0.98 }}
                 transition={{ duration: 0.15, ease: 'easeOut' }}
                 style={{ position: 'fixed', left: pos.left, width: Math.max(pos.width, 320), top: pos.top, bottom: pos.bottom, maxHeight: pos.maxHeight }}
-                className={`z-popover flex flex-col overflow-hidden rounded-xl border ${c.panel}`}
+                // admin-shell: portaled to document.body, outside the page's own .admin-shell
+                // wrapper, so every --admin-* custom property is undefined at this node without
+                // re-declaring the scope here -- see CategoryPicker.tsx for the full explanation.
+                className={`admin-shell z-popover flex flex-col overflow-hidden rounded-xl border ${c.panel}`}
               >
                 {panelBody}
               </motion.div>

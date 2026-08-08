@@ -74,7 +74,16 @@ export type {
   SubscriptionPaymentMethod,
   SubscriptionPayment,
 } from './subscriptions'
-export type { AdminUserListItem, UserStoreAttachment, AdminUserDetail, TrustScoreListItem } from './adminUsers'
+export type {
+  AdminUserListItem,
+  UserStoreAttachment,
+  AdminUserDetail,
+  TrustScoreListItem,
+  InvitedRole,
+  UserInvitationStatus,
+  UserInvitationListItem,
+  CreateUserInvitationOutcome,
+} from './adminUsers'
 export type { PlanSubscriberCount, ProblemStore, SilentStore, NoSalesStore, PlatformMetrics, MetricsDay } from './metrics'
 export type { Brand, DuplicateBrand, DuplicateBrandGroup, Category, TaxRate } from './catalog'
 export type { UserProfile, ConsentType, UserConsent, SecurityEventType, SecurityEvent, MyStore, MyStoreRole } from './me'

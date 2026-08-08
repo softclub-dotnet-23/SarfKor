@@ -25,35 +25,64 @@ public sealed class SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEm
     // task's spec: "на языке приглашающего магазина" (in practice, the inviting owner's own
     // UserProfile.PreferredLanguage, the closest concept this domain actually has to "магазина
     // язык" — there is no separate per-store language setting).
-    private static readonly Dictionary<StoreEmployeeRole, (string Ru, string Tg)> RoleNames = new()
+    private static readonly Dictionary<StoreEmployeeRole, (string Ru, string Tg)> EmployeeRoleNames = new()
     {
         [StoreEmployeeRole.Cashier] = ("Кассир", "Кассир"),
         [StoreEmployeeRole.Owner] = ("Владелец", "Соҳиб"),
     };
 
-    public Task SendStoreEmployeeInviteEmailAsync(
-        string toEmail, string storeName, StoreEmployeeRole role, string inviteToken, int expiryDays, string language, CancellationToken cancellationToken)
+    // Same idea, for the three top-level Identity roles /admin/users can invite someone into —
+    // StorePartner already has a role name from EmployeeRoleNames above (Owner/Cashier), so it's
+    // deliberately absent here; see the RoleName local function below.
+    private static readonly Dictionary<string, (string Ru, string Tg)> IdentityRoleNames = new()
+    {
+        ["User"] = ("Пользователь", "Истифодабаранда"),
+        ["Admin"] = ("Администратор", "Маъмур"),
+    };
+
+    public Task SendInvitationEmailAsync(
+        string toEmail, string invitedRole, string? storeName, StoreEmployeeRole? employeeRole,
+        string inviteToken, int expiryDays, string language, CancellationToken cancellationToken)
     {
         var baseUrl = configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
         var acceptLink = $"{baseUrl}/invite/{Uri.EscapeDataString(inviteToken)}";
-        var roleName = RoleNames.TryGetValue(role, out var names) ? (language == "tg" ? names.Tg : names.Ru) : role.ToString();
 
+        string RoleName() =>
+            employeeRole is { } role
+                ? (EmployeeRoleNames.TryGetValue(role, out var employeeNames) ? (language == "tg" ? employeeNames.Tg : employeeNames.Ru) : role.ToString())
+                : (IdentityRoleNames.TryGetValue(invitedRole, out var identityNames) ? (language == "tg" ? identityNames.Tg : identityNames.Ru) : invitedRole);
+
+        var roleName = RoleName();
+        // "join store «X»" only makes sense when there is one — a plain User/Admin invite has no
+        // store at all, so the sentence drops that clause entirely rather than saying "join «»".
         var (subject, body) = language == "tg"
             ? (
-                "Даъват ба даста — Sarfkor",
-                $"""
-                <p>Шуморо даъват карданд, ки ба мағозаи «{storeName}» дар Sarfkor ҳамроҳ шавед — нақш: <strong>{roleName}</strong>.</p>
-                <p><a href="{acceptLink}">Инҷо зер кунед, то дохил шавед ва кор оғоз кунед</a></p>
-                <p>Истинод {expiryDays} рӯз эътибор дорад. Агар шумо ин даъватро интизор набудед, танҳо ин номаро нодида гиред.</p>
-                """
+                "Даъват ба Sarfkor",
+                storeName is not null
+                    ? $"""
+                       <p>Шуморо даъват карданд, ки ба мағозаи «{storeName}» дар Sarfkor ҳамроҳ шавед — нақш: <strong>{roleName}</strong>.</p>
+                       <p><a href="{acceptLink}">Инҷо зер кунед, то дохил шавед ва кор оғоз кунед</a></p>
+                       <p>Истинод {expiryDays} рӯз эътибор дорад. Агар шумо ин даъватро интизор набудед, танҳо ин номаро нодида гиред.</p>
+                       """
+                    : $"""
+                       <p>Шуморо даъват карданд, ки ба платформаи Sarfkor ҳамроҳ шавед — нақш: <strong>{roleName}</strong>.</p>
+                       <p><a href="{acceptLink}">Инҷо зер кунед, то дохил шавед ва кор оғоз кунед</a></p>
+                       <p>Истинод {expiryDays} рӯз эътибор дорад. Агар шумо ин даъватро интизор набудед, танҳо ин номаро нодида гиред.</p>
+                       """
               )
             : (
-                "Приглашение в команду — Sarfkor",
-                $"""
-                <p>Вас пригласили присоединиться к магазину «{storeName}» в Sarfkor — роль: <strong>{roleName}</strong>.</p>
-                <p><a href="{acceptLink}">Нажмите здесь, чтобы войти и начать работу</a></p>
-                <p>Ссылка действительна {expiryDays} дн. Если вы не ожидали этого приглашения, просто проигнорируйте это письмо.</p>
-                """
+                "Приглашение в Sarfkor",
+                storeName is not null
+                    ? $"""
+                       <p>Вас пригласили присоединиться к магазину «{storeName}» в Sarfkor — роль: <strong>{roleName}</strong>.</p>
+                       <p><a href="{acceptLink}">Нажмите здесь, чтобы войти и начать работу</a></p>
+                       <p>Ссылка действительна {expiryDays} дн. Если вы не ожидали этого приглашения, просто проигнорируйте это письмо.</p>
+                       """
+                    : $"""
+                       <p>Вас пригласили присоединиться к платформе Sarfkor — роль: <strong>{roleName}</strong>.</p>
+                       <p><a href="{acceptLink}">Нажмите здесь, чтобы войти и начать работу</a></p>
+                       <p>Ссылка действительна {expiryDays} дн. Если вы не ожидали этого приглашения, просто проигнорируйте это письмо.</p>
+                       """
               );
 
         return SendAsync(toEmail, subject, body, cancellationToken);

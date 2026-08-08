@@ -167,6 +167,13 @@ builder.Services.AddRateLimiter(options =>
         httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1) }));
 
+    // /admin/users' "Добавить пользователя" — same reasoning as invite-resend (sends an email per
+    // call), a bit more headroom since an Admin onboarding a new store may invite several people
+    // (owner + a couple of admin colleagues) in one sitting.
+    options.AddPolicy("invite-create", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromHours(1) }));
+
     // Пользовательский контент (цены, жалобы, сверка чека) — против спама/накрутки.
     options.AddPolicy("contributions", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -379,6 +386,7 @@ public sealed record UpdateStoreTaxSettingsRequest(bool IsVatPayer, Domain.Store
 public sealed record InviteAdminRequest(string Email);
 public sealed record BlockUserRequest(string Reason);
 public sealed record UnblockUserRequest(string Reason);
+public sealed record CreateUserInvitationRequest(string Email, string InvitedRole, int? StoreId);
 public sealed record CreateSubscriptionPlanRequest(
     string Name, string Code, decimal MonthlyPriceAmount, string MonthlyPriceCurrency,
     int? MaxStores, int? MaxEmployees, IReadOnlyList<string>? Features);

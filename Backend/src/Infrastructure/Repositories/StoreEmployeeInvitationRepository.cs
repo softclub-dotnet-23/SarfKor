@@ -31,5 +31,13 @@ public sealed class StoreEmployeeInvitationRepository(AppDbContext dbContext) : 
             .Where(i => i.Status == StoreEmployeeInvitationStatus.Pending && i.ExpiresAt < now)
             .ToListAsync(cancellationToken);
 
+    public Task<StoreEmployeeInvitation?> GetPendingByEmailAndRoleAsync(string email, string invitedRole, int? storeId, CancellationToken cancellationToken) =>
+        dbContext.StoreEmployeeInvitations.FirstOrDefaultAsync(
+            i => i.Email == email && i.InvitedRole == invitedRole && i.StoreId == storeId && i.Status == StoreEmployeeInvitationStatus.Pending,
+            cancellationToken);
+
+    public async Task<IReadOnlyList<StoreEmployeeInvitation>> GetAllAsync(CancellationToken cancellationToken) =>
+        await dbContext.StoreEmployeeInvitations.OrderByDescending(i => i.CreatedAt).ToListAsync(cancellationToken);
+
     public void Add(StoreEmployeeInvitation invitation) => dbContext.StoreEmployeeInvitations.Add(invitation);
 }

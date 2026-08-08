@@ -158,4 +158,54 @@ public class AcceptStoreEmployeeInvitationCommandHandlerTests
         Assert.Equal(AcceptStoreEmployeeInvitationOutcome.RegistrationFailed, result.Outcome);
         _storeEmployeeRepository.Verify(r => r.Add(It.IsAny<StoreEmployee>()), Times.Never);
     }
+
+    // --- /admin/users' generalized platform-wide invites (StoreId null) ---------------------
+
+    private static StoreEmployeeInvitation PlatformInvitation(string invitedRole) => new()
+    {
+        StoreId = null,
+        Email = Email,
+        Role = null,
+        InvitedRole = invitedRole,
+        TokenHash = TokenHash,
+        InvitedByUserId = "admin-1",
+        ExpiresAt = DateTimeOffset.UtcNow.AddDays(1),
+        CreatedAt = DateTimeOffset.UtcNow.AddHours(-1),
+        LastSentAt = DateTimeOffset.UtcNow.AddHours(-1),
+        Status = StoreEmployeeInvitationStatus.Pending
+    };
+
+    [Fact]
+    public async Task Handle_PlatformAdminInvite_NewAccount_GrantsAdminRoleWithoutStoreEmployee()
+    {
+        _invitationRepository.Setup(r => r.GetByTokenHashAsync(TokenHash, It.IsAny<CancellationToken>())).ReturnsAsync(PlatformInvitation("Admin"));
+        _authService.Setup(a => a.FindUserIdByEmailAsync(Email, It.IsAny<CancellationToken>())).ReturnsAsync((string?)null);
+        var registerAuth = new AuthResult("new-admin-1", "stale-access-token", "stale-refresh-token", DateTimeOffset.UtcNow.AddMinutes(15));
+        _authService.Setup(a => a.RegisterAsync(Email, Password, true, It.IsAny<CancellationToken>())).ReturnsAsync(new RegisterAccountResult(registerAuth, false));
+        var freshLoginResult = new AuthResult("new-admin-1", "fresh-access-token", "fresh-refresh-token", DateTimeOffset.UtcNow.AddMinutes(15));
+        _authService.Setup(a => a.LoginAsync(Email, Password, null, null, It.IsAny<CancellationToken>())).ReturnsAsync(new LoginAccountResult(freshLoginResult, false));
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(ValidCommand(), CancellationToken.None);
+
+        Assert.Equal(AcceptStoreEmployeeInvitationOutcome.Accepted, result.Outcome);
+        _authService.Verify(a => a.AssignRoleAsync("new-admin-1", "Admin", It.IsAny<CancellationToken>()), Times.Once);
+        _storeEmployeeRepository.Verify(r => r.Add(It.IsAny<StoreEmployee>()), Times.Never);
+        _storeEmployeeRepository.Verify(r => r.GetByStoreIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_PlatformUserInvite_ExistingAccount_GrantsUserRoleWithoutTouchingPassword()
+    {
+        _invitationRepository.Setup(r => r.GetByTokenHashAsync(TokenHash, It.IsAny<CancellationToken>())).ReturnsAsync(PlatformInvitation("User"));
+        _authService.Setup(a => a.FindUserIdByEmailAsync(Email, It.IsAny<CancellationToken>())).ReturnsAsync("existing-user-2");
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(ValidCommand(password: null), CancellationToken.None);
+
+        Assert.Equal(AcceptStoreEmployeeInvitationOutcome.AccountAlreadyExisted, result.Outcome);
+        Assert.Null(result.Auth);
+        _authService.Verify(a => a.AssignRoleAsync("existing-user-2", "User", It.IsAny<CancellationToken>()), Times.Once);
+        _storeEmployeeRepository.Verify(r => r.Add(It.IsAny<StoreEmployee>()), Times.Never);
+    }
 }

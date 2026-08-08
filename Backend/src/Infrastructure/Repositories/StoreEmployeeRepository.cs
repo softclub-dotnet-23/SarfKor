@@ -33,8 +33,26 @@ public sealed class StoreEmployeeRepository(AppDbContext dbContext) : IStoreEmpl
             .Select(e => (StoreEmployeeRole?)e.Role)
             .FirstOrDefaultAsync(cancellationToken);
 
+    // Same MonthlySalary trap as GetRoleAsync above (confirmed live: ComplexProperty's IsRequired
+    // (false) on StoreEmployeeConfiguration alone did NOT stop EF from throwing on materialization
+    // even with a fully-NULL Amount/Currency row, on this EF Core 10 preview) -- both callers
+    // (GetMyStoresQueryHandler, GetUserDetailQueryHandler) are read-only and only ever need
+    // StoreId/Role, so this projects everything except MonthlySalary instead of materializing the
+    // full entity. Untracked by design; never route a write path through this method.
     public async Task<IReadOnlyList<StoreEmployee>> GetByUserIdAsync(string userId, CancellationToken cancellationToken) =>
-        await dbContext.StoreEmployees.Where(e => e.UserId == userId).ToListAsync(cancellationToken);
+        await dbContext.StoreEmployees
+            .Where(e => e.UserId == userId)
+            .Select(e => new StoreEmployee
+            {
+                Id = e.Id,
+                StoreId = e.StoreId,
+                UserId = e.UserId,
+                Role = e.Role,
+                AddedAt = e.AddedAt,
+                ScheduleStart = e.ScheduleStart,
+                ScheduleEnd = e.ScheduleEnd,
+            })
+            .ToListAsync(cancellationToken);
 
     public void Add(StoreEmployee storeEmployee) => dbContext.StoreEmployees.Add(storeEmployee);
 

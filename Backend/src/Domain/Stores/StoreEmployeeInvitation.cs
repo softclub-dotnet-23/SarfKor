@@ -10,11 +10,27 @@ public enum StoreEmployeeInvitationStatus
     Expired
 }
 
+/// <summary>One invitation mechanism for the whole platform, not one per role — originally just a
+/// cashier/owner invite (hence the name, kept to avoid a bigger rename+migration than the
+/// generalization needs), now also backs /admin/users' "Добавить пользователя" (any Identity role:
+/// User/StorePartner/Admin). StoreId/Role are only set when InvitedRole is StorePartner — a plain
+/// User or Admin invite grants no store membership, just the Identity role named by InvitedRole
+/// once accepted (see AcceptStoreEmployeeInvitationCommandHandler).</summary>
 public class StoreEmployeeInvitation : Entity
 {
-    public int StoreId { get; set; }
+    /// <summary>Null for a platform-wide invite (InvitedRole User/Admin) — set iff InvitedRole is
+    /// StorePartner, naming which store the invitee is being attached to.</summary>
+    public int? StoreId { get; set; }
+
     public required string Email { get; set; }
-    public StoreEmployeeRole Role { get; set; }
+
+    /// <summary>Owner/Cashier sub-role within StoreId — null unless InvitedRole is StorePartner.</summary>
+    public StoreEmployeeRole? Role { get; set; }
+
+    /// <summary>The ASP.NET Identity role granted on acceptance: "User" | "StorePartner" | "Admin".
+    /// Defaults to StorePartner for the original store-employee-invite call sites, which never set
+    /// it explicitly before this field existed.</summary>
+    public string InvitedRole { get; set; } = "StorePartner";
 
     /// <summary>Only the hash is ever persisted — see Application.Common.InviteToken. The raw
     /// token exists only in memory long enough to email it, and in the accept link itself.</summary>

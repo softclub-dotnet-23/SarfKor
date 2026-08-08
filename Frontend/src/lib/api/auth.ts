@@ -83,6 +83,9 @@ export type GetInviteOutcome = 'Valid' | 'NotFound' | 'Expired' | 'Accepted' | '
 
 export interface InviteInfo {
   outcome: GetInviteOutcome
+  /** "User" | "StorePartner" | "Admin" — the Identity role this invite grants. storeName/role
+   *  (the Owner/Cashier sub-role) are only set when invitedRole is "StorePartner". */
+  invitedRole?: 'User' | 'StorePartner' | 'Admin'
   storeName?: string
   email?: string
   role?: 'Owner' | 'Cashier'

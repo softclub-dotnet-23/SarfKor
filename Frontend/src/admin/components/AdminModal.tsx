@@ -4,20 +4,15 @@ import { createPortal } from 'react-dom'
 import { lockBodyScroll, unlockBodyScroll } from '../../lib/scrollLock'
 import { XIcon } from './icons'
 
-// Same scheme split as Card/Select/Input/Badge: 'admin' for the StorePartner cabinet,
-// 'mod' for the platform-Admin console -- two independent token namespaces (see index.css).
+// Single 'admin' scheme, same as Card/Select/Input/Badge — the StorePartner cabinet and
+// the platform-Admin console read the same --admin-* token set (see index.css).
 const SCHEMES = {
   admin: {
     shell: 'admin-shell',
-    panel: 'bg-[color:var(--admin-card)] ring-1 ring-[color:var(--admin-border)]',
+    // --admin-sidebar (opaque), not --admin-card (translucent glass) -- see SidePanel.tsx for why.
+    panel: 'bg-[color:var(--admin-sidebar)] ring-1 ring-[color:var(--admin-border)]',
     title: 'text-[color:var(--admin-text)]',
     close: 'text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]',
-  },
-  mod: {
-    shell: 'mod-shell',
-    panel: 'bg-[color:var(--mod-panel)] ring-1 ring-[color:var(--mod-border)]',
-    title: 'text-[color:var(--mod-text)]',
-    close: 'text-[color:var(--mod-faint)] hover:bg-[color:var(--mod-panel2)]',
   },
 } as const
 
@@ -50,7 +45,7 @@ export function AdminModal({ open, onClose, title, children, scheme = 'admin' }:
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className={`${t.shell} fixed inset-0 z-100 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm`}
+          className={`${t.shell} fixed inset-0 z-modal flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm`}
           onClick={onClose}
         >
           <motion.div

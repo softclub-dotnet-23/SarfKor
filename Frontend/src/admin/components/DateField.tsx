@@ -68,7 +68,7 @@ export function DateField({
       placeholder="дд.мм.гггг"
       title={title}
       maxLength={10}
-      className={`rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)] ${className}`}
+      className={`rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)] ${className}`}
     />
   )
 }

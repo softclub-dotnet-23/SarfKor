@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import clsx from 'clsx'
 import { useIsMobile } from '../../hooks/useMediaQuery'
 import { lockBodyScroll, unlockBodyScroll } from '../../lib/scrollLock'
+import { useFloatingPosition } from '../../lib/useFloatingPosition'
 import { catalogApi, type Category } from '../../lib/api'
 import { SearchIcon, XIcon, ChevronDownIcon } from './icons'
 
@@ -12,25 +13,19 @@ const SCHEMES = {
     trigger: 'border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] text-[color:var(--admin-text)] focus-visible:border-[color:var(--admin-accent)]',
     placeholder: 'text-[color:var(--admin-text-tertiary)]',
     chevron: 'text-[color:var(--admin-text-tertiary)]',
-    panel: 'border-[color:var(--admin-border)] bg-[color:var(--admin-card)] shadow-[var(--admin-shadow)]',
+    // Opaque --admin-sidebar, not the translucent --admin-card "glass" tone -- this panel portals
+    // to document.body and floats over arbitrary page content (a table, a form), so it needs a
+    // surface that reads as solid regardless of what's behind it.
+    panel: 'border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] shadow-[var(--admin-shadow)]',
     searchField: 'border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] text-[color:var(--admin-text)] placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]',
     row: 'text-[color:var(--admin-text)] hover:bg-[color:var(--admin-hover)]',
     rowSelected: 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]',
     faint: 'text-[color:var(--admin-text-tertiary)]',
     border: 'border-[color:var(--admin-border)]',
-    sheetBg: 'bg-[color:var(--admin-card)]',
-  },
-  mod: {
-    trigger: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] text-[color:var(--mod-text)] focus-visible:border-[color:var(--mod-accent)]',
-    placeholder: 'text-[color:var(--mod-faint)]',
-    chevron: 'text-[color:var(--mod-faint)]',
-    panel: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel)] shadow-[var(--mod-shadow)]',
-    searchField: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] text-[color:var(--mod-text)] placeholder:text-[color:var(--mod-faint)] focus:border-[color:var(--mod-accent)]',
-    row: 'text-[color:var(--mod-text)] hover:bg-[color:var(--mod-panel2)]',
-    rowSelected: 'bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]',
-    faint: 'text-[color:var(--mod-faint)]',
-    border: 'border-[color:var(--mod-border)]',
-    sheetBg: 'bg-[color:var(--mod-panel)]',
+    // Opaque page background, not the translucent --admin-card "glass" tone -- see SectionSelect.tsx
+    // for why: a full-screen sheet needs a solid surface, and --admin-card at ~4.5% alpha in dark
+    // mode let the page underneath show straight through it.
+    sheetBg: 'bg-[color:var(--admin-content)]',
   },
 } as const
 
@@ -55,7 +50,9 @@ export function CategoryPicker({ value, onChange, scheme = 'admin', placeholder 
   const [categories, setCategories] = useState<Category[] | null>(null)
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const rootRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  const pos = useFloatingPosition(rootRef, open && !isMobile)
 
   useEffect(() => {
     if (!open || categories !== null) return
@@ -69,7 +66,9 @@ export function CategoryPicker({ value, onChange, scheme = 'admin', placeholder 
   useEffect(() => {
     if (!open) return
     function onDocClick(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      setOpen(false)
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false)
@@ -249,7 +248,7 @@ export function CategoryPicker({ value, onChange, scheme = 'admin', placeholder 
               onChange(null)
             }}
             aria-label="Очистить"
-            className={clsx('grid h-6 w-6 shrink-0 place-items-center rounded-full hover:bg-black/5', t.faint)}
+            className={clsx('grid h-6 w-6 shrink-0 place-items-center rounded-full hover:bg-[color:var(--admin-hover)]', t.faint)}
           >
             <XIcon width={13} height={13} />
           </span>
@@ -257,19 +256,30 @@ export function CategoryPicker({ value, onChange, scheme = 'admin', placeholder 
         <ChevronDownIcon width={14} height={14} className={clsx('shrink-0 transition-transform', t.chevron, open && 'rotate-180')} />
       </button>
 
-      <AnimatePresence>
-        {open && !isMobile && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={clsx('absolute z-30 mt-1.5 flex max-h-[60vh] w-full min-w-[280px] flex-col overflow-hidden rounded-xl border', t.panel)}
-          >
-            {panelBody}
-          </motion.div>
+      {!isMobile &&
+        createPortal(
+          <AnimatePresence>
+            {open && pos && (
+              <motion.div
+                ref={panelRef}
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                style={{ position: 'fixed', left: pos.left, width: Math.max(pos.width, 280), top: pos.top, bottom: pos.bottom, maxHeight: pos.maxHeight }}
+                // admin-shell: portaled to document.body, outside the page's own .admin-shell
+                // wrapper, so without re-declaring the scope here every --admin-* custom property
+                // below (including t.panel's background) is undefined at this node -- the panel
+                // rendered as a plain white box with black text (the browser's own UA defaults)
+                // instead of the current theme's surface.
+                className={clsx('admin-shell z-popover flex flex-col overflow-hidden rounded-xl border', t.panel)}
+              >
+                {panelBody}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
 
       {isMobile &&
         createPortal(
@@ -280,7 +290,7 @@ export function CategoryPicker({ value, onChange, scheme = 'admin', placeholder 
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: '100%' }}
                 transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-                className={clsx(scheme === 'admin' ? 'admin-shell' : 'mod-shell', 'fixed inset-0 z-100 flex flex-col', t.sheetBg)}
+                className={clsx('admin-shell', 'fixed inset-0 z-modal flex flex-col', t.sheetBg)}
                 role="dialog"
                 aria-modal="true"
                 aria-label="Выбор категории"

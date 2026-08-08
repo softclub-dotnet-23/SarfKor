@@ -9,11 +9,6 @@ const SCHEMES = {
       'border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] text-[color:var(--admin-text)] placeholder:text-[color:var(--admin-text-tertiary)] focus-visible:border-[color:var(--admin-accent)] focus-visible:shadow-[0_0_0_3px_var(--admin-accent-soft)]',
     invalid: 'border-[color:var(--admin-danger)] focus-visible:shadow-[0_0_0_3px_var(--admin-danger-dim)]',
   },
-  mod: {
-    field:
-      'border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] text-[color:var(--mod-text)] placeholder:text-[color:var(--mod-faint)] focus-visible:border-[color:var(--mod-accent)] focus-visible:shadow-[0_0_0_3px_var(--mod-accent-dim)]',
-    invalid: 'border-[color:var(--mod-danger)] focus-visible:shadow-[0_0_0_3px_var(--mod-danger-dim)]',
-  },
 } as const
 
 const SIZES = {

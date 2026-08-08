@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useState } from 'react'
-import { SidePanel, PanelTabs, FieldRow } from './SidePanel'
+﻿import { useCallback, useEffect, useState } from 'react'
+import { SidePanel, FieldRow } from './SidePanel'
+import { SectionSelect } from './SectionSelect'
 import { ReasonModal } from './ReasonModal'
 import { StoreStatusBadge, SubscriptionStatusBadge } from './StatusBadge'
 import { Loading } from './Loading'
-import { ErrorState } from './ErrorState'
+import { ErrorState, classifyError, type ErrorKind } from './ErrorState'
 import { EmptyState } from './EmptyState'
 import { Select } from './Select'
 import { DateField } from './DateField'
 import { AuditLogRow } from './AuditLogRow'
-import { CheckIcon, StoreIcon, UsersIcon, ShieldIcon, ClockIcon } from './icons'
+import { CheckIcon, StoreIcon, UsersIcon, ShieldIcon, ClockIcon, CardIcon, SettingsIcon } from './icons'
 import {
   adminApi,
   subscriptionsApi,
-  ApiError,
   type AdminStoreDetail,
   type AdminStoreLocation,
   type AdminStoreEmployee,
@@ -25,13 +25,13 @@ import {
 
 type TabId = 'profile' | 'subscription' | 'employees' | 'locations' | 'diagnostics' | 'history'
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'profile', label: 'Профиль' },
-  { id: 'subscription', label: 'Подписка и платежи' },
-  { id: 'employees', label: 'Сотрудники' },
-  { id: 'locations', label: 'Торговые точки' },
-  { id: 'diagnostics', label: 'Диагностика' },
-  { id: 'history', label: 'История' },
+const TABS = [
+  { value: 'profile' as const, label: 'Профиль', icon: <ShieldIcon width={15} height={15} /> },
+  { value: 'subscription' as const, label: 'Подписка и платежи', icon: <CardIcon width={15} height={15} /> },
+  { value: 'employees' as const, label: 'Сотрудники', icon: <UsersIcon width={15} height={15} /> },
+  { value: 'locations' as const, label: 'Торговые точки', icon: <StoreIcon width={15} height={15} /> },
+  { value: 'diagnostics' as const, label: 'Диагностика', icon: <SettingsIcon width={15} height={15} /> },
+  { value: 'history' as const, label: 'История', icon: <ClockIcon width={15} height={15} /> },
 ]
 
 const TRANSITIONS: Record<StoreStatus, { to: StoreStatus; label: string; danger: boolean }[]> = {
@@ -83,7 +83,8 @@ function ProfileTab({ detail, onChanged }: { detail: AdminStoreDetail; onChanged
       await adminApi.approveStore(detail.storeId)
       onChanged()
     } catch (err) {
-      setApproveError(err instanceof ApiError ? err.message : 'Не удалось одобрить магазин')
+      console.error('Не удалось одобрить магазин:', err)
+      setApproveError('Не удалось одобрить магазин')
     } finally {
       setApproveBusy(false)
     }
@@ -98,7 +99,8 @@ function ProfileTab({ detail, onChanged }: { detail: AdminStoreDetail; onChanged
       setTaxSaved(true)
       onChanged()
     } catch (err) {
-      setTaxError(err instanceof ApiError ? err.message : 'Не удалось сохранить настройки налогов')
+      console.error('Не удалось сохранить настройки налогов:', err)
+      setTaxError('Не удалось сохранить настройки налогов')
     } finally {
       setTaxBusy(false)
     }
@@ -108,7 +110,7 @@ function ProfileTab({ detail, onChanged }: { detail: AdminStoreDetail; onChanged
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-xl bg-[color:var(--mod-panel2)] p-4">
+      <div className="rounded-xl bg-[color:var(--admin-hover)] p-4">
         <FieldRow label="Название" value={detail.name} />
         <FieldRow label="Адрес" value={detail.address} />
         <FieldRow label="Владелец" value={detail.ownerEmail ?? detail.ownerUserId} />
@@ -118,13 +120,13 @@ function ProfileTab({ detail, onChanged }: { detail: AdminStoreDetail; onChanged
       </div>
 
       <div>
-        <div className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[color:var(--mod-faint)]">Действия со статусом</div>
+        <div className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">Действия со статусом</div>
         <div className="flex flex-wrap gap-2">
           {detail.status === 'PendingApproval' && (
             <button
               onClick={handleApprove}
               disabled={approveBusy}
-              className="flex items-center gap-1.5 rounded-xl bg-[color:var(--mod-ok)] px-4 py-2.5 text-[12.5px] font-bold text-white transition-transform hover:brightness-110 active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-success)] px-4 py-2.5 text-[12.5px] font-bold text-[color:var(--admin-success-fg)] transition-transform hover:brightness-110 active:scale-95 disabled:opacity-50"
             >
               <CheckIcon width={14} height={14} />
               {approveBusy ? 'Секунду…' : 'Одобрить магазин'}
@@ -136,29 +138,29 @@ function ProfileTab({ detail, onChanged }: { detail: AdminStoreDetail; onChanged
               onClick={() => setPendingTransition(t)}
               className={`rounded-xl border px-4 py-2.5 text-[12.5px] font-bold transition-colors ${
                 t.danger
-                  ? 'border-[color:var(--mod-danger)] text-[color:var(--mod-danger)] hover:bg-[color:var(--mod-danger-dim)]'
-                  : 'border-[color:var(--mod-border)] text-[color:var(--mod-text)] hover:bg-[color:var(--mod-panel2)]'
+                  ? 'border-[color:var(--admin-danger)] text-[color:var(--admin-danger)] hover:bg-[color:var(--admin-danger-dim)]'
+                  : 'border-[color:var(--admin-border)] text-[color:var(--admin-text)] hover:bg-[color:var(--admin-hover)]'
               }`}
             >
               {t.label}
             </button>
           ))}
           {transitions.length === 0 && detail.status !== 'PendingApproval' && (
-            <p className="text-[12.5px] text-[color:var(--mod-faint)]">Это финальный статус — переходов нет.</p>
+            <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">Это финальный статус — переходов нет.</p>
           )}
         </div>
-        {approveError && <p className="mt-2 text-[12px] font-medium text-[color:var(--mod-danger)]">{approveError}</p>}
+        {approveError && <p className="mt-2 text-[12px] font-medium text-[color:var(--admin-danger)]">{approveError}</p>}
       </div>
 
       <div>
-        <div className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[color:var(--mod-faint)]">Налоговый режим</div>
-        <div className="rounded-xl bg-[color:var(--mod-panel2)] p-4">
-          <label className="mb-3 flex items-center gap-2.5 text-[13px] font-semibold text-[color:var(--mod-text)]">
-            <input type="checkbox" checked={isVatPayer} onChange={(e) => setIsVatPayer(e.target.checked)} className="h-4 w-4 accent-[color:var(--mod-accent)]" />
+        <div className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">Налоговый режим</div>
+        <div className="rounded-xl bg-[color:var(--admin-hover)] p-4">
+          <label className="mb-3 flex items-center gap-2.5 text-[13px] font-semibold text-[color:var(--admin-text)]">
+            <input type="checkbox" checked={isVatPayer} onChange={(e) => setIsVatPayer(e.target.checked)} className="h-4 w-4 accent-[color:var(--admin-accent)]" />
             Плательщик НДС
           </label>
           <Select
-            scheme="mod"
+            scheme="admin"
             value={taxRegime}
             onChange={(v) => setTaxRegime(v as 'General' | 'Simplified')}
             options={[
@@ -169,11 +171,11 @@ function ProfileTab({ detail, onChanged }: { detail: AdminStoreDetail; onChanged
           <button
             onClick={handleSaveTax}
             disabled={taxBusy}
-            className="mt-3 rounded-xl bg-[color:var(--mod-accent)] px-4 py-2 text-[12.5px] font-bold text-white transition-transform hover:brightness-110 active:scale-95 disabled:opacity-50"
+            className="mt-3 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:brightness-110 active:scale-95 disabled:opacity-50"
           >
             {taxBusy ? 'Секунду…' : taxSaved ? 'Сохранено ✓' : 'Сохранить'}
           </button>
-          {taxError && <p className="mt-2 text-[12px] font-medium text-[color:var(--mod-danger)]">{taxError}</p>}
+          {taxError && <p className="mt-2 text-[12px] font-medium text-[color:var(--admin-danger)]">{taxError}</p>}
         </div>
       </div>
 
@@ -200,6 +202,7 @@ function SubscriptionTab({ detail, onChanged }: { detail: AdminStoreDetail; onCh
   const [plans, setPlans] = useState<SubscriptionPlan[] | null>(null)
   const [payments, setPayments] = useState<SubscriptionPayment[] | null>(null)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
   const [selectedPlanId, setSelectedPlanId] = useState('')
   const [planBusy, setPlanBusy] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
@@ -221,7 +224,9 @@ function SubscriptionTab({ detail, onChanged }: { detail: AdminStoreDetail; onCh
       setPlans(plansRes.plans)
       setPayments(paymentsRes.payments)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить подписку')
+      console.error('Не удалось загрузить подписку:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить подписку')
     }
   }, [detail.storeId])
 
@@ -237,7 +242,9 @@ function SubscriptionTab({ detail, onChanged }: { detail: AdminStoreDetail; onCh
       setSelectedPlanId('')
       onChanged()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось сменить тариф')
+      console.error('Не удалось сменить тариф:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось сменить тариф')
     } finally {
       setPlanBusy(false)
     }
@@ -261,21 +268,22 @@ function SubscriptionTab({ detail, onChanged }: { detail: AdminStoreDetail; onCh
       await load()
       onChanged()
     } catch (err) {
-      setPayError(err instanceof ApiError ? err.message : 'Не удалось записать платёж')
+      console.error('Не удалось записать платёж:', err)
+      setPayError('Не удалось записать платёж')
     } finally {
       setPayBusy(false)
     }
   }
 
   if (!detail.subscription) {
-    return <EmptyState scheme="mod" title="Подписки нет" body="У этого магазина ещё не выпущена подписка." />
+    return <EmptyState scheme="admin" title="Подписки нет" body="У этого магазина ещё не выпущена подписка." />
   }
 
   const sub = detail.subscription
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-xl bg-[color:var(--mod-panel2)] p-4">
+      <div className="rounded-xl bg-[color:var(--admin-hover)] p-4">
         <FieldRow label="Статус" value={<SubscriptionStatusBadge status={sub.status} size="sm" />} />
         <FieldRow label="Тариф" value={sub.subscriptionPlanName} />
         <FieldRow label="Цена на момент выпуска" value={`${sub.priceAtIssueAmount} ${sub.priceAtIssueCurrency}`} />
@@ -284,16 +292,16 @@ function SubscriptionTab({ detail, onChanged }: { detail: AdminStoreDetail; onCh
         {sub.note && <FieldRow label="Заметка" value={sub.note} />}
       </div>
 
-      {plans === null && !error && <Loading scheme="mod" />}
-      {error && <ErrorState scheme="mod" message={error} onRetry={load} />}
+      {plans === null && !error && <Loading scheme="admin" />}
+      {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
 
       {plans && sub.status !== 'Cancelled' && (
         <div>
-          <div className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[color:var(--mod-faint)]">Сменить тариф</div>
-          <p className="mb-2 text-[11.5px] text-[color:var(--mod-faint)]">Смена вступит в силу со следующего периода, без перерасчёта задним числом.</p>
+          <div className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">Сменить тариф</div>
+          <p className="mb-2 text-[11.5px] text-[color:var(--admin-text-tertiary)]">Смена вступит в силу со следующего периода, без перерасчёта задним числом.</p>
           <div className="flex gap-2">
             <Select
-              scheme="mod"
+              scheme="admin"
               className="flex-1"
               value={selectedPlanId}
               onChange={setSelectedPlanId}
@@ -303,19 +311,19 @@ function SubscriptionTab({ detail, onChanged }: { detail: AdminStoreDetail; onCh
             <button
               onClick={handleChangePlan}
               disabled={!selectedPlanId || planBusy}
-              className="shrink-0 rounded-xl bg-[color:var(--mod-accent)] px-4 py-2.5 text-[12.5px] font-bold text-white disabled:opacity-50"
+              className="shrink-0 rounded-xl bg-[color:var(--admin-accent)] px-4 py-2.5 text-[12.5px] font-bold text-[color:var(--admin-accent-fg)] disabled:opacity-50"
             >
               {planBusy ? 'Секунду…' : 'Сменить'}
             </button>
           </div>
-          <button onClick={() => setCancelOpen(true)} className="mt-2 text-[12px] font-semibold text-[color:var(--mod-danger)] hover:underline">
+          <button onClick={() => setCancelOpen(true)} className="mt-2 text-[12px] font-semibold text-[color:var(--admin-danger)] hover:underline">
             Отменить подписку
           </button>
         </div>
       )}
 
       <div>
-        <div className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[color:var(--mod-faint)]">Записать платёж</div>
+        <div className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">Записать платёж</div>
         <div className="grid grid-cols-2 gap-2">
           <input
             type="number"
@@ -324,10 +332,10 @@ function SubscriptionTab({ detail, onChanged }: { detail: AdminStoreDetail; onCh
             value={payAmount}
             onChange={(e) => setPayAmount(e.target.value)}
             placeholder={`Сумма, ${sub.priceAtIssueCurrency}`}
-            className="col-span-2 rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)] sm:col-span-1"
+            className="col-span-2 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)] sm:col-span-1"
           />
           <Select
-            scheme="mod"
+            scheme="admin"
             value={payMethod}
             onChange={(v) => setPayMethod(v as typeof payMethod)}
             options={[
@@ -343,34 +351,34 @@ function SubscriptionTab({ detail, onChanged }: { detail: AdminStoreDetail; onCh
             value={payComment}
             onChange={(e) => setPayComment(e.target.value)}
             placeholder="Комментарий (необязательно)"
-            className="col-span-2 rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+            className="col-span-2 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
           />
         </div>
-        {payError && <p className="mt-2 text-[12px] font-medium text-[color:var(--mod-danger)]">{payError}</p>}
+        {payError && <p className="mt-2 text-[12px] font-medium text-[color:var(--admin-danger)]">{payError}</p>}
         <button
           onClick={handleRecordPayment}
           disabled={!payAmount || !payFrom || !payTo || payBusy}
-          className="mt-2 rounded-xl bg-[color:var(--mod-ok)] px-4 py-2.5 text-[12.5px] font-bold text-white disabled:opacity-50"
+          className="mt-2 rounded-xl bg-[color:var(--admin-success)] px-4 py-2.5 text-[12.5px] font-bold text-[color:var(--admin-success-fg)] disabled:opacity-50"
         >
           {payBusy ? 'Секунду…' : 'Записать платёж'}
         </button>
       </div>
 
       <div>
-        <div className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[color:var(--mod-faint)]">История платежей</div>
-        {payments && payments.length === 0 && <p className="text-[12.5px] text-[color:var(--mod-faint)]">Платежей ещё не было</p>}
+        <div className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">История платежей</div>
+        {payments && payments.length === 0 && <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">Платежей ещё не было</p>}
         {payments && payments.length > 0 && (
           <div className="flex flex-col gap-1.5">
             {payments.map((p) => (
-              <div key={p.subscriptionPaymentId} className="flex items-center justify-between gap-2 rounded-lg bg-[color:var(--mod-panel2)] px-3 py-2 text-[12.5px]">
-                <span className={`font-[JetBrains_Mono,monospace] font-bold ${p.isReversal ? 'text-[color:var(--mod-danger)]' : 'text-[color:var(--mod-text)]'}`}>
+              <div key={p.subscriptionPaymentId} className="flex items-center justify-between gap-2 rounded-lg bg-[color:var(--admin-hover)] px-3 py-2 text-[12.5px]">
+                <span className={`font-[JetBrains_Mono,monospace] font-bold ${p.isReversal ? 'text-[color:var(--admin-danger)]' : 'text-[color:var(--admin-text)]'}`}>
                   {p.isReversal ? '−' : '+'}
                   {p.amount} {p.currency}
                 </span>
-                <span className="truncate text-[color:var(--mod-muted)]">
+                <span className="truncate text-[color:var(--admin-text-secondary)]">
                   {fmtDate(p.periodStart)} – {fmtDate(p.periodEnd)} · {p.recordedByEmail ?? 'система'}
                 </span>
-                <span className="shrink-0 text-[11px] text-[color:var(--mod-faint)]">{fmtDate(p.recordedAt)}</span>
+                <span className="shrink-0 text-[11px] text-[color:var(--admin-text-tertiary)]">{fmtDate(p.recordedAt)}</span>
               </div>
             ))}
           </div>
@@ -398,6 +406,7 @@ function SubscriptionTab({ detail, onChanged }: { detail: AdminStoreDetail; onCh
 function EmployeesTab({ storeId }: { storeId: number }) {
   const [employees, setEmployees] = useState<AdminStoreEmployee[] | null>(null)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async () => {
     setError('')
@@ -405,7 +414,9 @@ function EmployeesTab({ storeId }: { storeId: number }) {
       const res = await adminApi.getStoreEmployees(storeId)
       setEmployees(res.employees ?? [])
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить сотрудников')
+      console.error('Не удалось загрузить сотрудников:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить сотрудников')
     }
   }, [storeId])
 
@@ -413,19 +424,19 @@ function EmployeesTab({ storeId }: { storeId: number }) {
     load()
   }, [load])
 
-  if (employees === null && !error) return <Loading scheme="mod" />
-  if (error) return <ErrorState scheme="mod" message={error} onRetry={load} />
-  if (employees!.length === 0) return <EmptyState scheme="mod" icon={<UsersIcon width={22} height={22} />} title="Сотрудников нет" body="В этом магазине пока не добавлено ни одного сотрудника." />
+  if (employees === null && !error) return <Loading scheme="admin" />
+  if (error) return <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />
+  if (employees!.length === 0) return <EmptyState scheme="admin" icon={<UsersIcon width={22} height={22} />} title="Сотрудников нет" body="В этом магазине пока не добавлено ни одного сотрудника." />
 
   return (
     <div className="flex flex-col gap-1.5">
       {employees!.map((e) => (
-        <div key={e.storeEmployeeId} className="flex items-center justify-between gap-2 rounded-lg bg-[color:var(--mod-panel2)] px-3.5 py-2.5">
+        <div key={e.storeEmployeeId} className="flex items-center justify-between gap-2 rounded-lg bg-[color:var(--admin-hover)] px-3.5 py-2.5">
           <div className="min-w-0">
-            <div className="truncate text-[12.5px] font-semibold text-[color:var(--mod-text)]">{e.email ?? e.userId}</div>
-            <div className="text-[11px] text-[color:var(--mod-faint)]">с {fmtDate(e.addedAt)}</div>
+            <div className="truncate text-[12.5px] font-semibold text-[color:var(--admin-text)]">{e.email ?? e.userId}</div>
+            <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">с {fmtDate(e.addedAt)}</div>
           </div>
-          <span className="shrink-0 rounded-full bg-[color:var(--mod-accent-dim)] px-2.5 py-1 text-[11px] font-bold text-[color:var(--mod-accent2)]">
+          <span className="shrink-0 rounded-full bg-[color:var(--admin-accent-soft)] px-2.5 py-1 text-[11px] font-bold text-[color:var(--admin-accent)]">
             {e.role === 'Owner' ? 'Владелец' : 'Кассир'}
           </span>
         </div>
@@ -439,6 +450,7 @@ function EmployeesTab({ storeId }: { storeId: number }) {
 function LocationsTab({ storeId, currentStoreId, onNavigateToStore }: { storeId: number; currentStoreId: number; onNavigateToStore: (id: number) => void }) {
   const [locations, setLocations] = useState<AdminStoreLocation[] | null>(null)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async () => {
     setError('')
@@ -446,7 +458,9 @@ function LocationsTab({ storeId, currentStoreId, onNavigateToStore }: { storeId:
       const res = await adminApi.getStoreLocations(storeId)
       setLocations(res.locations ?? [])
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить точки продаж')
+      console.error('Не удалось загрузить точки продаж:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить точки продаж')
     }
   }, [storeId])
 
@@ -454,8 +468,8 @@ function LocationsTab({ storeId, currentStoreId, onNavigateToStore }: { storeId:
     load()
   }, [load])
 
-  if (locations === null && !error) return <Loading scheme="mod" />
-  if (error) return <ErrorState scheme="mod" message={error} onRetry={load} />
+  if (locations === null && !error) return <Loading scheme="admin" />
+  if (error) return <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -465,17 +479,17 @@ function LocationsTab({ storeId, currentStoreId, onNavigateToStore }: { storeId:
           onClick={() => loc.storeId !== currentStoreId && onNavigateToStore(loc.storeId)}
           disabled={loc.storeId === currentStoreId}
           className={`flex items-center justify-between gap-2 rounded-lg px-3.5 py-2.5 text-left transition-colors ${
-            loc.storeId === currentStoreId ? 'bg-[color:var(--mod-accent-dim)]' : 'bg-[color:var(--mod-panel2)] hover:bg-[color:var(--mod-border)]'
+            loc.storeId === currentStoreId ? 'bg-[color:var(--admin-accent-soft)]' : 'bg-[color:var(--admin-hover)] hover:bg-[color:var(--admin-border)]'
           }`}
         >
           <div className="flex min-w-0 items-center gap-2.5">
-            <StoreIcon width={15} height={15} className="shrink-0 text-[color:var(--mod-faint)]" />
+            <StoreIcon width={15} height={15} className="shrink-0 text-[color:var(--admin-text-tertiary)]" />
             <div className="min-w-0">
-              <div className="truncate text-[12.5px] font-semibold text-[color:var(--mod-text)]">
+              <div className="truncate text-[12.5px] font-semibold text-[color:var(--admin-text)]">
                 {loc.name}
-                {loc.storeId === currentStoreId && <span className="ml-1.5 text-[11px] font-normal text-[color:var(--mod-faint)]">(этот)</span>}
+                {loc.storeId === currentStoreId && <span className="ml-1.5 text-[11px] font-normal text-[color:var(--admin-text-tertiary)]">(этот)</span>}
               </div>
-              <div className="truncate text-[11px] text-[color:var(--mod-faint)]">{loc.address}</div>
+              <div className="truncate text-[11px] text-[color:var(--admin-text-tertiary)]">{loc.address}</div>
             </div>
           </div>
           <StoreStatusBadge status={loc.status} size="sm" />
@@ -490,13 +504,16 @@ function LocationsTab({ storeId, currentStoreId, onNavigateToStore }: { storeId:
 function DiagnosticsTab({ storeId }: { storeId: number }) {
   const [diag, setDiag] = useState<AdminStoreDiagnostics | null>(null)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async () => {
     setError('')
     try {
       setDiag(await adminApi.getStoreDiagnostics(storeId))
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить диагностику')
+      console.error('Не удалось загрузить диагностику:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить диагностику')
     }
   }, [storeId])
 
@@ -504,16 +521,16 @@ function DiagnosticsTab({ storeId }: { storeId: number }) {
     load()
   }, [load])
 
-  if (diag === null && !error) return <Loading scheme="mod" />
-  if (error) return <ErrorState scheme="mod" message={error} onRetry={load} />
+  if (diag === null && !error) return <Loading scheme="admin" />
+  if (error) return <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />
   if (!diag) return null
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="rounded-lg bg-[color:var(--mod-accent-dim)] px-3 py-2 text-[11.5px] text-[color:var(--mod-accent2)]">
+      <p className="rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-2 text-[11.5px] text-[color:var(--admin-accent)]">
         Только техническая диагностика для поддержки — без выручки, себестоимости и данных поставщиков.
       </p>
-      <div className="rounded-xl bg-[color:var(--mod-panel2)] p-4">
+      <div className="rounded-xl bg-[color:var(--admin-hover)] p-4">
         <FieldRow label="Последний вход владельца" value={fmtDateTime(diag.ownerLastLoginAt)} />
         <FieldRow label="Последняя продажа" value={fmtDateTime(diag.lastSaleAt)} />
         <FieldRow label="Точек у владельца" value={diag.storeLocationsOwnedByThisOwner ?? '—'} />
@@ -533,6 +550,7 @@ function DiagnosticsTab({ storeId }: { storeId: number }) {
 function HistoryTab({ storeId }: { storeId: number }) {
   const [entries, setEntries] = useState<AuditLogEntry[] | null>(null)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async () => {
     setError('')
@@ -540,7 +558,9 @@ function HistoryTab({ storeId }: { storeId: number }) {
       const res = await adminApi.getAuditLog({ entityType: 'Store', entityId: storeId, take: 50 })
       setEntries(res.entries)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить историю действий')
+      console.error('Не удалось загрузить историю действий:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить историю действий')
     }
   }, [storeId])
 
@@ -548,9 +568,9 @@ function HistoryTab({ storeId }: { storeId: number }) {
     load()
   }, [load])
 
-  if (entries === null && !error) return <Loading scheme="mod" />
-  if (error) return <ErrorState scheme="mod" message={error} onRetry={load} />
-  if (entries!.length === 0) return <EmptyState scheme="mod" icon={<ClockIcon width={22} height={22} />} title="Действий не было" body="По этому магазину ещё нет записей в журнале." />
+  if (entries === null && !error) return <Loading scheme="admin" />
+  if (error) return <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />
+  if (entries!.length === 0) return <EmptyState scheme="admin" icon={<ClockIcon width={22} height={22} />} title="Действий не было" body="По этому магазину ещё нет записей в журнале." />
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -567,13 +587,16 @@ export function StoreDetailPanel({ storeId, onClose, onNavigateToStore }: { stor
   const [tab, setTab] = useState<TabId>('profile')
   const [detail, setDetail] = useState<AdminStoreDetail | null>(null)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async () => {
     setError('')
     try {
       setDetail(await adminApi.getStoreDetail(storeId))
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить магазин')
+      console.error('Не удалось загрузить магазин:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить магазин')
     }
   }, [storeId])
 
@@ -589,17 +612,19 @@ export function StoreDetailPanel({ storeId, onClose, onNavigateToStore }: { stor
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          <ShieldIcon width={16} height={16} className="shrink-0 text-[color:var(--mod-faint)]" />
+          <ShieldIcon width={16} height={16} className="shrink-0 text-[color:var(--admin-text-tertiary)]" />
           {detail?.name ?? `Магазин #${storeId}`}
         </span>
       }
       subtitle={detail?.address}
     >
-      {detail === null && !error && <Loading scheme="mod" />}
-      {error && <ErrorState scheme="mod" message={error} onRetry={load} />}
+      {detail === null && !error && <Loading scheme="admin" />}
+      {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
       {detail && (
         <>
-          <PanelTabs tabs={TABS} active={tab} onChange={setTab} />
+          <div className="mb-5">
+            <SectionSelect value={tab} onChange={setTab} options={TABS} ariaLabel="Раздел карточки магазина" />
+          </div>
           {tab === 'profile' && <ProfileTab detail={detail} onChanged={load} />}
           {tab === 'subscription' && <SubscriptionTab detail={detail} onChanged={load} />}
           {tab === 'employees' && <EmployeesTab storeId={storeId} />}

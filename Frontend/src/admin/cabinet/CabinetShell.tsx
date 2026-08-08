@@ -7,6 +7,8 @@ import { useTheme } from '../../theme/ThemeProvider'
 import { useThemeTransition } from '../../theme/useThemeTransition'
 import { SunIcon, MoonIcon } from '../../components/icons'
 import { useAuth } from '../../auth/AuthContext'
+import { ProfileProvider } from '../../lib/useProfile'
+import { RouteErrorBoundary } from '../../components/RouteErrorBoundary'
 import { salesApi, ApiError, type CashierShift } from '../../lib/api'
 import {
   GridIcon,
@@ -218,7 +220,7 @@ function ShiftBadge({ collapsed }: { collapsed: boolean }) {
               disabled={busy}
               className={clsx(
                 'w-full rounded-[8px] py-2.5 text-[13px] font-[500] transition-opacity disabled:opacity-40',
-                isOpen ? 'bg-[color:var(--admin-danger)] text-white' : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
+                isOpen ? 'bg-[color:var(--admin-danger)] text-[color:var(--admin-danger-fg)]' : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
               )}
             >
               {busy ? '…' : isOpen ? 'Закрыть смену' : 'Открыть смену'}
@@ -384,6 +386,13 @@ export function CabinetShell() {
   const hideTooltip = () => setTooltip(null)
 
   return (
+    // Some pages rendered inside this shell's <Outlet> (SettingsPage's avatar section) read the
+    // caller's own profile via useProfile() -- a context, not a bare fetch, so an avatar upload on
+    // one page and a header avatar reading it elsewhere in the same shell stay in sync without a
+    // full reload. Missing this provider doesn't fail quietly: useProfile() throws, and with no
+    // error boundary in the tree that unmounts this entire shell -- menu, header, everything --
+    // which is exactly the "/admin/settings renders a blank page" bug this fixes.
+    <ProfileProvider>
     <div className="cabinet-shell admin-shell flex h-screen w-full overflow-hidden bg-[color:var(--admin-content)] text-[color:var(--admin-text)]">
       <CommandPalette />
 
@@ -627,7 +636,9 @@ export function CabinetShell() {
 
         <main className="flex-1 overflow-y-auto px-4 py-5 pb-20 sm:px-6 sm:py-6 md:pb-6 lg:px-8 lg:py-7">
           <PageTransition pathKey={location.pathname}>
-            <Outlet />
+            <RouteErrorBoundary key={location.pathname}>
+              <Outlet />
+            </RouteErrorBoundary>
           </PageTransition>
         </main>
       </div>
@@ -635,7 +646,7 @@ export function CabinetShell() {
       {/* ── MOBILE BOTTOM NAV ─────────────────────────────────────────────── */}
       <nav
         aria-label="Мобильная навигация"
-        className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-[color:var(--admin-border)] px-1 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 md:hidden"
+        className="fixed inset-x-0 bottom-0 z-bottom-nav flex items-center justify-around border-t border-[color:var(--admin-border)] px-1 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 md:hidden"
         style={{
           background: 'color-mix(in srgb, var(--admin-sidebar) 95%, transparent)',
           backdropFilter: 'blur(24px)',
@@ -675,5 +686,6 @@ export function CabinetShell() {
 
       <AssistantPanel />
     </div>
+    </ProfileProvider>
   )
 }

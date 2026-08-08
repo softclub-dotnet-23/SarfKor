@@ -28,7 +28,12 @@ public sealed class AcceptStoreEmployeeInvitationCommandHandler(
                 return new AcceptStoreEmployeeInvitationResult(AcceptStoreEmployeeInvitationOutcome.Revoked, null);
         }
 
-        if (invitation.IsEffectivelyExpired(DateTimeOffset.UtcNow))
+        // See GetStoreEmployeeInvitationByTokenQueryHandler's matching comment: IsEffectivelyExpired
+        // alone stops catching an expired invite once StoreEmployeeInvitationExpiryJob has already
+        // flipped its Status to Expired (the method's own `Status == Pending` guard then returns
+        // false) -- without this explicit status check, POSTing an already-job-marked-expired token
+        // here would actually succeed and create the account instead of being rejected.
+        if (invitation.Status == StoreEmployeeInvitationStatus.Expired || invitation.IsEffectivelyExpired(DateTimeOffset.UtcNow))
             return new AcceptStoreEmployeeInvitationResult(AcceptStoreEmployeeInvitationOutcome.Expired, null);
 
         var userId = await authService.FindUserIdByEmailAsync(invitation.Email, cancellationToken);
@@ -53,17 +58,30 @@ public sealed class AcceptStoreEmployeeInvitationCommandHandler(
             userProfileRepository.Add(new UserProfile { UserId = userId, DisplayName = command.DisplayName.Trim() });
         }
 
-        var existingEmployments = await storeEmployeeRepository.GetByStoreIdAsync(invitation.StoreId, cancellationToken);
-        if (!existingEmployments.Any(e => e.UserId == userId))
+        if (invitation.StoreId is { } storeId)
         {
-            storeEmployeeRepository.Add(new StoreEmployee
+            // InvitedRole StorePartner — attach as a store employee (Owner/Cashier per
+            // invitation.Role) and grant the platform-wide StorePartner role on top, same as ever.
+            var existingEmployments = await storeEmployeeRepository.GetByStoreIdAsync(storeId, cancellationToken);
+            if (!existingEmployments.Any(e => e.UserId == userId))
             {
-                StoreId = invitation.StoreId,
-                UserId = userId,
-                Role = invitation.Role,
-                AddedAt = DateTimeOffset.UtcNow
-            });
-            await authService.AssignRoleAsync(userId, StorePartnerRole, cancellationToken);
+                storeEmployeeRepository.Add(new StoreEmployee
+                {
+                    StoreId = storeId,
+                    UserId = userId,
+                    Role = invitation.Role!.Value,
+                    AddedAt = DateTimeOffset.UtcNow
+                });
+                await authService.AssignRoleAsync(userId, StorePartnerRole, cancellationToken);
+            }
+        }
+        else
+        {
+            // InvitedRole User or Admin — a platform-wide invite with no store attached: just grant
+            // the named Identity role. AssignRoleAsync is a no-op if the account already has it
+            // (an existing account invited as "User" gains nothing, which is correct — everyone
+            // already has User by default).
+            await authService.AssignRoleAsync(userId, invitation.InvitedRole, cancellationToken);
         }
 
         invitation.Status = StoreEmployeeInvitationStatus.Accepted;

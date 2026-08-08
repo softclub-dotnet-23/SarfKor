@@ -28,10 +28,13 @@ public sealed class GetStoreEmployeeInvitationsQueryHandler(
         var dtos = invitations
             // A Pending row past ExpiresAt reads as "still pending" to the DB until the sweep job's
             // next run — show it as Expired to the owner immediately rather than waiting on that.
+            // Role is only ever null for a platform-wide (User/Admin) invite, which by definition
+            // isn't scoped to a StoreId — every row this store-scoped query returns has StoreId
+            // equal to the one just queried, so Role is always set here.
             .Select(i => new StoreEmployeeInvitationDto(
                 i.Id,
                 i.Email,
-                i.Role,
+                i.Role!.Value,
                 i.IsEffectivelyExpired(now) ? StoreEmployeeInvitationStatus.Expired : i.Status,
                 i.ExpiresAt,
                 i.CreatedAt,

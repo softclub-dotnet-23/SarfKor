@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { LineChart } from '../components/LineChart'
 import { Loading } from '../components/Loading'
-import { ErrorState } from '../components/ErrorState'
+import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { Panel, SectionHeader, Stat, Row, RowDivider, EmptyRow } from '../cabinet/components/primitives'
 import { DownloadIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
-import { storesApi, productsApi, ApiError, type ProfitReport } from '../../lib/api'
+import { storesApi, productsApi, type ProfitReport } from '../../lib/api'
 import { daysAgo, today, weekdayLabel } from '../lib/dates'
 
 type Range = 'today' | 'week' | 'month'
@@ -53,6 +53,7 @@ export function ReportsPage() {
   const [topProducts, setTopProducts] = useState<TopProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(
     async (r: Range) => {
@@ -70,7 +71,9 @@ export function ReportsPage() {
         setChartData(chartDates.map((d, i) => ({ day: weekdayLabel(d), value: chartReports[i].revenue })))
         setTopProducts(topRes.products ?? [])
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Не удалось загрузить отчёты')
+        console.error('Failed to load reports:', err)
+        setErrorKind(classifyError(err))
+        setError('Не удалось загрузить отчёты')
       } finally {
         setLoading(false)
       }
@@ -109,6 +112,7 @@ export function ReportsPage() {
       <Panel>
         <ErrorState
           message={error || 'Нет данных'}
+          kind={error ? errorKind : 'notFound'}
           onRetry={() => {
             setLoading(true)
             load(range)

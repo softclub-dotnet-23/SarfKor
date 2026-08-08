@@ -8,7 +8,8 @@ import { useProfile, ProfileProvider } from '../lib/useProfile'
 import { useAvatarUrl } from '../lib/useAvatarUrl'
 import { SunIcon, MoonIcon } from '../components/icons'
 import { notificationsApi, type Notification } from '../lib/api'
-import { AppStyles, EASE, LINE, TXT } from './ui'
+import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
+import { AppStyles, EASE, LINE, TXT, ErrorState } from './ui'
 
 /**
  * Shell for the consumer half of the product.
@@ -149,8 +150,8 @@ function AppNotificationBell({ direction = 'up' }: { direction?: 'up' | 'down' }
         <BellIcon />
         {unread > 0 && (
           <span
-            className="absolute right-0.5 top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-[2px] text-[7.5px] font-bold leading-none text-white"
-            style={{ background: 'var(--app-text-primary)' }}
+            className="absolute right-0.5 top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-[2px] text-[7.5px] font-bold leading-none"
+            style={{ background: 'var(--app-text-primary)', color: 'var(--bg-app)' }}
           >
             {unread > 9 ? '9+' : unread}
           </span>
@@ -164,7 +165,7 @@ function AppNotificationBell({ direction = 'up' }: { direction?: 'up' | 'down' }
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.18, ease: EASE }}
-            className={`absolute z-50 w-[280px] overflow-hidden rounded-2xl border ${
+            className={`absolute z-header-popover w-[280px] overflow-hidden rounded-2xl border ${
               direction === 'down' ? 'top-full left-0 mt-2' : 'bottom-full left-0 mb-2'
             }`}
             style={{
@@ -245,14 +246,14 @@ function AppShellInner() {
       {/* one soft key light, fixed to the viewport so pages scroll through it */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 z-0"
+        className="pointer-events-none fixed inset-0 z-base"
         style={{
           background:
             'radial-gradient(90vmax 70vmax at 78% -10%, color-mix(in srgb, var(--app-text-primary) 5.5%, transparent), transparent 60%)',
         }}
       />
 
-      <div className="relative z-10 lg:grid lg:grid-cols-[264px_1fr]">
+      <div className="relative z-raised lg:grid lg:grid-cols-[264px_1fr]">
         {/* ── RAIL (desktop) ───────────────────────────────────── */}
         <aside
           className="sticky top-0 hidden h-screen flex-col justify-between border-r px-8 py-10 lg:flex"
@@ -361,14 +362,16 @@ function AppShellInner() {
             transition={{ duration: 0.4, ease: EASE }}
             className="mx-auto w-full max-w-[880px] px-6 py-10 sm:px-9 lg:px-14 lg:py-16"
           >
-            <Outlet />
+            <RouteErrorBoundary key={location.pathname} fallback={(retry) => <ErrorState message="Не удалось показать эту страницу." onRetry={retry} />}>
+              <Outlet />
+            </RouteErrorBoundary>
           </motion.div>
         </main>
       </div>
 
       {/* ── BOTTOM BAR (mobile) ────────────────────────────────── */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 border-t px-2 pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-bottom-nav border-t px-2 pb-[env(safe-area-inset-bottom)] lg:hidden"
         style={{
           borderColor: LINE,
           background: 'color-mix(in srgb, var(--bg-app) 92%, transparent)',

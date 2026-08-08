@@ -2,9 +2,9 @@ import type { ReactNode } from 'react'
 
 // Promotes the ~70 raw-hex status pills scattered across admin pages
 // (#f87171/#34d399/#fbbf24 for danger/success/warning) onto the semantic
-// --admin-* tokens added alongside this component. 'mod' reuses the platform
-// Admin console's --mod-ok/-warn/-danger — a fixed status palette used
-// everywhere on that surface: green=active, amber=needs attention
+// --admin-* tokens added alongside this component — a fixed status palette used
+// everywhere across the StorePartner cabinet and the platform Admin console:
+// green=active, amber=needs attention
 // (expiring/overdue), red=blocked/stopped, neutral grey=waiting.
 const VARIANTS = {
   admin: {
@@ -13,13 +13,6 @@ const VARIANTS = {
     warning: 'bg-[color:var(--admin-warning-dim)] text-[color:var(--admin-warning)]',
     accent: 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]',
     neutral: 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-tertiary)]',
-  },
-  mod: {
-    success: 'bg-[color:var(--mod-ok-dim)] text-[color:var(--mod-ok)]',
-    danger: 'bg-[color:var(--mod-danger-dim)] text-[color:var(--mod-danger)]',
-    warning: 'bg-[color:var(--mod-warn-dim)] text-[color:var(--mod-warn)]',
-    accent: 'bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]',
-    neutral: 'bg-[color:var(--mod-panel2)] text-[color:var(--mod-faint)]',
   },
 } as const
 

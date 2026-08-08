@@ -103,7 +103,7 @@ export function NotificationBell({ collapsed }: { collapsed: boolean }) {
       >
         <BellIcon />
         {unread > 0 && (
-          <span className="absolute right-1.5 top-1.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-[color:var(--admin-danger)] px-[3px] text-[8px] font-bold leading-none text-white">
+          <span className="absolute right-1.5 top-1.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-[color:var(--admin-danger)] px-[3px] text-[8px] font-bold leading-none text-[color:var(--admin-danger-fg)]">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
@@ -120,7 +120,7 @@ export function NotificationBell({ collapsed }: { collapsed: boolean }) {
             // In expanded mode: absolute bottom-full.
             className={clsx(
               'w-[300px] overflow-hidden rounded-[12px] border border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)]',
-              !collapsed && 'absolute bottom-full left-0 mb-2 z-50',
+              !collapsed && 'absolute bottom-full left-0 mb-2 z-header-popover',
             )}
             style={{ boxShadow: 'var(--admin-shadow-lift)', ...(collapsed ? fixedStyle : {}) }}
           >

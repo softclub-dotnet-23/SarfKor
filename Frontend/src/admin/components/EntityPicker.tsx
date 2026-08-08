@@ -3,18 +3,22 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useIsMobile } from '../../hooks/useMediaQuery'
 import { lockBodyScroll, unlockBodyScroll } from '../../lib/scrollLock'
+import { useFloatingPosition } from '../../lib/useFloatingPosition'
 import { Loading } from './Loading'
 import { SearchIcon, XIcon, ChevronDownIcon, AlertIcon } from './icons'
 
-// Same scheme split as every other shared component here ('admin' for the StorePartner/Cashier
-// cabinets, 'mod' for the platform Admin console) — see Select.tsx, this component's closest
-// sibling, for the pattern this borrows its trigger/panel classes from almost verbatim.
+// Single 'admin' scheme, shared by the StorePartner/Cashier cabinets and the platform Admin
+// console — see Select.tsx, this component's closest sibling, for the pattern this borrows
+// its trigger/panel classes from almost verbatim.
 const SCHEMES = {
   admin: {
     trigger: 'border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] text-[color:var(--admin-text)] focus-visible:border-[color:var(--admin-accent)]',
     placeholder: 'text-[color:var(--admin-text-tertiary)]',
     chevron: 'text-[color:var(--admin-text-tertiary)]',
-    panel: 'border-[color:var(--admin-border)] bg-[color:var(--admin-card)] shadow-[var(--admin-shadow)]',
+    // Opaque --admin-sidebar, not the translucent --admin-card "glass" tone -- this panel portals
+    // to document.body and floats over arbitrary page content, so it needs a surface that reads
+    // as solid regardless of what's behind it.
+    panel: 'border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)] shadow-[var(--admin-shadow)]',
     searchField: 'border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] text-[color:var(--admin-text)] placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]',
     option: 'text-[color:var(--admin-text)]',
     optionActive: 'bg-[color:var(--admin-accent-soft)]',
@@ -24,25 +28,11 @@ const SCHEMES = {
     danger: 'text-[color:var(--admin-danger)]',
     chip: 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]',
     border: 'border-[color:var(--admin-border)]',
-    retryBtn: 'bg-[color:var(--admin-accent)]',
-    sheetBg: 'bg-[color:var(--admin-card)]',
-  },
-  mod: {
-    trigger: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] text-[color:var(--mod-text)] focus-visible:border-[color:var(--mod-accent)]',
-    placeholder: 'text-[color:var(--mod-faint)]',
-    chevron: 'text-[color:var(--mod-faint)]',
-    panel: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel)] shadow-[var(--mod-shadow)]',
-    searchField: 'border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] text-[color:var(--mod-text)] placeholder:text-[color:var(--mod-faint)] focus:border-[color:var(--mod-accent)]',
-    option: 'text-[color:var(--mod-text)]',
-    optionActive: 'bg-[color:var(--mod-accent-dim)]',
-    optionSelected: 'bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]',
-    faint: 'text-[color:var(--mod-faint)]',
-    accent: 'text-[color:var(--mod-accent2)]',
-    danger: 'text-[color:var(--mod-danger)]',
-    chip: 'bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]',
-    border: 'border-[color:var(--mod-border)]',
-    retryBtn: 'bg-[color:var(--mod-accent)]',
-    sheetBg: 'bg-[color:var(--mod-panel)]',
+    retryBtn: 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
+    // Opaque page background, not the translucent --admin-card "glass" tone -- see SectionSelect.tsx
+    // for why: a full-screen sheet needs a solid surface, and --admin-card at ~4.5% alpha in dark
+    // mode let the page underneath show straight through it.
+    sheetBg: 'bg-[color:var(--admin-content)]',
   },
 } as const
 
@@ -107,10 +97,12 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
   const [activeIndex, setActiveIndex] = useState(-1)
 
   const rootRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const requestIdRef = useRef(0)
+  const pos = useFloatingPosition(rootRef, open && !isMobile)
 
   const selectedList: T[] = useMemo(
     () => (props.multiple ? props.value : props.value ? [props.value] : []),
@@ -173,7 +165,9 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
   useEffect(() => {
     if (!open) return
     function onDocClick(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) closePanel()
+      const target = e.target as Node
+      if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      closePanel()
     }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
@@ -298,7 +292,7 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
           <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
             <AlertIcon width={22} height={22} className={c.danger} />
             <p className={`text-[13px] ${c.faint}`}>{error}</p>
-            <button type="button" onClick={() => loadPage(query, 0, false)} className={`rounded-lg px-3.5 py-2 text-[12.5px] font-semibold text-white ${c.retryBtn}`}>
+            <button type="button" onClick={() => loadPage(query, 0, false)} className={`rounded-lg px-3.5 py-2 text-[12.5px] font-semibold ${c.retryBtn}`}>
               Повторить
             </button>
           </div>
@@ -367,7 +361,7 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
                   tabIndex={-1}
                   onClick={(e) => removeChip(e, getId(v))}
                   aria-label={`Убрать ${getLabel(v)}`}
-                  className="grid h-4 w-4 shrink-0 place-items-center rounded-full hover:bg-black/10"
+                  className="grid h-4 w-4 shrink-0 place-items-center rounded-full hover:bg-[color:var(--admin-hover)]"
                 >
                   <XIcon width={10} height={10} />
                 </span>
@@ -375,26 +369,35 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
             ))}
         </div>
         {hasValue && (
-          <span role="button" tabIndex={-1} onClick={clearValue} aria-label="Очистить" className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${c.faint} hover:bg-black/5`}>
+          <span role="button" tabIndex={-1} onClick={clearValue} aria-label="Очистить" className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${c.faint} hover:bg-[color:var(--admin-hover)]`}>
             <XIcon width={13} height={13} />
           </span>
         )}
         <ChevronDownIcon width={14} height={14} className={`shrink-0 transition-transform ${c.chevron} ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      <AnimatePresence>
-        {open && !isMobile && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute z-30 mt-1.5 flex max-h-[70vh] w-full min-w-[320px] flex-col overflow-hidden rounded-xl border ${c.panel}`}
-          >
-            {panelBody}
-          </motion.div>
+      {!isMobile &&
+        createPortal(
+          <AnimatePresence>
+            {open && pos && (
+              <motion.div
+                ref={panelRef}
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                style={{ position: 'fixed', left: pos.left, width: Math.max(pos.width, 320), top: pos.top, bottom: pos.bottom, maxHeight: pos.maxHeight }}
+                // admin-shell: portaled to document.body, outside the page's own .admin-shell
+                // wrapper, so every --admin-* custom property is undefined at this node without
+                // re-declaring the scope here -- see CategoryPicker.tsx for the full explanation.
+                className={`admin-shell z-popover flex flex-col overflow-hidden rounded-xl border ${c.panel}`}
+              >
+                {panelBody}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
 
       {isMobile &&
         createPortal(
@@ -405,7 +408,7 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: '100%' }}
                 transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-                className={`${scheme === 'admin' ? 'admin-shell' : 'mod-shell'} fixed inset-0 z-100 flex flex-col ${c.sheetBg}`}
+                className={`${'admin-shell'} fixed inset-0 z-modal flex flex-col ${c.sheetBg}`}
                 role="dialog"
                 aria-modal="true"
                 aria-label={ariaLabel}

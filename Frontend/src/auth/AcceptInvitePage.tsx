@@ -41,6 +41,10 @@ const inputCls =
   'w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-3.5 py-2.5 pr-10 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-accent)]'
 
 const roleLabelKey = { Cashier: 'partner.staff.roleCashier', Owner: 'partner.staff.roleOwner' } as const
+// Platform-level roles (no store attached, see CreateUserInvitation) -- StorePartner keeps the
+// store-based roleLabelKey/formSubtitle branch below instead, its sub-role (Owner/Cashier) is the
+// more useful thing to show than the bare "StorePartner" platform role name.
+const invitedRoleLabelKey = { User: 'partner.staff.roleUser', Admin: 'partner.staff.roleAdmin' } as const
 
 export function AcceptInvitePage() {
   const { theme, toggleTheme } = useTheme()
@@ -102,8 +106,11 @@ export function AcceptInvitePage() {
       const res = await authApi.acceptStoreEmployeeInvitation(token, displayName.trim(), requiresPassword ? password : undefined)
       if (res.outcome === 'Accepted' && res.auth) {
         await applyAuthResult(res.auth)
-        // RequireOwner already bounces a Cashier straight to /admin/pos — no special-casing needed.
-        navigate('/admin', { replace: true })
+        // RequireStore/RequireOwner already route StorePartner/Admin invitees to the right place
+        // inside /admin (onboarding, dashboard, or /admin/pos for a Cashier) — no special-casing
+        // needed there. A plain "User" invite has no cabinet at all, so it goes to the consumer
+        // app instead; sending it to /admin would land on RequireStore's "create a store" prompt.
+        navigate(info?.invitedRole === 'User' ? '/app' : '/admin', { replace: true })
       } else if (res.outcome === 'AccountAlreadyExisted') {
         setScreen('accountExists')
       } else if (res.outcome === 'Expired') {
@@ -201,10 +208,14 @@ export function AcceptInvitePage() {
                   {t('partner.invite.formTitle')}
                 </h2>
                 <p className="mb-7 text-[14px] leading-relaxed text-[color:var(--admin-text-tertiary)]">
-                  {t('partner.invite.formSubtitle', {
-                    store: info.storeName ?? '',
-                    role: info.role ? t(roleLabelKey[info.role]) : '',
-                  })}
+                  {info.invitedRole === 'StorePartner'
+                    ? t('partner.invite.formSubtitle', {
+                        store: info.storeName ?? '',
+                        role: info.role ? t(roleLabelKey[info.role]) : '',
+                      })
+                    : t('partner.invite.formSubtitlePlatform', {
+                        role: t(invitedRoleLabelKey[info.invitedRole === 'Admin' ? 'Admin' : 'User']),
+                      })}
                 </p>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -288,7 +299,7 @@ export function AcceptInvitePage() {
               screen === 'accountExists') && (
               <Link
                 to="/login"
-                className="mt-7 flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98]"
+                className="mt-7 flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98]"
               >
                 {t('partner.invite.goLogin')}
               </Link>

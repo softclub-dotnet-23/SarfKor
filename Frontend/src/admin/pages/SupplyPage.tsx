@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useState, type ReactNode, type SVGProps } from 'react'
+import { useCallback, useEffect, useState, type SVGProps } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Panel } from '../cabinet/components/primitives'
 import { Select } from '../components/Select'
+import { SectionSelect } from '../components/SectionSelect'
 import { Loading } from '../components/Loading'
+import { AddButton } from '../components/Button'
 import { FormModal, FormField } from '../components/FormModal'
 import { ProductPicker } from '../components/ProductPicker'
 import { TruckIcon, PlusIcon, TrashIcon, RefreshIcon, PhoneIcon, MailIcon, AlertIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
-import { ApiError } from '../../lib/api/client'
 import type { ProductSearchItem } from '../../lib/api'
 import { createSupplier, getSuppliers, type Supplier } from '../../lib/api/suppliers'
 import {
@@ -201,36 +203,29 @@ function SuppliersSection({
   loading,
   error,
   load,
+  createOpen,
+  onCloseCreate,
 }: {
   storeId: number
   suppliers: Supplier[]
   loading: boolean
   error: string
   load: () => Promise<void>
+  createOpen: boolean
+  onCloseCreate: () => void
 }) {
-  const [createOpen, setCreateOpen] = useState(false)
-
   return (
     <div className="flex flex-col gap-5">
       <Panel className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Поставщики</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-bold text-white"
-            >
-              <PlusIcon width={14} height={14} />
-              Добавить поставщика
-            </button>
-            <button
-              onClick={load}
-              aria-label="Обновить"
-              className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
-            >
-              <RefreshIcon width={15} height={15} />
-            </button>
-          </div>
+          <button
+            onClick={load}
+            aria-label="Обновить"
+            className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
+          >
+            <RefreshIcon width={15} height={15} />
+          </button>
         </div>
 
         {loading && <Loading />}
@@ -250,7 +245,9 @@ function SuppliersSection({
               <div key={s.supplierId} className="flex flex-col gap-2 rounded-[14px] bg-[color:var(--admin-hover)] p-3.5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">{s.name}</div>
-                  <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">ID {s.supplierId}</div>
+                  {(s.contactPhone || s.contactEmail) && (
+                    <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">{s.contactPhone || s.contactEmail}</div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1 text-[12px] text-[color:var(--admin-text-secondary)] sm:items-end">
                   {s.contactPhone && (
@@ -275,7 +272,7 @@ function SuppliersSection({
         )}
       </Panel>
 
-      <CreateSupplierModal open={createOpen} onClose={() => setCreateOpen(false)} storeId={storeId} onCreated={load} />
+      <CreateSupplierModal open={createOpen} onClose={onCloseCreate} storeId={storeId} onCreated={load} />
     </div>
   )
 }
@@ -418,11 +415,20 @@ function CreateOrderModal({ open, onClose, storeId, suppliers, onCreated }: { op
   )
 }
 
-function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Supplier[] }) {
+function OrdersSection({
+  storeId,
+  suppliers,
+  createOpen,
+  onCloseCreate,
+}: {
+  storeId: number
+  suppliers: Supplier[]
+  createOpen: boolean
+  onCloseCreate: () => void
+}) {
   const [orders, setOrders] = useState<PurchaseOrder[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [createOpen, setCreateOpen] = useState(false)
 
   const [busyId, setBusyId] = useState<number | null>(null)
   const [rowError, setRowError] = useState<{ id: number; message: string } | null>(null)
@@ -438,7 +444,8 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
       }
       setOrders(res.orders ?? [])
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить заказы поставщикам')
+      console.error('Failed to load purchase orders:', err)
+      setError('Не удалось загрузить заказы поставщикам')
     } finally {
       setLoading(false)
     }
@@ -459,7 +466,8 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
       }
       await load()
     } catch (err) {
-      setRowError({ id, message: err instanceof ApiError ? err.message : 'Не удалось отправить заказ поставщику' })
+      console.error('Failed to submit purchase order:', err)
+      setRowError({ id, message: 'Не удалось отправить заказ поставщику' })
     } finally {
       setBusyId(null)
     }
@@ -476,7 +484,8 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
       }
       await load()
     } catch (err) {
-      setRowError({ id, message: err instanceof ApiError ? err.message : 'Не удалось оприходовать заказ' })
+      console.error('Failed to receive purchase order:', err)
+      setRowError({ id, message: 'Не удалось оприходовать заказ' })
     } finally {
       setBusyId(null)
     }
@@ -489,22 +498,13 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
       <Panel className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Заказы поставщикам</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-bold text-white"
-            >
-              <PlusIcon width={14} height={14} />
-              Новый заказ
-            </button>
-            <button
-              onClick={load}
-              aria-label="Обновить"
-              className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
-            >
-              <RefreshIcon width={15} height={15} />
-            </button>
-          </div>
+          <button
+            onClick={load}
+            aria-label="Обновить"
+            className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
+          >
+            <RefreshIcon width={15} height={15} />
+          </button>
         </div>
 
         {loading && <Loading />}
@@ -564,7 +564,7 @@ function OrdersSection({ storeId, suppliers }: { storeId: number; suppliers: Sup
         )}
       </Panel>
 
-      <CreateOrderModal open={createOpen} onClose={() => setCreateOpen(false)} storeId={storeId} suppliers={suppliers} onCreated={load} />
+      <CreateOrderModal open={createOpen} onClose={onCloseCreate} storeId={storeId} suppliers={suppliers} onCreated={load} />
     </div>
   )
 }
@@ -626,11 +626,10 @@ function CreateTransferModal({ open, onClose, storeId, onCreated }: { open: bool
   )
 }
 
-function TransfersSection({ storeId }: { storeId: number }) {
+function TransfersSection({ storeId, createOpen, onCloseCreate }: { storeId: number; createOpen: boolean; onCloseCreate: () => void }) {
   const [transfers, setTransfers] = useState<StockTransfer[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [createOpen, setCreateOpen] = useState(false)
 
   const [busyId, setBusyId] = useState<number | null>(null)
   const [rowError, setRowError] = useState<{ id: number; message: string } | null>(null)
@@ -646,7 +645,8 @@ function TransfersSection({ storeId }: { storeId: number }) {
       }
       setTransfers(res.transfers ?? [])
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить перемещения')
+      console.error('Failed to load stock transfers:', err)
+      setError('Не удалось загрузить перемещения')
     } finally {
       setLoading(false)
     }
@@ -667,7 +667,8 @@ function TransfersSection({ storeId }: { storeId: number }) {
       }
       await load()
     } catch (err) {
-      setRowError({ id, message: err instanceof ApiError ? err.message : 'Не удалось завершить перемещение' })
+      console.error('Failed to complete stock transfer:', err)
+      setRowError({ id, message: 'Не удалось завершить перемещение' })
     } finally {
       setBusyId(null)
     }
@@ -678,22 +679,13 @@ function TransfersSection({ storeId }: { storeId: number }) {
       <Panel className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Перемещения этого магазина</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-bold text-white"
-            >
-              <PlusIcon width={14} height={14} />
-              Новое перемещение
-            </button>
-            <button
-              onClick={load}
-              aria-label="Обновить"
-              className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
-            >
-              <RefreshIcon width={15} height={15} />
-            </button>
-          </div>
+          <button
+            onClick={load}
+            aria-label="Обновить"
+            className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]"
+          >
+            <RefreshIcon width={15} height={15} />
+          </button>
         </div>
 
         {loading && <Loading />}
@@ -746,7 +738,7 @@ function TransfersSection({ storeId }: { storeId: number }) {
         )}
       </Panel>
 
-      <CreateTransferModal open={createOpen} onClose={() => setCreateOpen(false)} storeId={storeId} onCreated={load} />
+      <CreateTransferModal open={createOpen} onClose={onCloseCreate} storeId={storeId} onCreated={load} />
     </div>
   )
 }
@@ -755,9 +747,24 @@ function TransfersSection({ storeId }: { storeId: number }) {
 
 type SupplyTab = 'suppliers' | 'orders' | 'transfers'
 
+const SUPPLY_TAB_OPTIONS = [
+  { value: 'suppliers' as const, label: 'Поставщики', icon: <TruckIcon width={15} height={15} /> },
+  { value: 'orders' as const, label: 'Заказы поставщикам', icon: <DocumentIcon width={15} height={15} /> },
+  { value: 'transfers' as const, label: 'Перемещения между магазинами', icon: <SwapIcon width={15} height={15} /> },
+]
+
+const SUPPLY_ADD_LABEL: Record<SupplyTab, string> = {
+  suppliers: 'Добавить поставщика',
+  orders: 'Новый заказ',
+  transfers: 'Новое перемещение',
+}
+
 export function SupplyPage() {
   const { storeId } = useAuth()
-  const [tab, setTab] = useState<SupplyTab>('suppliers')
+  const [params, setParams] = useSearchParams()
+  const tabParam = params.get('tab')
+  const tab: SupplyTab = tabParam === 'orders' || tabParam === 'transfers' ? tabParam : 'suppliers'
+  const [createOpen, setCreateOpen] = useState(false)
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [suppliersLoading, setSuppliersLoading] = useState(true)
@@ -770,7 +777,8 @@ export function SupplyPage() {
       const res = await getSuppliers(storeId)
       setSuppliers(res.suppliers ?? [])
     } catch (err) {
-      setSuppliersError(err instanceof ApiError ? err.message : 'Не удалось загрузить поставщиков')
+      console.error('Failed to load suppliers:', err)
+      setSuppliersError('Не удалось загрузить поставщиков')
     } finally {
       setSuppliersLoading(false)
     }
@@ -790,36 +798,33 @@ export function SupplyPage() {
     )
   }
 
-  const TABS: { id: SupplyTab; label: string; icon: ReactNode }[] = [
-    { id: 'suppliers', label: 'Поставщики', icon: <TruckIcon width={15} height={15} /> },
-    { id: 'orders', label: 'Заказы поставщикам', icon: <DocumentIcon width={15} height={15} /> },
-    { id: 'transfers', label: 'Перемещения между магазинами', icon: <SwapIcon width={15} height={15} /> },
-  ]
-
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
-      <div className="flex flex-wrap gap-x-6 border-b border-[color:var(--admin-border)]">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`-mb-px flex items-center gap-2 border-b-2 pb-3 text-[13px] font-semibold transition-colors ${
-              tab === t.id
-                ? 'border-[color:var(--admin-text)] text-[color:var(--admin-text)]'
-                : 'border-transparent text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text-secondary)]'
-            }`}
-          >
-            {t.icon}
-            {t.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-3">
+        <SectionSelect
+          value={tab}
+          onChange={(v) => setParams(v === 'suppliers' ? {} : { tab: v })}
+          options={SUPPLY_TAB_OPTIONS}
+          ariaLabel="Раздел поставок"
+        />
+        <AddButton onClick={() => setCreateOpen(true)}>{SUPPLY_ADD_LABEL[tab]}</AddButton>
       </div>
 
       {tab === 'suppliers' && (
-        <SuppliersSection storeId={storeId} suppliers={suppliers} loading={suppliersLoading} error={suppliersError} load={loadSuppliers} />
+        <SuppliersSection
+          storeId={storeId}
+          suppliers={suppliers}
+          loading={suppliersLoading}
+          error={suppliersError}
+          load={loadSuppliers}
+          createOpen={createOpen}
+          onCloseCreate={() => setCreateOpen(false)}
+        />
       )}
-      {tab === 'orders' && <OrdersSection storeId={storeId} suppliers={suppliers} />}
-      {tab === 'transfers' && <TransfersSection storeId={storeId} />}
+      {tab === 'orders' && (
+        <OrdersSection storeId={storeId} suppliers={suppliers} createOpen={createOpen} onCloseCreate={() => setCreateOpen(false)} />
+      )}
+      {tab === 'transfers' && <TransfersSection storeId={storeId} createOpen={createOpen} onCloseCreate={() => setCreateOpen(false)} />}
     </div>
   )
 }

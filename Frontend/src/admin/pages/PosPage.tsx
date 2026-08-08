@@ -296,7 +296,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
               <button
                 type="submit"
                 disabled={voidBusy || !voidReason.trim()}
-                className="self-start rounded-lg bg-[color:var(--admin-danger)] px-3.5 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                className="self-start rounded-lg bg-[color:var(--admin-danger)] px-3.5 py-1.5 text-[12px] font-semibold text-[color:var(--admin-danger-fg)] disabled:opacity-50"
               >
                 {voidBusy ? 'Отменяем…' : 'Подтвердить отмену'}
               </button>
@@ -417,7 +417,7 @@ function BundlePicker({ storeId, onAdd }: { storeId: number; onAdd: (bundle: Pro
         Набор
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-10 mt-1.5 w-64 rounded-xl bg-[color:var(--admin-card)] p-2 shadow-lg ring-1 ring-[color:var(--admin-border)]">
+        <div className="absolute left-0 top-full z-header-popover mt-1.5 w-64 rounded-xl bg-[color:var(--admin-card)] p-2 shadow-lg ring-1 ring-[color:var(--admin-border)]">
           {bundles === null && <div className="p-2 text-[12px] text-[color:var(--admin-text-tertiary)]">Загрузка…</div>}
           {bundles && bundles.length === 0 && <div className="p-2 text-[12px] text-[color:var(--admin-text-tertiary)]">В магазине нет наборов</div>}
           {bundles?.map((b) => (

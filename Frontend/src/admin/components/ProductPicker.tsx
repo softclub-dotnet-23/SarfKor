@@ -29,7 +29,7 @@ function ProductRow({ item }: { item: ProductSearchItem }) {
 interface ProductPickerBaseProps {
   categoryId?: number
   storeId?: number
-  scheme?: 'admin' | 'mod'
+  scheme?: 'admin'
   placeholder?: string
   disabled?: boolean
   className?: string
@@ -51,7 +51,7 @@ interface MultiProductPickerProps extends ProductPickerBaseProps {
   onChange: (value: ProductSearchItem[]) => void
 }
 
-function ScanButton({ scheme, onDetected }: { scheme: 'admin' | 'mod'; onDetected: (code: string) => void }) {
+function ScanButton({ onDetected }: { onDetected: (code: string) => void }) {
   const [open, setOpen] = useState(false)
   const scanner = useBarcodeScanner({ onDetect: (code) => { onDetected(code); setOpen(false) } })
 
@@ -61,9 +61,9 @@ function ScanButton({ scheme, onDetected }: { scheme: 'admin' | 'mod'; onDetecte
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  const accent = scheme === 'admin' ? 'var(--admin-accent)' : 'var(--mod-accent)'
-  const accentSoft = scheme === 'admin' ? 'var(--admin-accent-soft)' : 'var(--mod-accent-dim)'
-  const text = scheme === 'admin' ? 'var(--admin-text-secondary)' : 'var(--mod-muted)'
+  const accent = 'var(--admin-accent)'
+  const accentSoft = 'var(--admin-accent-soft)'
+  const text = 'var(--admin-text-secondary)'
 
   return (
     <div className="relative shrink-0">
@@ -82,7 +82,7 @@ function ScanButton({ scheme, onDetected }: { scheme: 'admin' | 'mod'; onDetecte
         <CameraIcon width={17} height={17} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-40 mt-2 w-[min(320px,80vw)]">
+        <div className="absolute right-0 top-full z-header-popover mt-2 w-[min(320px,80vw)]">
           <BarcodeScannerView videoRef={scanner.videoRef} phase={scanner.phase} onStart={scanner.start} className="aspect-video w-full" />
         </div>
       )}
@@ -107,7 +107,6 @@ export function ProductPicker(props: SingleProductPickerProps | MultiProductPick
 
   const headerAction = scanEnabled ? (
     <ScanButton
-      scheme={scheme}
       onDetected={async (code) => {
         // A scanned barcode is a complete, exact identifier -- go straight to a 1-item search
         // and auto-select on an exact hit instead of just dropping the code into the search box

@@ -2,14 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card } from '../components/Card'
 import { Loading } from '../components/Loading'
-import { ErrorState } from '../components/ErrorState'
+import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { EmptyState } from '../components/EmptyState'
 import { Select } from '../components/Select'
 import { Pagination } from '../components/Pagination'
 import { DateField } from '../components/DateField'
 import { AuditLogRow } from '../components/AuditLogRow'
 import { ClockIcon } from '../components/icons'
-import { adminApi, ApiError, type AuditLogEntry } from '../../lib/api'
+import { adminApi, type AuditLogEntry } from '../../lib/api'
 
 const TAKE = 30
 
@@ -39,6 +39,7 @@ export function AdminAuditLogPage() {
   const [entries, setEntries] = useState<AuditLogEntry[] | null>(null)
   const [totalCount, setTotalCount] = useState(0)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async () => {
     setError('')
@@ -55,7 +56,9 @@ export function AdminAuditLogPage() {
       setEntries(res.entries)
       setTotalCount(res.totalCount)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить журнал действий')
+      console.error('Failed to load audit log:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить журнал действий')
     }
   }, [skip, entityType, action, performedByUserId, from, to])
 
@@ -75,7 +78,7 @@ export function AdminAuditLogPage() {
     <div style={{ animation: 'mod-fade-in .3s ease' }}>
       <div className="mb-4 flex flex-wrap items-center gap-2.5">
         <Select
-          scheme="mod"
+          scheme="admin"
           className="min-w-[190px]"
           value={entityType}
           onChange={(v) => updateParam('entityType', v)}
@@ -94,7 +97,7 @@ export function AdminAuditLogPage() {
             onChange={(e) => setActionInput(e.target.value)}
             onBlur={() => updateParam('action', actionInput.trim())}
             placeholder="Тип действия, напр. Store.Suspended"
-            className="w-full rounded-xl border border-[color:var(--mod-border)] bg-[color:var(--mod-panel2)] px-3.5 py-2.5 text-[13px] text-[color:var(--mod-text)] outline-none focus:border-[color:var(--mod-accent)]"
+            className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
           />
         </form>
         <DateField value={from} onChange={(iso) => updateParam('from', iso)} title="С даты" />
@@ -102,18 +105,18 @@ export function AdminAuditLogPage() {
         {performedByUserId && (
           <button
             onClick={() => updateParam('performedByUserId', '')}
-            className="rounded-xl border border-[color:var(--mod-accent)] bg-[color:var(--mod-accent-dim)] px-3.5 py-2.5 text-[12px] font-bold text-[color:var(--mod-accent2)]"
+            className="rounded-xl border border-[color:var(--admin-accent)] bg-[color:var(--admin-accent-soft)] px-3.5 py-2.5 text-[12px] font-bold text-[color:var(--admin-accent)]"
           >
             Только {entries?.find((e) => e.performedByUserId === performedByUserId)?.performedByEmail ?? 'этот админ'} ✕
           </button>
         )}
       </div>
 
-      <Card scheme="mod" className="p-2">
-        {entries === null && !error && <Loading scheme="mod" />}
-        {error && <ErrorState scheme="mod" message={error} onRetry={load} />}
+      <Card scheme="admin" className="p-2">
+        {entries === null && !error && <Loading scheme="admin" />}
+        {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />}
         {entries && entries.length === 0 && (
-          <EmptyState scheme="mod" icon={<ClockIcon width={22} height={22} />} title="Записей не найдено" body="Измените фильтры или период." />
+          <EmptyState scheme="admin" icon={<ClockIcon width={22} height={22} />} title="Записей не найдено" body="Измените фильтры или период." />
         )}
         {entries && entries.length > 0 && (
           <div className="flex flex-col gap-1.5 p-2">
@@ -128,7 +131,7 @@ export function AdminAuditLogPage() {
                         ev.stopPropagation()
                         updateParam('performedByUserId', e.performedByUserId)
                       }}
-                      className="shrink-0 text-[10.5px] font-semibold text-[color:var(--mod-muted)] opacity-0 hover:text-[color:var(--mod-text)] hover:underline group-hover:opacity-100"
+                      className="shrink-0 text-[10.5px] font-semibold text-[color:var(--admin-text-secondary)] opacity-0 hover:text-[color:var(--admin-text)] hover:underline group-hover:opacity-100"
                     >
                       только он
                     </button>

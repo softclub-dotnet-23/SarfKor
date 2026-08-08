@@ -153,7 +153,7 @@ export function CommandPalette() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: reduce ? 0 : 0.18 }}
-            className="fixed inset-0 z-[200]"
+            className="fixed inset-0 z-command-palette-backdrop"
             style={{ background: 'color-mix(in srgb, var(--admin-content) 70%, transparent)', backdropFilter: 'blur(8px)' }}
             onClick={close}
           />
@@ -169,7 +169,7 @@ export function CommandPalette() {
             role="dialog"
             aria-modal
             aria-label="Командная палитра"
-            className="fixed left-1/2 top-[15vh] z-[201] w-full max-w-[520px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)]"
+            className="fixed left-1/2 top-[15vh] z-command-palette w-full max-w-[520px] -translate-x-1/2 overflow-hidden rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-sidebar)]"
             style={{ boxShadow: '0 24px 80px -8px rgba(0,0,0,0.35), 0 0 0 1px var(--admin-border)' }}
             onKeyDown={onKeyDown}
           >

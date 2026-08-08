@@ -9,7 +9,20 @@ public class StoreEmployeeConfiguration : IEntityTypeConfiguration<StoreEmployee
 {
     public void Configure(EntityTypeBuilder<StoreEmployee> builder)
     {
-        builder.ComplexProperty(x => x.MonthlySalary, b => b.Property(m => m.Amount).HasPrecision(18, 2));
+        // IsRequired(false) is load-bearing, not decorative: MonthlySalary is `Money?`, and without
+        // it EF's complex-property mapping silently treats a null MonthlySalary as "required but
+        // unset" on INSERT -- it writes Amount=0 (decimal default) while leaving Currency NULL
+        // (string default) instead of persisting a clean all-NULL row. The next read then tries to
+        // materialize Money(0, null) and Money's own constructor throws ("Currency must be a
+        // 3-letter code"), 500ing GetMyStores/GetStoreEmployees for any employee whose salary was
+        // never set -- e.g. every fresh AcceptStoreEmployeeInvitationCommandHandler hire. Found via
+        // this session's live invite-acceptance verification (see WORKLOG); StoreEmployeeRepository
+        // .GetRoleAsync already had a comment flagging this as a known, not-yet-fixed gap.
+        builder.ComplexProperty(x => x.MonthlySalary, b =>
+        {
+            b.IsRequired(false);
+            b.Property(m => m.Amount).HasPrecision(18, 2);
+        });
 
         builder.HasOne<Store>()
             .WithMany()

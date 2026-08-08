@@ -3,7 +3,7 @@ import { Card } from '../components/Card'
 import { Select } from '../components/Select'
 import { Badge } from '../components/Badge'
 import { Loading } from '../components/Loading'
-import { ErrorState } from '../components/ErrorState'
+import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { FormModal, FormField } from '../components/FormModal'
 import { Toast } from '../components/Toast'
 import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, TrashIcon, RefreshIcon } from '../components/icons'
@@ -211,6 +211,7 @@ function EmployeesSection() {
   const [employees, setEmployees] = useState<StoreEmployee[] | null>(null)
   const [invitations, setInvitations] = useState<StoreEmployeeInvitation[]>([])
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
   const [removingId, setRemovingId] = useState<number | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
@@ -223,10 +224,17 @@ function EmployeesSection() {
       if (res.outcome === 'Found') {
         setEmployees(res.employees ?? [])
       } else {
+        setErrorKind(res.outcome === 'Forbidden' ? 'forbidden' : 'notFound')
         setError(res.outcome === 'Forbidden' ? t('partner.staff.noStoreAccess') : t('partner.staff.storeNotFound'))
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('partner.staff.loadEmployeesError'))
+      // Never show err.message here: for a genuine 500 that's the raw backend exception text,
+      // not something written for a user to read. The console gets the real thing; the screen
+      // gets a safe, translated, kind-specific line instead (see ErrorState).
+      // eslint-disable-next-line no-console
+      console.error('Failed to load store employees:', err)
+      setErrorKind(classifyError(err))
+      setError(t('partner.staff.loadEmployeesError'))
     }
     try {
       const invRes = await storesApi.getStoreEmployeeInvitations(storeId, 'Pending')
@@ -277,20 +285,20 @@ function EmployeesSection() {
         </div>
         <button
           onClick={() => setInviteOpen(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-white hover:opacity-90"
+          className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
         >
           <PlusIcon width={14} height={14} />
           {t('partner.staff.inviteButton')}
         </button>
       </div>
 
-      {error && <div className="mb-3 text-[12px] font-medium text-[color:var(--admin-danger)]">{error}</div>}
+      {error && <ErrorState message={error} kind={errorKind} onRetry={load} />}
 
       <div className="flex flex-col gap-2.5">
         {employees === null && !error && (
           <div className="py-6 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">{t('common.loading')}</div>
         )}
-        {invitations.map((inv) => (
+        {!error && invitations.map((inv) => (
           <InvitationRow key={inv.invitationId} invitation={inv} onChanged={load} />
         ))}
         {employees?.map((emp) => (
@@ -338,6 +346,7 @@ export function StaffPage() {
   const [anomaliesForbidden, setAnomaliesForbidden] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const ROLE_ACCESS = [
     { role: t('partner.staff.roleUser'), access: [t('partner.staff.roleUserAccess1'), t('partner.staff.roleUserAccess2'), t('partner.staff.roleUserAccess3')] },
@@ -348,38 +357,49 @@ export function StaffPage() {
     { role: t('partner.staff.roleAdmin'), access: [t('partner.staff.roleAdminAccess1'), t('partner.staff.roleAdminAccess2')] },
   ]
 
-  useEffect(() => {
-    if (!storeId) { setLoading(false); return }
-    let cancelled = false
-    async function load() {
+  const load = useCallback(
+    async (signal?: { cancelled: boolean }) => {
+      if (!storeId) return
+      setLoading(true)
+      setError('')
       // Independent try/catch per endpoint — a 403 on cashier anomalies (owner-only)
       // must not blank out the shifts/KPI sections a non-owner employee can still see.
       try {
-        const shiftsRes = await salesApi.getCashierShifts(storeId!)
-        if (cancelled) return
+        const shiftsRes = await salesApi.getCashierShifts(storeId)
+        if (signal?.cancelled) return
         setShifts(shiftsRes.shifts ?? [])
       } catch (err) {
-        if (cancelled) return
-        setError(err instanceof ApiError ? err.message : t('partner.staff.loadEmployeesError'))
+        if (signal?.cancelled) return
+        // Same rule as the employees load below: never surface err.message here, it's the raw
+        // backend exception text for anything past a curated 4xx, not user-facing copy.
+        // eslint-disable-next-line no-console
+        console.error('Failed to load cashier shifts:', err)
+        setErrorKind(classifyError(err))
+        setError(t('partner.staff.loadShiftsError'))
       }
 
       try {
-        const anomaliesRes = await storesApi.getCashierAnomalies(storeId!, daysAgo(29), today())
-        if (cancelled) return
+        const anomaliesRes = await storesApi.getCashierAnomalies(storeId, daysAgo(29), today())
+        if (signal?.cancelled) return
         setAnomalies(anomaliesRes.cashiers ?? [])
       } catch (err) {
-        if (cancelled) return
+        if (signal?.cancelled) return
         if (err instanceof ApiError && err.status === 403) setAnomaliesForbidden(true)
+        else console.error('Failed to load cashier anomaly report:', err) // eslint-disable-line no-console
       }
 
-      if (!cancelled) setLoading(false)
-    }
-    load()
+      if (!signal?.cancelled) setLoading(false)
+    },
+    [storeId, t],
+  )
+
+  useEffect(() => {
+    const signal = { cancelled: false }
+    load(signal)
     return () => {
-      cancelled = true
+      signal.cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeId])
+  }, [load])
 
   if (loading) {
     return <Loading label={t('common.loading')} />
@@ -388,7 +408,7 @@ export function StaffPage() {
   if (error || !shifts) {
     return (
       <Card>
-        <ErrorState message={error || t('common.notFound')} />
+        <ErrorState message={error || t('common.notFound')} kind={errorKind} onRetry={() => load()} />
       </Card>
     )
   }
@@ -428,7 +448,7 @@ export function StaffPage() {
             >
               <div className="flex items-center gap-3">
                 <span
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[13px] font-bold text-white"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[13px] font-bold text-[color:var(--admin-accent-fg)]"
                   style={{ background: 'linear-gradient(135deg, var(--admin-accent), color-mix(in srgb, var(--admin-accent) 65%, black))' }}
                 >
                   {shortId(s.cashierUserId, user?.userId, t).charAt(0).toUpperCase()}

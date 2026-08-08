@@ -22,7 +22,20 @@ public sealed class StoreAccessAuthorizer(
     public async Task<bool> IsOwnerAsync(int storeId, string userId, CancellationToken cancellationToken)
     {
         var store = await storeRepository.GetByIdAsync(storeId, cancellationToken);
-        return store is not null && store.OwnerUserId == userId;
+        if (store is null)
+            return false;
+        if (store.OwnerUserId == userId)
+            return true;
+
+        // A co-owner added via StoreEmployee (Role = Owner) -- through StaffPage's own "Пригласить
+        // сотрудника" role picker or /admin/users' generalized invite -- was never recognized here:
+        // this checked only the single literal Store.OwnerUserId, so every one of this method's 35
+        // call sites (reports, reorder alerts, promotions, purchase orders, staff management, ...)
+        // 403'd a legitimately-invited co-owner. Confirmed live via this session's StorePartner
+        // invite-acceptance verification. GetRoleAsync is the same MonthlySalary-avoiding projection
+        // StoreEmployeeRepository already uses elsewhere, not a fresh full-entity read.
+        var role = await storeEmployeeRepository.GetRoleAsync(storeId, userId, cancellationToken);
+        return role == StoreEmployeeRole.Owner;
     }
 
     public async Task<bool> IsOperationalAsync(int storeId, CancellationToken cancellationToken)

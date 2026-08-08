@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Panel } from '../cabinet/components/primitives'
 import { Select } from '../components/Select'
+import { SectionSelect } from '../components/SectionSelect'
+import { AddButton } from '../components/Button'
 import { Badge } from '../components/Badge'
 import { Loading } from '../components/Loading'
 import { FormModal, FormField } from '../components/FormModal'
@@ -26,12 +29,18 @@ import { getReviews, replyToReview, type Review } from '../../lib/api/reviews'
 
 type Tab = 'promotions' | 'bundles' | 'offers' | 'replies'
 
-const TABS: { key: Tab; label: string; icon: (props: { width: number; height: number }) => ReactElement }[] = [
-  { key: 'promotions', label: 'Акции', icon: (p) => <PercentIcon {...p} /> },
-  { key: 'bundles', label: 'Наборы товаров', icon: (p) => <TagIcon {...p} /> },
-  { key: 'offers', label: 'Скоро истекает', icon: (p) => <ClockIcon {...p} /> },
-  { key: 'replies', label: 'Ответы на отзывы', icon: (p) => <StarIcon {...p} /> },
+const TAB_OPTIONS = [
+  { value: 'promotions' as const, label: 'Акции', icon: <PercentIcon width={15} height={15} /> },
+  { value: 'bundles' as const, label: 'Наборы товаров', icon: <TagIcon width={15} height={15} /> },
+  { value: 'offers' as const, label: 'Скоро истекает', icon: <ClockIcon width={15} height={15} /> },
+  { value: 'replies' as const, label: 'Ответы на отзывы', icon: <StarIcon width={15} height={15} /> },
 ]
+
+const MARKETING_ADD_LABEL: Partial<Record<Tab, string>> = {
+  promotions: 'Создать акцию',
+  bundles: 'Новый набор',
+  offers: 'Опубликовать',
+}
 
 function fmt(n: number) {
   return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -82,25 +91,17 @@ function outcomeMessage(outcome: string): string | null {
 
 export function MarketingPage() {
   const { storeId } = useAuth()
-  const [tab, setTab] = useState<Tab>('promotions')
+  const [params, setParams] = useSearchParams()
+  const tabParam = params.get('tab')
+  const tab: Tab = tabParam === 'bundles' || tabParam === 'offers' || tabParam === 'replies' ? tabParam : 'promotions'
+  const [createOpen, setCreateOpen] = useState(false)
+  const addLabel = MARKETING_ADD_LABEL[tab]
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
-      <div className="flex flex-wrap gap-x-6 border-b border-[color:var(--admin-border)]">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`-mb-px flex items-center gap-2 border-b-2 pb-3 text-[13px] font-semibold transition-colors ${
-              tab === t.key
-                ? 'border-[color:var(--admin-text)] text-[color:var(--admin-text)]'
-                : 'border-transparent text-[color:var(--admin-text-tertiary)] hover:text-[color:var(--admin-text-secondary)]'
-            }`}
-          >
-            {t.icon({ width: 15, height: 15 })}
-            {t.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-3">
+        <SectionSelect value={tab} onChange={(v) => setParams(v === 'promotions' ? {} : { tab: v })} options={TAB_OPTIONS} ariaLabel="Раздел маркетинга" />
+        {addLabel && <AddButton onClick={() => setCreateOpen(true)}>{addLabel}</AddButton>}
       </div>
 
       {!storeId ? (
@@ -109,9 +110,9 @@ export function MarketingPage() {
         </Panel>
       ) : (
         <>
-          {tab === 'promotions' && <PromotionsSection storeId={storeId} />}
-          {tab === 'bundles' && <BundlesSection storeId={storeId} />}
-          {tab === 'offers' && <OffersSection storeId={storeId} />}
+          {tab === 'promotions' && <PromotionsSection storeId={storeId} createOpen={createOpen} onCloseCreate={() => setCreateOpen(false)} />}
+          {tab === 'bundles' && <BundlesSection storeId={storeId} createOpen={createOpen} onCloseCreate={() => setCreateOpen(false)} />}
+          {tab === 'offers' && <OffersSection storeId={storeId} createOpen={createOpen} onCloseCreate={() => setCreateOpen(false)} />}
           {tab === 'replies' && <RepliesSection />}
         </>
       )}
@@ -166,7 +167,7 @@ function PromotionFormFields({
           onClick={() => setTargetMode('product')}
           className={`flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
             targetMode === 'product'
-              ? 'bg-[color:var(--admin-accent)] text-white'
+              ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
               : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
           }`}
         >
@@ -177,7 +178,7 @@ function PromotionFormFields({
           onClick={() => setTargetMode('category')}
           className={`flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-colors ${
             targetMode === 'category'
-              ? 'bg-[color:var(--admin-accent)] text-white'
+              ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]'
               : 'bg-[color:var(--admin-hover)] text-[color:var(--admin-text-secondary)]'
           }`}
         >
@@ -317,11 +318,10 @@ function CreatePromotionModal({ open, onClose, storeId, onCreated }: { open: boo
   )
 }
 
-function PromotionsSection({ storeId }: { storeId: number }) {
+function PromotionsSection({ storeId, createOpen, onCloseCreate }: { storeId: number; createOpen: boolean; onCloseCreate: () => void }) {
   const [promotions, setPromotions] = useState<Promotion[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [createOpen, setCreateOpen] = useState(false)
 
   const load = useCallback(async () => {
     setError('')
@@ -329,7 +329,8 @@ function PromotionsSection({ storeId }: { storeId: number }) {
       const res = await getActivePromotions(storeId)
       setPromotions(res.promotions ?? [])
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить акции')
+      console.error('Failed to load promotions:', err)
+      setError('Не удалось загрузить акции')
     } finally {
       setLoading(false)
     }
@@ -342,18 +343,9 @@ function PromotionsSection({ storeId }: { storeId: number }) {
   return (
     <div className="flex flex-col gap-6">
       <Panel className="p-5">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-            <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Активные акции</span>
-          </div>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
-          >
-            <PlusIcon width={14} height={14} />
-            Создать акцию
-          </button>
+        <div className="mb-4 flex items-center gap-2">
+          <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
+          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Активные акции</span>
         </div>
         {loading ? (
           <Loading label="Загружаем акции…" />
@@ -392,7 +384,7 @@ function PromotionsSection({ storeId }: { storeId: number }) {
         )}
       </Panel>
 
-      <CreatePromotionModal open={createOpen} onClose={() => setCreateOpen(false)} storeId={storeId} onCreated={async () => { await load(); setCreateOpen(false) }} />
+      <CreatePromotionModal open={createOpen} onClose={onCloseCreate} storeId={storeId} onCreated={async () => { await load(); onCloseCreate() }} />
     </div>
   )
 }
@@ -556,11 +548,10 @@ function CreateBundleModal({ open, onClose, storeId, onCreated }: { open: boolea
   )
 }
 
-function BundlesSection({ storeId }: { storeId: number }) {
+function BundlesSection({ storeId, createOpen, onCloseCreate }: { storeId: number; createOpen: boolean; onCloseCreate: () => void }) {
   const [bundles, setBundles] = useState<ProductBundle[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [createOpen, setCreateOpen] = useState(false)
 
   const load = useCallback(async () => {
     setError('')
@@ -568,7 +559,8 @@ function BundlesSection({ storeId }: { storeId: number }) {
       const res = await getProductBundles(storeId)
       setBundles(res.bundles ?? [])
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить наборы товаров')
+      console.error('Failed to load product bundles:', err)
+      setError('Не удалось загрузить наборы товаров')
     } finally {
       setLoading(false)
     }
@@ -581,18 +573,9 @@ function BundlesSection({ storeId }: { storeId: number }) {
   return (
     <div className="flex flex-col gap-6">
       <Panel className="p-5">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-            <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Наборы товаров магазина</span>
-          </div>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
-          >
-            <PlusIcon width={14} height={14} />
-            Новый набор
-          </button>
+        <div className="mb-4 flex items-center gap-2">
+          <TagIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
+          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Наборы товаров магазина</span>
         </div>
         {loading ? (
           <Loading label="Загружаем наборы…" />
@@ -629,7 +612,7 @@ function BundlesSection({ storeId }: { storeId: number }) {
         )}
       </Panel>
 
-      <CreateBundleModal open={createOpen} onClose={() => setCreateOpen(false)} storeId={storeId} onCreated={async () => { await load(); setCreateOpen(false) }} />
+      <CreateBundleModal open={createOpen} onClose={onCloseCreate} storeId={storeId} onCreated={async () => { await load(); onCloseCreate() }} />
     </div>
   )
 }
@@ -762,11 +745,10 @@ function PublishOfferModal({ open, onClose, storeId, onCreated }: { open: boolea
   )
 }
 
-function OffersSection({ storeId }: { storeId: number }) {
+function OffersSection({ storeId, createOpen, onCloseCreate }: { storeId: number; createOpen: boolean; onCloseCreate: () => void }) {
   const [offers, setOffers] = useState<ExpiringOffer[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [createOpen, setCreateOpen] = useState(false)
 
   const load = useCallback(async () => {
     setError('')
@@ -774,7 +756,8 @@ function OffersSection({ storeId }: { storeId: number }) {
       const res = await getExpiringOffersForStore(storeId)
       setOffers(res.offers ?? [])
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить предложения')
+      console.error('Failed to load expiring offers:', err)
+      setError('Не удалось загрузить предложения')
     } finally {
       setLoading(false)
     }
@@ -787,18 +770,9 @@ function OffersSection({ storeId }: { storeId: number }) {
   return (
     <div className="flex flex-col gap-6">
       <Panel className="p-5">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <AlertIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
-            <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Предложения этого магазина</span>
-          </div>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
-          >
-            <PlusIcon width={14} height={14} />
-            Опубликовать
-          </button>
+        <div className="mb-4 flex items-center gap-2">
+          <AlertIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
+          <span className="text-[16px] font-bold text-[color:var(--admin-text)]">Предложения этого магазина</span>
         </div>
         {loading ? (
           <Loading label="Загружаем предложения…" />
@@ -839,7 +813,7 @@ function OffersSection({ storeId }: { storeId: number }) {
         )}
       </Panel>
 
-      <PublishOfferModal open={createOpen} onClose={() => setCreateOpen(false)} storeId={storeId} onCreated={async () => { await load(); setCreateOpen(false) }} />
+      <PublishOfferModal open={createOpen} onClose={onCloseCreate} storeId={storeId} onCreated={async () => { await load(); onCloseCreate() }} />
     </div>
   )
 }
@@ -873,7 +847,8 @@ function RepliesSection() {
       const res = await getReviews(pid)
       setReviews(res.reviews ?? [])
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить отзывы')
+      console.error('Failed to load reviews:', err)
+      setError('Не удалось загрузить отзывы')
       setReviews(null)
     } finally {
       setLoading(false)
@@ -897,13 +872,14 @@ function RepliesSection() {
       setOpenReplyId(null)
       setReplyText('')
     } catch (err) {
+      console.error('Failed to submit review reply:', err)
       setReplyError(
         err instanceof ApiError
           ? err.status === 404
             ? 'Отзыв не найден'
             : err.status === 403
               ? 'Нет доступа, чтобы отвечать на этот отзыв'
-              : err.message
+              : 'Не удалось отправить ответ'
           : 'Не удалось отправить ответ',
       )
     } finally {

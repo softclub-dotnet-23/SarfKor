@@ -250,7 +250,7 @@ export function ForgotPasswordPage() {
                   </label>
 
                   {error && (
-                    <div className="rounded-lg bg-[#f8717118] px-3.5 py-2.5 text-[12.5px] font-medium text-[#f87171]">
+                    <div className="rounded-lg bg-[color:var(--admin-danger-dim)] px-3.5 py-2.5 text-[12.5px] font-medium text-[color:var(--admin-danger)]">
                       {error}
                     </div>
                   )}
@@ -261,7 +261,7 @@ export function ForgotPasswordPage() {
                   <button
                     type="submit"
                     disabled={loading || code.length !== 6}
-                    className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-60"
+                    className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-[color:var(--admin-accent)] py-3 text-[14px] font-bold text-[color:var(--admin-accent-fg)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:opacity-60"
                   >
                     {loading ? 'Сохраняем…' : 'Сохранить новый пароль'}
                   </button>
@@ -304,7 +304,7 @@ export function ForgotPasswordPage() {
                   </label>
 
                   {error && (
-                    <div className="rounded-lg bg-[#f8717118] px-3.5 py-2.5 text-[12.5px] font-medium text-[#f87171]">
+                    <div className="rounded-lg bg-[color:var(--admin-danger-dim)] px-3.5 py-2.5 text-[12.5px] font-medium text-[color:var(--admin-danger)]">
                       {error}
                     </div>
                   )}

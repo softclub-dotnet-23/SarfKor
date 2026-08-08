@@ -10,6 +10,7 @@ import { useAuth } from '../auth/AuthContext'
 import { salesApi, ApiError, type CashierShift } from '../lib/api'
 import { RegisterIcon, PackageIcon, LogOutIcon, RefreshIcon } from './components/icons'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
+import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
 import { useT } from '../i18n/translations'
 import { useLocaleFormat } from '../i18n/format'
 
@@ -101,8 +102,8 @@ function ShiftCard({ collapsed }: { collapsed: boolean }) {
         onClick={handleToggleShift}
         disabled={busy || !storeId}
         className={clsx(
-          'w-full rounded-lg py-1.5 text-[12px] font-semibold text-white transition-opacity disabled:opacity-50',
-          myOpenShift ? 'bg-[color:var(--admin-danger)]' : 'bg-[color:var(--admin-accent)]',
+          'w-full rounded-lg py-1.5 text-[12px] font-semibold transition-opacity disabled:opacity-50',
+          myOpenShift ? 'bg-[color:var(--admin-danger)] text-[color:var(--admin-danger-fg)]' : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
         )}
       >
         {busy ? t('common.saving') : myOpenShift ? t('partner.shift.close') : t('partner.shift.open')}
@@ -181,7 +182,9 @@ export function CashierShell() {
 
       <main className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-3">
         <PageTransition pathKey={location.pathname}>
-          <Outlet />
+          <RouteErrorBoundary key={location.pathname}>
+            <Outlet />
+          </RouteErrorBoundary>
         </PageTransition>
       </main>
 

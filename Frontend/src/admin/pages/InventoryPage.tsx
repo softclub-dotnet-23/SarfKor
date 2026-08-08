@@ -4,7 +4,7 @@ import { AdminModal } from '../components/AdminModal'
 import { Select } from '../components/Select'
 import { Badge } from '../components/Badge'
 import { Loading } from '../components/Loading'
-import { ErrorState } from '../components/ErrorState'
+import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { Reveal } from '../components/Reveal'
 import { BarcodeScannerView } from '../components/BarcodeScannerView'
 import { ProductPicker } from '../components/ProductPicker'
@@ -58,6 +58,7 @@ export function InventoryPage() {
   const [alerts, setAlerts] = useState<ReorderAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
   const [query, setQuery] = useState('')
 
   const [scanOpen, setScanOpen] = useState(false)
@@ -147,7 +148,9 @@ export function InventoryPage() {
         }
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить склад')
+      console.error('Failed to load inventory:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить склад')
     } finally {
       setLoading(false)
     }
@@ -217,6 +220,7 @@ export function InventoryPage() {
         setScanError('Товар с таким штрихкодом не найден')
         setNotFoundBarcode(code)
       } else {
+        console.error('Failed to look up barcode:', err)
         setScanError('Не удалось выполнить поиск')
       }
     } finally {
@@ -290,7 +294,8 @@ export function InventoryPage() {
         }
       }, 1500)
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : 'Не удалось отправить заявку')
+      console.error('Failed to submit new product:', err)
+      setSubmitError('Не удалось отправить заявку')
     } finally {
       setSubmitBusy(false)
     }
@@ -312,7 +317,8 @@ export function InventoryPage() {
         setNewCategoryError('Не удалось создать категорию')
       }
     } catch (err) {
-      setNewCategoryError(err instanceof ApiError ? err.message : 'Не удалось создать категорию')
+      console.error('Failed to create category:', err)
+      setNewCategoryError('Не удалось создать категорию')
     } finally {
       setNewCategoryBusy(false)
     }
@@ -330,7 +336,8 @@ export function InventoryPage() {
       setNewBrandOpen(false)
       setNewBrandName('')
     } catch (err) {
-      setNewBrandError(err instanceof ApiError ? err.message : 'Не удалось создать бренд')
+      console.error('Failed to create brand:', err)
+      setNewBrandError('Не удалось создать бренд')
     } finally {
       setNewBrandBusy(false)
     }
@@ -350,9 +357,8 @@ export function InventoryPage() {
         try {
           await pricingApi.submitPriceUpdate(receiptFor.productId, storeId, priceAmount, 'TJS')
         } catch (err) {
-          window.alert(
-            `Партия оприходована, но цену сохранить не удалось: ${err instanceof ApiError ? err.message : 'ошибка сервера'}`,
-          )
+          console.error('Failed to save price after stock receipt:', err)
+          window.alert('Партия оприходована, но цену сохранить не удалось: ошибка сервера')
         }
       }
       setReceiptFor(null)
@@ -360,7 +366,8 @@ export function InventoryPage() {
       setReceiptPrice('')
       await load()
     } catch (err) {
-      setReceiptError(err instanceof ApiError ? err.message : 'Не удалось оприходовать поставку')
+      console.error('Failed to record stock receipt:', err)
+      setReceiptError('Не удалось оприходовать поставку')
     } finally {
       setReceiptBusy(false)
     }
@@ -381,7 +388,8 @@ export function InventoryPage() {
         setCostDone(false)
       }, 1200)
     } catch (err) {
-      setCostError(err instanceof ApiError ? err.message : 'Не удалось сохранить себестоимость')
+      console.error('Failed to save cost price:', err)
+      setCostError('Не удалось сохранить себестоимость')
     } finally {
       setCostBusy(false)
     }
@@ -402,7 +410,8 @@ export function InventoryPage() {
         setPriceDone(false)
       }, 1200)
     } catch (err) {
-      setPriceError(err instanceof ApiError ? err.message : 'Не удалось сохранить цену')
+      console.error('Failed to save price:', err)
+      setPriceError('Не удалось сохранить цену')
     } finally {
       setPriceBusy(false)
     }
@@ -433,7 +442,8 @@ export function InventoryPage() {
       setRuleSupplierId('')
       await load()
     } catch (err) {
-      setRuleError(err instanceof ApiError ? err.message : 'Не удалось создать правило пополнения')
+      console.error('Failed to create reorder rule:', err)
+      setRuleError('Не удалось создать правило пополнения')
     } finally {
       setRuleBusy(false)
     }
@@ -446,7 +456,7 @@ export function InventoryPage() {
   if (error) {
     return (
       <Panel>
-        <ErrorState message={error} onRetry={load} />
+        <ErrorState message={error} kind={errorKind} onRetry={load} />
       </Panel>
     )
   }

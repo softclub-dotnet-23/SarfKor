@@ -9,11 +9,6 @@ const SCHEMES = {
     row: 'border-[color:var(--admin-border)]',
     rowHover: 'hover:bg-[color:var(--admin-hover)]',
   },
-  mod: {
-    head: 'text-[color:var(--mod-faint)]',
-    row: 'border-[color:var(--mod-border)]',
-    rowHover: 'hover:bg-[color:var(--mod-panel2)]',
-  },
 } as const
 
 type Scheme = keyof typeof SCHEMES

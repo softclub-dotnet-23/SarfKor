@@ -9,10 +9,6 @@ const SCHEMES = {
     surface: 'rounded-[22px] bg-[color:var(--admin-card)] ring-1 ring-[color:var(--admin-border)] [box-shadow:var(--admin-shadow)]',
     lift: 'hover:[box-shadow:var(--admin-shadow-lift)]',
   },
-  mod: {
-    surface: 'rounded-[22px] bg-[color:var(--mod-panel)] ring-1 ring-[color:var(--mod-border)] [box-shadow:var(--mod-shadow)]',
-    lift: 'hover:[box-shadow:var(--mod-shadow-lift)]',
-  },
 } as const
 
 interface CardProps {

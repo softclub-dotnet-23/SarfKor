@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Card } from '../components/Card'
 import { Loading } from '../components/Loading'
-import { ErrorState } from '../components/ErrorState'
+import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import {
   StoreIcon,
   CardIcon,
@@ -13,7 +13,7 @@ import {
   AlertIcon,
   ClockIcon,
 } from '../components/icons'
-import { metricsApi, ApiError, type PlatformMetrics, type MetricsDay } from '../../lib/api'
+import { metricsApi, type PlatformMetrics, type MetricsDay } from '../../lib/api'
 
 function fmtMoney(amount: number, currency: string) {
   return `${Math.round(amount).toLocaleString('ru-RU')} ${currency}`
@@ -28,17 +28,17 @@ function fmtDate(iso: string) {
 function KpiTile({ label, value, icon, to }: { label: string; value: string | number; icon: React.ReactNode; to?: string }) {
   const body = (
     <Card
-      scheme="mod"
+      scheme="admin"
       interactive={!!to}
-      className={`p-5 ${to ? 'transition-colors duration-150 hover:bg-[color:var(--mod-accent-dim)]' : ''}`}
+      className={`p-5 ${to ? 'transition-colors duration-150 hover:bg-[color:var(--admin-accent-soft)]' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[11.5px] font-semibold leading-tight text-[color:var(--mod-muted)]">{label}</span>
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--mod-accent-dim)] text-[color:var(--mod-accent2)]">
+        <span className="text-[11.5px] font-semibold leading-tight text-[color:var(--admin-text-secondary)]">{label}</span>
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]">
           {icon}
         </span>
       </div>
-      <div className="mt-3 font-[JetBrains_Mono,monospace] text-[27px] font-bold tracking-tight text-[color:var(--mod-text)]">
+      <div className="mt-3 font-[JetBrains_Mono,monospace] text-[27px] font-bold tracking-tight text-[color:var(--admin-text)]">
         {value}
       </div>
     </Card>
@@ -64,22 +64,22 @@ function AttentionBlock<T>({
   renderRow: (item: T) => { key: string | number; label: string; meta: string }
 }) {
   return (
-    <Card scheme="mod" className="p-5">
+    <Card scheme="admin" className="p-5">
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-[13.5px] font-bold text-[color:var(--mod-text)]">
-          <span className="grid h-7 w-7 place-items-center rounded-lg bg-[color:var(--mod-warn-dim)] text-[color:var(--mod-warn)]">
+        <div className="flex items-center gap-2 text-[13.5px] font-bold text-[color:var(--admin-text)]">
+          <span className="grid h-7 w-7 place-items-center rounded-lg bg-[color:var(--admin-warning-dim)] text-[color:var(--admin-warning)]">
             {icon}
           </span>
           {title}
         </div>
         {items.length > 0 && (
-          <Link to={to} className="text-[11.5px] font-semibold text-[color:var(--mod-muted)] hover:text-[color:var(--mod-text)] hover:underline">
+          <Link to={to} className="text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)] hover:underline">
             Все ({items.length})
           </Link>
         )}
       </div>
       {items.length === 0 ? (
-        <p className="py-3 text-[12.5px] text-[color:var(--mod-faint)]">{emptyText}</p>
+        <p className="py-3 text-[12.5px] text-[color:var(--admin-text-tertiary)]">{emptyText}</p>
       ) : (
         <div className="flex flex-col gap-0.5">
           {items.slice(0, 5).map((item) => {
@@ -88,10 +88,10 @@ function AttentionBlock<T>({
               <Link
                 key={row.key}
                 to={to}
-                className="flex items-center justify-between gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-[color:var(--mod-panel2)]"
+                className="flex items-center justify-between gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-[color:var(--admin-hover)]"
               >
-                <span className="truncate text-[12.5px] font-semibold text-[color:var(--mod-text)]">{row.label}</span>
-                <span className="shrink-0 font-[JetBrains_Mono,monospace] text-[11px] text-[color:var(--mod-faint)]">{row.meta}</span>
+                <span className="truncate text-[12.5px] font-semibold text-[color:var(--admin-text)]">{row.label}</span>
+                <span className="shrink-0 font-[JetBrains_Mono,monospace] text-[11px] text-[color:var(--admin-text-tertiary)]">{row.meta}</span>
               </Link>
             )
           })}
@@ -109,6 +109,7 @@ function SalesChart() {
   const [rangeDays, setRangeDays] = useState<(typeof RANGE_OPTIONS)[number]>(7)
   const [days, setDays] = useState<MetricsDay[] | null>(null)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async (range: number) => {
     setError('')
@@ -119,7 +120,9 @@ function SalesChart() {
       const res = await metricsApi.getMetricsTimeSeries(from.toISOString().slice(0, 10), to.toISOString().slice(0, 10))
       setDays(res.days)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить график')
+      console.error('Failed to load platform sales chart:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить график')
     }
   }, [])
 
@@ -134,16 +137,16 @@ function SalesChart() {
   const labelEvery = rangeDays <= 7 ? 1 : rangeDays <= 30 ? 5 : 15
 
   return (
-    <Card scheme="mod" className="p-5">
+    <Card scheme="admin" className="p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="text-[14px] font-bold text-[color:var(--mod-text)]">Продажи по платформе</div>
-        <div className="flex gap-1 rounded-lg bg-[color:var(--mod-panel2)] p-1">
+        <div className="text-[14px] font-bold text-[color:var(--admin-text)]">Продажи по платформе</div>
+        <div className="flex gap-1 rounded-lg bg-[color:var(--admin-hover)] p-1">
           {RANGE_OPTIONS.map((r) => (
             <button
               key={r}
               onClick={() => setRangeDays(r)}
               className={`rounded-md px-3 py-1.5 text-[12px] font-bold transition-colors ${
-                rangeDays === r ? 'bg-[color:var(--mod-accent)] text-white' : 'text-[color:var(--mod-muted)] hover:text-[color:var(--mod-text)]'
+                rangeDays === r ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]' : 'text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]'
               }`}
             >
               {r} дн.
@@ -152,36 +155,36 @@ function SalesChart() {
         </div>
       </div>
 
-      {days === null && !error && <Loading scheme="mod" />}
-      {error && <ErrorState scheme="mod" message={error} onRetry={() => load(rangeDays)} />}
+      {days === null && !error && <Loading scheme="admin" />}
+      {error && <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={() => load(rangeDays)} />}
       {days && (
         <>
           <div className="flex items-end gap-[2px]" style={{ height: 140 }}>
             {days.map((d) => (
               <div key={d.date} className="group relative flex flex-1 flex-col items-center justify-end" style={{ height: '100%' }}>
                 <div
-                  className="w-full rounded-t-[3px] bg-[color:var(--mod-accent)] opacity-80 transition-opacity group-hover:opacity-100"
+                  className="w-full rounded-t-[3px] bg-[color:var(--admin-accent)] opacity-80 transition-opacity group-hover:opacity-100"
                   style={{ height: `${Math.max(2, (d.sales / max) * 100)}%` }}
                   title={`${fmtDate(d.date)}: ${d.sales} продаж`}
                 />
               </div>
             ))}
           </div>
-          <div className="mt-1.5 flex justify-between font-[JetBrains_Mono,monospace] text-[10px] text-[color:var(--mod-faint)]">
+          <div className="mt-1.5 flex justify-between font-[JetBrains_Mono,monospace] text-[10px] text-[color:var(--admin-text-tertiary)]">
             {days
               .filter((_, i) => i % labelEvery === 0 || i === days.length - 1)
               .map((d) => (
                 <span key={d.date}>{fmtDate(d.date)}</span>
               ))}
           </div>
-          <div className="mt-4 flex gap-6 border-t border-[color:var(--mod-border)] pt-3">
+          <div className="mt-4 flex gap-6 border-t border-[color:var(--admin-border)] pt-3">
             <div>
-              <div className="font-[JetBrains_Mono,monospace] text-[16px] font-bold text-[color:var(--mod-text)]">{salesTotal}</div>
-              <div className="text-[11px] text-[color:var(--mod-faint)]">продаж за период</div>
+              <div className="font-[JetBrains_Mono,monospace] text-[16px] font-bold text-[color:var(--admin-text)]">{salesTotal}</div>
+              <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">продаж за период</div>
             </div>
             <div>
-              <div className="font-[JetBrains_Mono,monospace] text-[16px] font-bold text-[color:var(--mod-text)]">{newStoresTotal}</div>
-              <div className="text-[11px] text-[color:var(--mod-faint)]">новых магазинов</div>
+              <div className="font-[JetBrains_Mono,monospace] text-[16px] font-bold text-[color:var(--admin-text)]">{newStoresTotal}</div>
+              <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">новых магазинов</div>
             </div>
           </div>
         </>
@@ -195,13 +198,16 @@ function SalesChart() {
 export function AdminOverviewPage() {
   const [metrics, setMetrics] = useState<PlatformMetrics | null>(null)
   const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
 
   const load = useCallback(async () => {
     setError('')
     try {
       setMetrics(await metricsApi.getPlatformMetrics())
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить метрики платформы')
+      console.error('Failed to load platform metrics:', err)
+      setErrorKind(classifyError(err))
+      setError('Не удалось загрузить метрики платформы')
     }
   }, [])
 
@@ -209,8 +215,8 @@ export function AdminOverviewPage() {
     load()
   }, [load])
 
-  if (metrics === null && !error) return <Loading scheme="mod" />
-  if (error) return <ErrorState scheme="mod" message={error} onRetry={load} />
+  if (metrics === null && !error) return <Loading scheme="admin" />
+  if (error) return <ErrorState scheme="admin" message={error} kind={errorKind} onRetry={load} />
   if (!metrics) return null
 
   return (

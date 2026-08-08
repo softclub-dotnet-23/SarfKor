@@ -52,6 +52,7 @@ public sealed class CreateStoreEmployeeInvitationCommandHandler(
                 StoreId = command.StoreId,
                 Email = email,
                 Role = command.Role,
+                InvitedRole = "StorePartner",
                 TokenHash = InviteToken.Hash(rawToken),
                 InvitedByUserId = command.PerformedByUserId,
                 ExpiresAt = expiresAt,
@@ -78,8 +79,8 @@ public sealed class CreateStoreEmployeeInvitationCommandHandler(
 
         try
         {
-            await emailSender.SendStoreEmployeeInviteEmailAsync(
-                email, store.Name, invitation.Role, rawToken, invitationOptions.Value.ExpiryDays, language, cancellationToken);
+            await emailSender.SendInvitationEmailAsync(
+                email, invitation.InvitedRole, store.Name, invitation.Role, rawToken, invitationOptions.Value.ExpiryDays, language, cancellationToken);
         }
         catch (Exception ex)
         {

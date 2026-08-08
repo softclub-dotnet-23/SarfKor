@@ -2196,16 +2196,20 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("InvitedRole")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTimeOffset>("LastSentAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("Role")
+                    b.Property<int?>("Role")
                         .HasColumnType("integer");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
-                    b.Property<int>("StoreId")
+                    b.Property<int?>("StoreId")
                         .HasColumnType("integer");
 
                     b.Property<string>("TokenHash")
@@ -3476,8 +3480,7 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasOne("Domain.Stores.Store", null)
                         .WithMany()
                         .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Domain.Stores.StoreOwnerInvitation", b =>

@@ -24,7 +24,7 @@ export function SidePanel({ open, onClose, title, subtitle, children }: { open: 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="mod-shell fixed inset-0 z-100 flex justify-end bg-black/50 backdrop-blur-sm"
+          className="admin-shell fixed inset-0 z-modal flex justify-end bg-black/50 backdrop-blur-sm"
           onClick={onClose}
         >
           <motion.div
@@ -33,14 +33,19 @@ export function SidePanel({ open, onClose, title, subtitle, children }: { open: 
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 34 }}
             onClick={(e) => e.stopPropagation()}
-            className="flex h-full w-full max-w-[640px] flex-col bg-[color:var(--mod-panel)] shadow-2xl"
+            // --admin-sidebar (opaque), not --admin-card (translucent glass, ~4.5% alpha in dark
+            // mode) -- this panel floats over the page's own content (a table, a form), and
+            // --admin-card let that content show straight through it. A ring pairs with the
+            // shadow so the panel still reads as a distinct surface on backgrounds close to
+            // --admin-sidebar's own tone.
+            className="flex h-full w-full max-w-[640px] flex-col bg-[color:var(--admin-sidebar)] shadow-2xl ring-1 ring-[color:var(--admin-border)]"
           >
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[color:var(--mod-border)] px-6 py-4">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[color:var(--admin-border)] px-6 py-4">
               <div className="min-w-0">
-                <h2 className="truncate text-[17px] font-extrabold tracking-tight text-[color:var(--mod-text)]">{title}</h2>
-                {subtitle && <p className="truncate text-[12px] text-[color:var(--mod-muted)]">{subtitle}</p>}
+                <h2 className="truncate text-[17px] font-extrabold tracking-tight text-[color:var(--admin-text)]">{title}</h2>
+                {subtitle && <p className="truncate text-[12px] text-[color:var(--admin-text-secondary)]">{subtitle}</p>}
               </div>
-              <button onClick={onClose} aria-label="Закрыть" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[color:var(--mod-faint)] hover:bg-[color:var(--mod-panel2)]">
+              <button onClick={onClose} aria-label="Закрыть" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-hover)]">
                 <XIcon width={16} height={16} />
               </button>
             </div>
@@ -53,29 +58,11 @@ export function SidePanel({ open, onClose, title, subtitle, children }: { open: 
   )
 }
 
-export function PanelTabs<T extends string>({ tabs, active, onChange }: { tabs: { id: T; label: string }[]; active: T; onChange: (id: T) => void }) {
-  return (
-    <div className="mb-5 flex flex-wrap gap-1 rounded-xl bg-[color:var(--mod-panel2)] p-1">
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => onChange(t.id)}
-          className={`rounded-lg px-3 py-2 text-[12.5px] font-bold transition-colors ${
-            active === t.id ? 'bg-[color:var(--mod-accent)] text-white' : 'text-[color:var(--mod-muted)] hover:text-[color:var(--mod-text)]'
-          }`}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 export function FieldRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-[color:var(--mod-border)] py-2.5 last:border-0">
-      <span className="text-[12.5px] font-medium text-[color:var(--mod-muted)]">{label}</span>
-      <span className="truncate text-[12.5px] font-semibold text-[color:var(--mod-text)]">{value}</span>
+    <div className="flex items-center justify-between gap-3 border-b border-[color:var(--admin-border)] py-2.5 last:border-0">
+      <span className="text-[12.5px] font-medium text-[color:var(--admin-text-secondary)]">{label}</span>
+      <span className="truncate text-[12.5px] font-semibold text-[color:var(--admin-text)]">{value}</span>
     </div>
   )
 }

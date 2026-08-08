@@ -11,6 +11,7 @@ public sealed class ResendStoreEmployeeInvitationCommandHandler(
     IStoreAccessAuthorizer storeAccessAuthorizer,
     IStoreRepository storeRepository,
     IUserProfileRepository userProfileRepository,
+    IAuthService authService,
     IEmailSender emailSender,
     IOptions<StoreEmployeeInvitationOptions> invitationOptions,
     IUnitOfWork unitOfWork,
@@ -23,15 +24,29 @@ public sealed class ResendStoreEmployeeInvitationCommandHandler(
         if (invitation is null)
             return new ResendStoreEmployeeInvitationResult(ResendStoreEmployeeInvitationOutcome.NotFound);
 
-        if (!await storeAccessAuthorizer.IsOwnerAsync(invitation.StoreId, command.PerformedByUserId, cancellationToken))
+        // A store-scoped (StorePartner) invite can be resent by that store's own owner OR any
+        // Admin (who may have created it from /admin/users in the first place); a platform-wide
+        // (User/Admin) invite has no store owner to defer to, so only an Admin can touch it.
+        var authorized = invitation.StoreId is { } ownedStoreId && await storeAccessAuthorizer.IsOwnerAsync(ownedStoreId, command.PerformedByUserId, cancellationToken);
+        if (!authorized)
+        {
+            var performer = await authService.GetUserDetailAsync(command.PerformedByUserId, cancellationToken);
+            authorized = performer?.Roles.Contains("Admin") == true;
+        }
+        if (!authorized)
             return new ResendStoreEmployeeInvitationResult(ResendStoreEmployeeInvitationOutcome.Forbidden);
 
         if (invitation.Status != StoreEmployeeInvitationStatus.Pending)
             return new ResendStoreEmployeeInvitationResult(ResendStoreEmployeeInvitationOutcome.NotPending);
 
-        var store = await storeRepository.GetByIdAsync(invitation.StoreId, cancellationToken);
-        if (store is null)
-            return new ResendStoreEmployeeInvitationResult(ResendStoreEmployeeInvitationOutcome.NotFound);
+        string? storeName = null;
+        if (invitation.StoreId is { } storeId)
+        {
+            var store = await storeRepository.GetByIdAsync(storeId, cancellationToken);
+            if (store is null)
+                return new ResendStoreEmployeeInvitationResult(ResendStoreEmployeeInvitationOutcome.NotFound);
+            storeName = store.Name;
+        }
 
         var now = DateTimeOffset.UtcNow;
         var rawToken = InviteToken.Generate();
@@ -45,12 +60,12 @@ public sealed class ResendStoreEmployeeInvitationCommandHandler(
 
         try
         {
-            await emailSender.SendStoreEmployeeInviteEmailAsync(
-                invitation.Email, store.Name, invitation.Role, rawToken, invitationOptions.Value.ExpiryDays, language, cancellationToken);
+            await emailSender.SendInvitationEmailAsync(
+                invitation.Email, invitation.InvitedRole, storeName, invitation.Role, rawToken, invitationOptions.Value.ExpiryDays, language, cancellationToken);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to resend store employee invite email");
+            logger.LogError(ex, "Failed to resend invite email");
         }
 
         return new ResendStoreEmployeeInvitationResult(ResendStoreEmployeeInvitationOutcome.Resent);

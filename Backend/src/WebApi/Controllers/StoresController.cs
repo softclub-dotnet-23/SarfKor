@@ -4,6 +4,7 @@ using Application.Sales.Queries.GetCashierAnomalyReport;
 using Application.Sales.Queries.GetDailySalesReport;
 using Application.Sales.Queries.GetProfitReport;
 using Application.Stores.Commands.CreateStore;
+using Application.Stores.Commands.CreateCashierAccount;
 using Application.Stores.Commands.CreateStoreEmployeeInvitation;
 using Application.Stores.Commands.RemoveStoreEmployee;
 using Application.Stores.Commands.ResendStoreEmployeeInvitation;
@@ -195,6 +196,43 @@ public sealed class StoresController : ControllerBase
             CreateStoreEmployeeInvitationOutcome.StoreNotFound => NotFound("Store not found."),
             CreateStoreEmployeeInvitationOutcome.Forbidden => Forbid(),
             CreateStoreEmployeeInvitationOutcome.AlreadyEmployed => Conflict("This user is already an employee of this store."),
+            _ => Problem()
+        };
+    }
+
+    // Deliberately separate from CreateEmployeeInvitation above: a cashier hired in person doesn't
+    // need the emailed-link round-trip, and the owner handing them a working password right there is
+    // the common real-world flow for a small shop. Only ever creates a brand-new account — an email
+    // that already exists on the platform falls back to the invitation flow instead (see
+    // CreateCashierAccountCommandHandler), so this never resets someone else's password.
+    [HttpPost("stores/{storeId:int}/cashier-accounts")]
+    [Authorize("StorePartner")]
+    [EnableRateLimiting("cashier-create")]
+    public async Task<IActionResult> CreateCashierAccount(
+        int storeId,
+        CreateCashierAccountRequest request,
+        [FromServices] ICommandHandler<CreateCashierAccountCommand, CreateCashierAccountResult> handler,
+        [FromServices] IValidator<CreateCashierAccountCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new CreateCashierAccountCommand(
+            storeId, request.Email, request.DisplayName, userId, HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            CreateCashierAccountOutcome.Created => Ok(result),
+            CreateCashierAccountOutcome.StoreNotFound => NotFound("Store not found."),
+            CreateCashierAccountOutcome.Forbidden => Forbid(),
+            CreateCashierAccountOutcome.EmailAlreadyRegistered => Conflict("This email is already registered — invite them instead."),
             _ => Problem()
         };
     }

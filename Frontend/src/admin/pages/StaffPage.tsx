@@ -6,7 +6,7 @@ import { Loading } from '../components/Loading'
 import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { FormModal, FormField } from '../components/FormModal'
 import { Toast } from '../components/Toast'
-import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, TrashIcon, RefreshIcon } from '../components/icons'
+import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, TrashIcon, RefreshIcon, KeyIcon, CheckIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { useT } from '../../i18n/translations'
 import { useLocaleFormat } from '../../i18n/format'
@@ -125,6 +125,154 @@ function InviteEmployeeModal({
   )
 }
 
+// Deliberately separate from InviteEmployeeModal above: a cashier hired in person doesn't need the
+// emailed-link round-trip, so this creates a real, working account immediately and hands the owner a
+// generated password to relay to them on the spot. Only ever a Cashier (co-owner invites still go
+// through InviteEmployeeModal) and only ever a brand-new account -- an already-registered email is
+// rejected rather than silently touching that account's password.
+function CreateCashierModal({
+  open,
+  onClose,
+  storeId,
+  onCreated,
+}: {
+  open: boolean
+  onClose: () => void
+  storeId: number | null
+  onCreated: (result: { email: string; password: string }) => void
+}) {
+  const t = useT()
+  const [email, setEmail] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [emailError, setEmailError] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setEmail('')
+    setDisplayName('')
+    setEmailError('')
+  }, [open])
+
+  async function submit() {
+    const trimmedEmail = email.trim()
+    const trimmedName = displayName.trim()
+    if (!trimmedEmail) {
+      setEmailError(t('partner.staff.emailRequired'))
+      throw new Error(t('partner.staff.emailRequired'))
+    }
+    if (!trimmedName) throw new Error(t('partner.staff.nameRequired'))
+    if (!storeId) throw new Error(t('partner.staff.storeNotSelected'))
+
+    const res = await storesApi.createCashierAccount(storeId, trimmedEmail, trimmedName)
+    if (res.outcome === 'Created') {
+      onCreated({ email: res.email!, password: res.password! })
+    } else if (res.outcome === 'EmailAlreadyRegistered') {
+      throw new Error(t('partner.staff.emailAlreadyRegistered'))
+    } else if (res.outcome === 'Forbidden') {
+      throw new Error(t('partner.staff.forbidden'))
+    } else {
+      throw new Error(t('partner.staff.storeNotFound'))
+    }
+  }
+
+  return (
+    <FormModal
+      open={open}
+      onClose={onClose}
+      title={t('partner.staff.createCashierModalTitle')}
+      isDirty={!!email || !!displayName}
+      onSubmit={submit}
+      submitLabel={t('partner.staff.createCashierSubmit')}
+      submitBusyLabel={t('partner.staff.creating')}
+      scheme="admin"
+    >
+      <FormField label={t('partner.staff.emailLabel')} required error={emailError} scheme="admin">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value)
+            setEmailError('')
+          }}
+          placeholder="cashier@sarfkor.tj"
+          className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+        />
+      </FormField>
+      <FormField label={t('partner.staff.nameLabel')} required scheme="admin">
+        <input
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder={t('partner.staff.namePlaceholder')}
+          className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+        />
+      </FormField>
+      <p className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">{t('partner.staff.createCashierHint')}</p>
+    </FormModal>
+  )
+}
+
+/** Shows the freshly generated password exactly once — nothing on the client or server keeps a copy
+ *  of it after this closes, so the copy button here is the owner's only chance to grab it. */
+function CashierCredentialsModal({
+  result,
+  onClose,
+}: {
+  result: { email: string; password: string } | null
+  onClose: () => void
+}) {
+  const t = useT()
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (result) setCopied(false)
+  }, [result])
+
+  async function copy() {
+    if (!result) return
+    await navigator.clipboard.writeText(result.password)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <FormModal
+      open={!!result}
+      onClose={onClose}
+      title={t('partner.staff.cashierCreatedTitle')}
+      onSubmit={async () => {}}
+      submitLabel={t('partner.staff.done')}
+      cancelLabel={t('partner.staff.done')}
+      scheme="admin"
+    >
+      {result && (
+        <div className="flex flex-col gap-4">
+          <p className="text-[12.5px] leading-relaxed text-[color:var(--admin-text-secondary)]">{t('partner.staff.cashierCreatedHint')}</p>
+          <FormField label={t('partner.staff.emailLabel')} scheme="admin">
+            <div className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)]">
+              {result.email}
+            </div>
+          </FormField>
+          <FormField label={t('partner.staff.passwordLabel')} scheme="admin">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 font-mono text-[14px] font-semibold tracking-wide text-[color:var(--admin-text)]">
+                {result.password}
+              </div>
+              <button
+                type="button"
+                onClick={copy}
+                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2.5 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
+              >
+                {copied ? <CheckIcon width={14} height={14} /> : null}
+                {copied ? t('partner.staff.copied') : t('partner.staff.copyPassword')}
+              </button>
+            </div>
+          </FormField>
+        </div>
+      )}
+    </FormModal>
+  )
+}
+
 function InvitationRow({ invitation, onChanged }: { invitation: StoreEmployeeInvitation; onChanged: () => Promise<void> }) {
   const t = useT()
   const { date } = useLocaleFormat()
@@ -214,6 +362,8 @@ function EmployeesSection() {
   const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
   const [removingId, setRemovingId] = useState<number | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [createCashierOpen, setCreateCashierOpen] = useState(false)
+  const [cashierCredentials, setCashierCredentials] = useState<{ email: string; password: string } | null>(null)
   const [toastMessage, setToastMessage] = useState('')
 
   const load = useCallback(async () => {
@@ -257,6 +407,12 @@ function EmployeesSection() {
     setTimeout(() => setToastMessage(''), 3200)
   }
 
+  async function handleCashierCreated(result: { email: string; password: string }) {
+    await load()
+    setCreateCashierOpen(false)
+    setCashierCredentials(result)
+  }
+
   async function handleRemove(storeEmployeeId: number) {
     setRemovingId(storeEmployeeId)
     setError('')
@@ -283,13 +439,22 @@ function EmployeesSection() {
           <ShieldIcon width={17} height={17} className="text-[color:var(--admin-accent)]" />
           <span className="text-[16px] font-bold text-[color:var(--admin-text)]">{t('partner.staff.employeesTitle')}</span>
         </div>
-        <button
-          onClick={() => setInviteOpen(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
-        >
-          <PlusIcon width={14} height={14} />
-          {t('partner.staff.inviteButton')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCreateCashierOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-[color:var(--admin-border)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-text)] hover:bg-[color:var(--admin-hover)]"
+          >
+            <KeyIcon width={14} height={14} />
+            {t('partner.staff.createCashierButton')}
+          </button>
+          <button
+            onClick={() => setInviteOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
+          >
+            <PlusIcon width={14} height={14} />
+            {t('partner.staff.inviteButton')}
+          </button>
+        </div>
       </div>
 
       {error && <ErrorState message={error} kind={errorKind} onRetry={load} />}
@@ -330,6 +495,8 @@ function EmployeesSection() {
       </div>
 
       <InviteEmployeeModal open={inviteOpen} onClose={() => setInviteOpen(false)} storeId={storeId} onSuccess={handleInviteSuccess} />
+      <CreateCashierModal open={createCashierOpen} onClose={() => setCreateCashierOpen(false)} storeId={storeId} onCreated={handleCashierCreated} />
+      <CashierCredentialsModal result={cashierCredentials} onClose={() => setCashierCredentials(null)} />
       <Toast open={!!toastMessage} variant="success" scheme="admin">
         {toastMessage}
       </Toast>

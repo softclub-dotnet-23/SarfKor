@@ -54,6 +54,7 @@ export type {
   StoreEmployeeInvitation,
   StoreEmployeeInvitationStatus,
   CreateStoreEmployeeInvitationOutcome,
+  CreateCashierAccountOutcome,
 } from './stores'
 export type {
   StoreStatus,

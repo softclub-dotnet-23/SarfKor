@@ -122,6 +122,17 @@ export function createStoreEmployeeInvitation(storeId: number, email: string, ro
   )
 }
 
+// Deliberately separate from createStoreEmployeeInvitation above — no email round-trip, returns a
+// real, immediately-usable password once (never retrievable again after this response).
+export type CreateCashierAccountOutcome = 'Created' | 'StoreNotFound' | 'Forbidden' | 'EmailAlreadyRegistered'
+
+export function createCashierAccount(storeId: number, email: string, displayName: string) {
+  return apiFetch<{ outcome: CreateCashierAccountOutcome; email?: string; password?: string }>(
+    `/api/stores/${storeId}/cashier-accounts`,
+    { method: 'POST', body: { email, displayName } },
+  )
+}
+
 export type StoreEmployeeInvitationStatus = 'Pending' | 'Accepted' | 'Revoked' | 'Expired'
 
 export interface StoreEmployeeInvitation {

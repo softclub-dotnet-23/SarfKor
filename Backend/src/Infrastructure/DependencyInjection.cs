@@ -98,7 +98,15 @@ public static class DependencyInjection
 
         services.AddSingleton<JwtTokenGenerator>();
         services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        // IEmailSender is QueuedEmailSender everywhere in Application — every handler's "await
+        // emailSender.SendXxxAsync(...)" returns instantly, no SMTP round-trip inside the HTTP
+        // request. SmtpEmailSender (the real implementation) is only ever resolved by
+        // EmailSenderBackgroundService, off the request thread. See WORKLOG: this replaces a
+        // synchronous-SMTP-inside-the-request bug that could hang a request for minutes on Railway.
+        services.AddScoped<SmtpEmailSender>();
+        services.AddScoped<IEmailSender, QueuedEmailSender>();
+        services.AddSingleton<EmailJobQueue>();
+        services.AddHostedService<EmailSenderBackgroundService>();
         services.AddHostedService<SubscriptionLifecycleJob>();
         services.AddHostedService<StoreEmployeeInvitationExpiryJob>();
 

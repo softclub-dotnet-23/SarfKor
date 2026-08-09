@@ -13,4 +13,10 @@ public interface IStoreEmployeeRepository
     Task<IReadOnlyList<StoreEmployee>> GetByUserIdAsync(string userId, CancellationToken cancellationToken);
     void Add(StoreEmployee storeEmployee);
     void Remove(StoreEmployee storeEmployee);
+
+    /// <summary>Explicit attach-and-mark-modified for an entity that came from a safe, untracked read
+    /// (GetByIdAsync's own projection avoids the MonthlySalary materialization trap, which means it
+    /// no longer returns a change-tracked instance SaveChanges would pick up on its own) — callers
+    /// mutate the fields they want changed on the object GetByIdAsync gave them, then call this.</summary>
+    void Update(StoreEmployee storeEmployee);
 }

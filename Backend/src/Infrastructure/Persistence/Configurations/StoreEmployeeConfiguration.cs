@@ -24,6 +24,10 @@ public class StoreEmployeeConfiguration : IEntityTypeConfiguration<StoreEmployee
             b.Property(m => m.Amount).HasPrecision(18, 2);
         });
 
+        // Explicit DB-level default -- without it every pre-existing row would migrate to NULL/false
+        // instead of true, silently "disabling" every employee hired before this column existed.
+        builder.Property(x => x.IsActive).HasDefaultValue(true);
+
         builder.HasOne<Store>()
             .WithMany()
             .HasForeignKey(x => x.StoreId)

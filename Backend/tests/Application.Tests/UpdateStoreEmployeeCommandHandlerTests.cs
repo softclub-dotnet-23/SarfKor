@@ -28,7 +28,7 @@ public class UpdateStoreEmployeeCommandHandlerTests
     };
 
     private static UpdateStoreEmployeeCommand ValidCommand() =>
-        new(StoreEmployeeId, 1500m, "TJS", new TimeOnly(9, 0), new TimeOnly(18, 0), OwnerId);
+        new(StoreEmployeeId, 1500m, "TJS", new TimeOnly(9, 0), new TimeOnly(18, 0), null, null, null, OwnerId);
 
     [Fact]
     public async Task Handle_EmployeeNotFound_ReturnsNotFound()
@@ -81,7 +81,7 @@ public class UpdateStoreEmployeeCommandHandlerTests
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
-        var command = new UpdateStoreEmployeeCommand(StoreEmployeeId, null, null, null, null, OwnerId);
+        var command = new UpdateStoreEmployeeCommand(StoreEmployeeId, null, null, null, null, null, null, null, OwnerId);
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.Equal(UpdateStoreEmployeeOutcome.Updated, result.Outcome);

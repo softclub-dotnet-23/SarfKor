@@ -13,7 +13,9 @@ public class CreateCashierAccountCommandHandlerTests
     private const string OwnerUserId = "owner-1";
     private const string NewUserId = "new-cashier-1";
     private const string Email = "cashier@sarfkor.tj";
-    private const string DisplayName = "Кассир Тестовый";
+    private const string FirstName = "Кассир";
+    private const string LastName = "Тестовый";
+    private const string PhoneNumber = "+992901234567";
     private const int StoreId = 5;
 
     private readonly Mock<IStoreRepository> _storeRepository = new();
@@ -43,7 +45,8 @@ public class CreateCashierAccountCommandHandlerTests
         Status = StoreStatus.Active,
     };
 
-    private static CreateCashierAccountCommand ValidCommand() => new(StoreId, Email, DisplayName, OwnerUserId);
+    private static CreateCashierAccountCommand ValidCommand() => new(
+        StoreId, FirstName, LastName, Email, PhoneNumber, new TimeOnly(9, 0), new TimeOnly(18, 0), OwnerUserId);
 
     [Fact]
     public async Task Handle_StoreNotFound_ReturnsStoreNotFound()
@@ -116,7 +119,8 @@ public class CreateCashierAccountCommandHandlerTests
             r => r.Add(It.Is<StoreEmployee>(e => e.StoreId == StoreId && e.UserId == NewUserId && e.Role == StoreEmployeeRole.Cashier)),
             Times.Once);
         _authService.Verify(a => a.AssignRoleAsync(NewUserId, "StorePartner", It.IsAny<CancellationToken>()), Times.Once);
-        _userProfileRepository.Verify(r => r.Add(It.Is<Domain.Identity.UserProfile>(p => p.UserId == NewUserId && p.DisplayName == DisplayName)), Times.Once);
+        _userProfileRepository.Verify(r => r.Add(It.Is<Domain.Identity.UserProfile>(p => p.UserId == NewUserId && p.DisplayName == $"{FirstName} {LastName}")), Times.Once);
+        _authService.Verify(a => a.MarkMustChangePasswordAsync(NewUserId, It.IsAny<CancellationToken>()), Times.Once);
         _auditLogRepository.Verify(
             r => r.Add(It.Is<Domain.Auditing.AuditLog>(a => a.Action == "CashierAccount.Created" && a.PerformedByUserId == OwnerUserId)),
             Times.Once);

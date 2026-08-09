@@ -45,19 +45,29 @@ public sealed class CreateCashierAccountCommandHandler(
         }
 
         var userId = registerResult.Auth.UserId;
-        userProfileRepository.Add(new UserProfile { UserId = userId, DisplayName = command.DisplayName.Trim() });
+        var firstName = command.FirstName.Trim();
+        var lastName = command.LastName.Trim();
+        userProfileRepository.Add(new UserProfile { UserId = userId, DisplayName = $"{firstName} {lastName}" });
         var storeEmployee = new StoreEmployee
         {
             StoreId = command.StoreId,
             UserId = userId,
             Role = StoreEmployeeRole.Cashier,
             AddedAt = DateTimeOffset.UtcNow,
+            FirstName = firstName,
+            LastName = lastName,
+            PhoneNumber = command.PhoneNumber.Trim(),
+            ScheduleStart = command.ScheduleStart,
+            ScheduleEnd = command.ScheduleEnd,
         };
         storeEmployeeRepository.Add(storeEmployee);
         // Every store employee (Owner or Cashier sub-role) also gets the platform-wide StorePartner
         // Identity role -- same convention AcceptStoreEmployeeInvitationCommandHandler uses; the
         // Cashier/Owner distinction is enforced by StoreEmployee.Role, not by a separate Identity role.
         await authService.AssignRoleAsync(userId, "StorePartner", cancellationToken);
+        // The owner set this password, not the cashier -- forced change on first login (task spec:
+        // "Кассир обязан сменить пароль при первом входе").
+        await authService.MarkMustChangePasswordAsync(userId, cancellationToken);
 
         // Two SaveChanges: the audit log's EntityId needs storeEmployee.Id, which EF only assigns
         // once this first INSERT actually runs. Reads it straight off the same tracked instance

@@ -339,7 +339,9 @@ public sealed record UpdateUserProfileRequest(string? DisplayName, string? Avata
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public sealed record RecordUserConsentRequest(Domain.Identity.ConsentType Type, bool IsGranted);
 public sealed record CreateStoreEmployeeInvitationRequest(string Email, Domain.Stores.StoreEmployeeRole Role);
-public sealed record CreateCashierAccountRequest(string Email, string DisplayName);
+public sealed record CreateCashierAccountRequest(
+    string FirstName, string LastName, string Email, string PhoneNumber, TimeOnly? ScheduleStart, TimeOnly? ScheduleEnd);
+public sealed record SetStoreEmployeeActiveRequest(bool IsActive);
 public sealed record ConfirmAdminInvitationRequest(string Email, string Code, string Password);
 public sealed record OpenCashierShiftRequest(int StoreId, decimal OpeningCash, string Currency);
 public sealed record CloseCashierShiftRequest(decimal ClosingCash);
@@ -367,7 +369,9 @@ public sealed record RegisterDeviceTokenRequest(string Token, Domain.Notificatio
 public sealed record CreateStoreRequest(string Name, string Address, double Latitude, double Longitude);
 public sealed record UpdateStoreRequest(string Name, string Address, double Latitude, double Longitude);
 public sealed record AdminCreateStorePartnerRequest(string Email, string StoreName, string Address, double Latitude, double Longitude);
-public sealed record UpdateStoreEmployeeRequest(decimal? MonthlySalaryAmount, string? MonthlySalaryCurrency, TimeOnly? ScheduleStart, TimeOnly? ScheduleEnd);
+public sealed record UpdateStoreEmployeeRequest(
+    decimal? MonthlySalaryAmount, string? MonthlySalaryCurrency, TimeOnly? ScheduleStart, TimeOnly? ScheduleEnd,
+    string? FirstName, string? LastName, string? PhoneNumber);
 public sealed record SetCostPriceRequest(int StoreId, int ProductId, decimal Amount, string Currency);
 public sealed record SubmitPriceUpdateRequest(int ProductId, int StoreId, decimal Price, string Currency);
 public sealed record ProcessSaleRequest(

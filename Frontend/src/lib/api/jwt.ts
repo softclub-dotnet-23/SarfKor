@@ -33,3 +33,11 @@ export function rolesFromToken(token: string): string[] {
   if (!role) return []
   return Array.isArray(role) ? (role as string[]) : [role as string]
 }
+
+// Only present (as the string "true") when JwtTokenGenerator's own ApplicationUser.MustChangePassword
+// was true at the moment this token was minted — absent entirely otherwise. Read on session restore
+// (page reload), where AuthResult.mustChangePassword itself isn't available (see AuthContext).
+export function mustChangePasswordFromToken(token: string): boolean {
+  const decoded = decodeJwt(token) as Record<string, unknown> | null
+  return decoded?.mustChangePassword === 'true'
+}

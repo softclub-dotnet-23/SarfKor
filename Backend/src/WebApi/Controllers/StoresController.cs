@@ -8,7 +8,9 @@ using Application.Stores.Commands.CreateCashierAccount;
 using Application.Stores.Commands.CreateStoreEmployeeInvitation;
 using Application.Stores.Commands.RemoveStoreEmployee;
 using Application.Stores.Commands.ResendStoreEmployeeInvitation;
+using Application.Stores.Commands.ResetCashierPassword;
 using Application.Stores.Commands.RevokeStoreEmployeeInvitation;
+using Application.Stores.Commands.SetStoreEmployeeActive;
 using Application.Stores.Commands.UpdateStore;
 using Application.Stores.Commands.UpdateStoreEmployee;
 using Application.Stores.Queries.GetStoreDashboard;
@@ -123,7 +125,8 @@ public sealed class StoresController : ControllerBase
             return Unauthorized();
 
         var command = new UpdateStoreEmployeeCommand(
-            storeEmployeeId, request.MonthlySalaryAmount, request.MonthlySalaryCurrency, request.ScheduleStart, request.ScheduleEnd, userId);
+            storeEmployeeId, request.MonthlySalaryAmount, request.MonthlySalaryCurrency, request.ScheduleStart, request.ScheduleEnd,
+            request.FirstName, request.LastName, request.PhoneNumber, userId);
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -220,7 +223,8 @@ public sealed class StoresController : ControllerBase
             return Unauthorized();
 
         var command = new CreateCashierAccountCommand(
-            storeId, request.Email, request.DisplayName, userId, HttpContext.Connection.RemoteIpAddress?.ToString());
+            storeId, request.FirstName, request.LastName, request.Email, request.PhoneNumber, request.ScheduleStart, request.ScheduleEnd,
+            userId, HttpContext.Connection.RemoteIpAddress?.ToString());
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -233,6 +237,65 @@ public sealed class StoresController : ControllerBase
             CreateCashierAccountOutcome.StoreNotFound => NotFound("Store not found."),
             CreateCashierAccountOutcome.Forbidden => Forbid(),
             CreateCashierAccountOutcome.EmailAlreadyRegistered => Conflict("This email is already registered — invite them instead."),
+            _ => Problem()
+        };
+    }
+
+    [HttpPost("store-employees/{storeEmployeeId:int}/reset-password")]
+    [Authorize("StorePartner")]
+    [EnableRateLimiting("cashier-create")]
+    public async Task<IActionResult> ResetCashierPassword(
+        int storeEmployeeId,
+        [FromServices] ICommandHandler<ResetCashierPasswordCommand, ResetCashierPasswordResult> handler,
+        [FromServices] IValidator<ResetCashierPasswordCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new ResetCashierPasswordCommand(storeEmployeeId, userId, HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            ResetCashierPasswordOutcome.Reset => Ok(result),
+            ResetCashierPasswordOutcome.NotFound => NotFound(),
+            ResetCashierPasswordOutcome.Forbidden => Forbid(),
+            _ => Problem()
+        };
+    }
+
+    [HttpPost("store-employees/{storeEmployeeId:int}/active")]
+    [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
+    public async Task<IActionResult> SetStoreEmployeeActive(
+        int storeEmployeeId,
+        SetStoreEmployeeActiveRequest request,
+        [FromServices] ICommandHandler<SetStoreEmployeeActiveCommand, SetStoreEmployeeActiveResult> handler,
+        [FromServices] IValidator<SetStoreEmployeeActiveCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new SetStoreEmployeeActiveCommand(storeEmployeeId, request.IsActive, userId, HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            SetStoreEmployeeActiveOutcome.Updated => Ok(result),
+            SetStoreEmployeeActiveOutcome.NotFound => NotFound(),
+            SetStoreEmployeeActiveOutcome.Forbidden => Forbid(),
             _ => Problem()
         };
     }

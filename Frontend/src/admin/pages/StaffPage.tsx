@@ -6,7 +6,7 @@ import { Loading } from '../components/Loading'
 import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { FormModal, FormField } from '../components/FormModal'
 import { Toast } from '../components/Toast'
-import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, TrashIcon, RefreshIcon, KeyIcon, CheckIcon } from '../components/icons'
+import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, RefreshIcon, KeyIcon, CheckIcon, EditIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { useT } from '../../i18n/translations'
 import { useLocaleFormat } from '../../i18n/format'
@@ -18,7 +18,6 @@ import {
   type CashierShift,
   type CashierAnomaly,
   type StoreEmployee,
-  type StoreEmployeeRole,
   type StoreEmployeeInvitation,
   type MyStore,
 } from '../../lib/api'
@@ -27,6 +26,33 @@ import { daysAgo, today } from '../lib/dates'
 function shortId(id: string, myId: string | undefined, t: (key: 'partner.staff.you') => string) {
   if (id === myId) return t('partner.staff.you')
   return id.slice(0, 8) + '…'
+}
+
+// "Смена" is a picklist on the form, not a free time-range entry — the backend still just stores a
+// concrete ScheduleStart/ScheduleEnd (TimeOnly), these presets are the frontend's own vocabulary for
+// picking a sensible pair. "HH:mm:00" matches System.Text.Json's default TimeOnly serialization.
+const SHIFT_PRESETS: { value: string; label: string; start: string; end: string }[] = [
+  { value: 'morning', start: '08:00:00', end: '14:00:00', label: '' },
+  { value: 'day', start: '14:00:00', end: '20:00:00', label: '' },
+  { value: 'full', start: '09:00:00', end: '21:00:00', label: '' },
+  { value: 'evening', start: '18:00:00', end: '00:00:00', label: '' },
+]
+
+// Dynamically-built key ("partner.staff.shiftPreset.morning" etc.) can't be checked against useT's
+// literal-union key type at this call site, so this accepts the wider signature deliberately --
+// useT()'s stricter function is still assignable in (every real key these two helpers build is
+// one that actually exists in both dictionaries, see translations.ts).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function shiftPresets(t: (key: any) => string) {
+  return SHIFT_PRESETS.map((p) => ({ ...p, label: t(`partner.staff.shiftPreset.${p.value}`) }))
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function shiftLabel(t: (key: any) => string, start?: string, end?: string) {
+  if (!start || !end) return null
+  const preset = SHIFT_PRESETS.find((p) => p.start === start && p.end === end)
+  if (preset) return t(`partner.staff.shiftPreset.${preset.value}`)
+  return `${start.slice(0, 5)}–${end.slice(0, 5)}`
 }
 
 function InviteEmployeeModal({
@@ -42,7 +68,6 @@ function InviteEmployeeModal({
 }) {
   const t = useT()
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<StoreEmployeeRole>('Cashier')
   const [emailError, setEmailError] = useState('')
   const [ownedStores, setOwnedStores] = useState<MyStore[]>([])
   const [targetStoreId, setTargetStoreId] = useState<number | null>(storeId)
@@ -50,7 +75,6 @@ function InviteEmployeeModal({
   useEffect(() => {
     if (!open) return
     setEmail('')
-    setRole('Cashier')
     setEmailError('')
     setTargetStoreId(storeId)
     // Only fetched to populate the "торговая точка" picker when the owner actually has more than
@@ -66,7 +90,9 @@ function InviteEmployeeModal({
       throw new Error(t('partner.staff.emailRequired'))
     }
     if (!targetStoreId) throw new Error(t('partner.staff.storeNotSelected'))
-    const res = await storesApi.createStoreEmployeeInvitation(targetStoreId, trimmed, role)
+    // Owner is the only role this mechanism still creates — a cashier is created directly with a
+    // password instead (CreateCashierModal below), never invited by email.
+    const res = await storesApi.createStoreEmployeeInvitation(targetStoreId, trimmed, 'Owner')
     if (res.outcome === 'Sent') {
       await onSuccess()
     } else if (res.outcome === 'AlreadyEmployed') {
@@ -97,18 +123,8 @@ function InviteEmployeeModal({
             setEmail(e.target.value)
             setEmailError('')
           }}
-          placeholder="cashier@sarfkor.tj"
+          placeholder="owner2@sarfkor.tj"
           className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
-        />
-      </FormField>
-      <FormField label={t('partner.staff.roleLabel')} scheme="admin">
-        <Select
-          value={role}
-          onChange={(v) => setRole(v as StoreEmployeeRole)}
-          options={[
-            { value: 'Cashier', label: t('partner.staff.roleCashier') },
-            { value: 'Owner', label: t('partner.staff.roleOwner') },
-          ]}
         />
       </FormField>
       {ownedStores.length > 1 && (
@@ -125,11 +141,14 @@ function InviteEmployeeModal({
   )
 }
 
+const phonePlaceholder = '+992 __ ___ __ __'
+
 // Deliberately separate from InviteEmployeeModal above: a cashier hired in person doesn't need the
-// emailed-link round-trip, so this creates a real, working account immediately and hands the owner a
-// generated password to relay to them on the spot. Only ever a Cashier (co-owner invites still go
-// through InviteEmployeeModal) and only ever a brand-new account -- an already-registered email is
-// rejected rather than silently touching that account's password.
+// emailed-link round-trip (they may have no email-checking habit at all, or the shop owner is
+// setting them up while they stand right there), so this creates a real, working account
+// immediately and hands the owner a generated password to relay to them on the spot. Only ever a
+// brand-new account -- an already-registered email is rejected rather than silently touching that
+// account's password.
 function CreateCashierModal({
   open,
   onClose,
@@ -142,31 +161,71 @@ function CreateCashierModal({
   onCreated: (result: { email: string; password: string }) => void
 }) {
   const t = useT()
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
-  const [displayName, setDisplayName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [shift, setShift] = useState('full')
+  const [firstNameError, setFirstNameError] = useState('')
+  const [lastNameError, setLastNameError] = useState('')
   const [emailError, setEmailError] = useState('')
+  const [phoneError, setPhoneError] = useState('')
+  const [ownedStores, setOwnedStores] = useState<MyStore[]>([])
+  const [targetStoreId, setTargetStoreId] = useState<number | null>(storeId)
 
   useEffect(() => {
     if (!open) return
+    setFirstName('')
+    setLastName('')
     setEmail('')
-    setDisplayName('')
+    setPhone('')
+    setShift('full')
+    setFirstNameError('')
+    setLastNameError('')
     setEmailError('')
-  }, [open])
+    setPhoneError('')
+    setTargetStoreId(storeId)
+    meApi.getMyStores().then((res) => setOwnedStores(res.stores.filter((s) => s.role === 'Owner'))).catch(() => setOwnedStores([]))
+  }, [open, storeId])
 
   async function submit() {
+    const trimmedFirst = firstName.trim()
+    const trimmedLast = lastName.trim()
     const trimmedEmail = email.trim()
-    const trimmedName = displayName.trim()
+    const trimmedPhone = phone.trim()
+    let hasError = false
+    if (!trimmedFirst) {
+      setFirstNameError(t('partner.staff.nameRequired'))
+      hasError = true
+    }
+    if (!trimmedLast) {
+      setLastNameError(t('partner.staff.lastNameRequired'))
+      hasError = true
+    }
     if (!trimmedEmail) {
       setEmailError(t('partner.staff.emailRequired'))
-      throw new Error(t('partner.staff.emailRequired'))
+      hasError = true
     }
-    if (!trimmedName) throw new Error(t('partner.staff.nameRequired'))
-    if (!storeId) throw new Error(t('partner.staff.storeNotSelected'))
+    if (!trimmedPhone) {
+      setPhoneError(t('partner.staff.phoneRequired'))
+      hasError = true
+    }
+    if (hasError) throw new Error(t('partner.staff.fixFieldsError'))
+    if (!targetStoreId) throw new Error(t('partner.staff.storeNotSelected'))
 
-    const res = await storesApi.createCashierAccount(storeId, trimmedEmail, trimmedName)
+    const preset = shiftPresets(t).find((p) => p.value === shift)
+    const res = await storesApi.createCashierAccount(targetStoreId, {
+      firstName: trimmedFirst,
+      lastName: trimmedLast,
+      email: trimmedEmail,
+      phoneNumber: trimmedPhone,
+      scheduleStart: preset?.start,
+      scheduleEnd: preset?.end,
+    })
     if (res.outcome === 'Created') {
       onCreated({ email: res.email!, password: res.password! })
     } else if (res.outcome === 'EmailAlreadyRegistered') {
+      setEmailError(t('partner.staff.emailAlreadyRegistered'))
       throw new Error(t('partner.staff.emailAlreadyRegistered'))
     } else if (res.outcome === 'Forbidden') {
       throw new Error(t('partner.staff.forbidden'))
@@ -180,12 +239,36 @@ function CreateCashierModal({
       open={open}
       onClose={onClose}
       title={t('partner.staff.createCashierModalTitle')}
-      isDirty={!!email || !!displayName}
+      isDirty={!!firstName || !!lastName || !!email || !!phone}
       onSubmit={submit}
       submitLabel={t('partner.staff.createCashierSubmit')}
       submitBusyLabel={t('partner.staff.creating')}
       scheme="admin"
     >
+      <div className="grid grid-cols-2 gap-3">
+        <FormField label={t('partner.staff.firstNameLabel')} required error={firstNameError} scheme="admin">
+          <input
+            value={firstName}
+            onChange={(e) => {
+              setFirstName(e.target.value)
+              setFirstNameError('')
+            }}
+            placeholder={t('partner.staff.firstNamePlaceholder')}
+            className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+          />
+        </FormField>
+        <FormField label={t('partner.staff.lastNameLabel')} required error={lastNameError} scheme="admin">
+          <input
+            value={lastName}
+            onChange={(e) => {
+              setLastName(e.target.value)
+              setLastNameError('')
+            }}
+            placeholder={t('partner.staff.lastNamePlaceholder')}
+            className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+          />
+        </FormField>
+      </div>
       <FormField label={t('partner.staff.emailLabel')} required error={emailError} scheme="admin">
         <input
           type="email"
@@ -198,26 +281,43 @@ function CreateCashierModal({
           className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
         />
       </FormField>
-      <FormField label={t('partner.staff.nameLabel')} required scheme="admin">
+      <FormField label={t('partner.staff.phoneLabel')} required error={phoneError} scheme="admin">
         <input
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          placeholder={t('partner.staff.namePlaceholder')}
+          type="tel"
+          value={phone}
+          onChange={(e) => {
+            setPhone(e.target.value)
+            setPhoneError('')
+          }}
+          placeholder={phonePlaceholder}
           className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
         />
       </FormField>
+      <FormField label={t('partner.staff.shiftLabel')} scheme="admin">
+        <Select value={shift} onChange={setShift} options={shiftPresets(t).map((p) => ({ value: p.value, label: p.label }))} />
+      </FormField>
+      {ownedStores.length > 1 && (
+        <FormField label={t('partner.staff.storeLabel')} scheme="admin">
+          <Select
+            value={String(targetStoreId ?? '')}
+            onChange={(v) => setTargetStoreId(Number(v))}
+            options={ownedStores.map((s) => ({ value: String(s.storeId), label: s.name }))}
+          />
+        </FormField>
+      )}
       <p className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">{t('partner.staff.createCashierHint')}</p>
     </FormModal>
   )
 }
 
-/** Shows the freshly generated password exactly once — nothing on the client or server keeps a copy
- *  of it after this closes, so the copy button here is the owner's only chance to grab it. */
+/** Shows a freshly generated password exactly once — nothing on the client or server keeps a copy of
+ *  it after this closes, so the copy button here is the owner's only chance to grab it. Shared by
+ *  both CreateCashierModal's result and the "Сбросить пароль" action. */
 function CashierCredentialsModal({
   result,
   onClose,
 }: {
-  result: { email: string; password: string } | null
+  result: { email: string; password: string; title: string; hint: string } | null
   onClose: () => void
 }) {
   const t = useT()
@@ -238,7 +338,7 @@ function CashierCredentialsModal({
     <FormModal
       open={!!result}
       onClose={onClose}
-      title={t('partner.staff.cashierCreatedTitle')}
+      title={result?.title ?? ''}
       onSubmit={async () => {}}
       submitLabel={t('partner.staff.done')}
       cancelLabel={t('partner.staff.done')}
@@ -246,7 +346,7 @@ function CashierCredentialsModal({
     >
       {result && (
         <div className="flex flex-col gap-4">
-          <p className="text-[12.5px] leading-relaxed text-[color:var(--admin-text-secondary)]">{t('partner.staff.cashierCreatedHint')}</p>
+          <p className="text-[12.5px] leading-relaxed text-[color:var(--admin-text-secondary)]">{result.hint}</p>
           <FormField label={t('partner.staff.emailLabel')} scheme="admin">
             <div className="rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)]">
               {result.email}
@@ -269,6 +369,126 @@ function CashierCredentialsModal({
           </FormField>
         </div>
       )}
+    </FormModal>
+  )
+}
+
+/** "Изменить" — name/phone/shift only; email is the login and store isn't reassignable from here. */
+function EditCashierModal({
+  employee,
+  onClose,
+  onSaved,
+}: {
+  employee: StoreEmployee | null
+  onClose: () => void
+  onSaved: () => Promise<void> | void
+}) {
+  const t = useT()
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [shift, setShift] = useState('full')
+  const [firstNameError, setFirstNameError] = useState('')
+  const [lastNameError, setLastNameError] = useState('')
+  const [phoneError, setPhoneError] = useState('')
+
+  useEffect(() => {
+    if (!employee) return
+    setFirstName(employee.firstName ?? '')
+    setLastName(employee.lastName ?? '')
+    setPhone(employee.phoneNumber ?? '')
+    const preset = SHIFT_PRESETS.find((p) => p.start === employee.scheduleStart && p.end === employee.scheduleEnd)
+    setShift(preset?.value ?? 'full')
+    setFirstNameError('')
+    setLastNameError('')
+    setPhoneError('')
+  }, [employee])
+
+  async function submit() {
+    if (!employee) return
+    const trimmedFirst = firstName.trim()
+    const trimmedLast = lastName.trim()
+    const trimmedPhone = phone.trim()
+    let hasError = false
+    if (!trimmedFirst) {
+      setFirstNameError(t('partner.staff.nameRequired'))
+      hasError = true
+    }
+    if (!trimmedLast) {
+      setLastNameError(t('partner.staff.lastNameRequired'))
+      hasError = true
+    }
+    if (!trimmedPhone) {
+      setPhoneError(t('partner.staff.phoneRequired'))
+      hasError = true
+    }
+    if (hasError) throw new Error(t('partner.staff.fixFieldsError'))
+
+    const preset = shiftPresets(t).find((p) => p.value === shift)
+    const res = await storesApi.updateStoreEmployee(employee.storeEmployeeId, {
+      firstName: trimmedFirst,
+      lastName: trimmedLast,
+      phoneNumber: trimmedPhone,
+      scheduleStart: preset?.start,
+      scheduleEnd: preset?.end,
+    })
+    if (res.outcome === 'Updated') {
+      await onSaved()
+    } else if (res.outcome === 'Forbidden') {
+      throw new Error(t('partner.staff.forbidden'))
+    } else {
+      throw new Error(t('partner.staff.employeeNotFound'))
+    }
+  }
+
+  return (
+    <FormModal
+      open={!!employee}
+      onClose={onClose}
+      title={t('partner.staff.editCashierTitle')}
+      isDirty
+      onSubmit={submit}
+      submitLabel={t('common.save')}
+      submitBusyLabel={t('common.saving')}
+      scheme="admin"
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <FormField label={t('partner.staff.firstNameLabel')} required error={firstNameError} scheme="admin">
+          <input
+            value={firstName}
+            onChange={(e) => {
+              setFirstName(e.target.value)
+              setFirstNameError('')
+            }}
+            className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+          />
+        </FormField>
+        <FormField label={t('partner.staff.lastNameLabel')} required error={lastNameError} scheme="admin">
+          <input
+            value={lastName}
+            onChange={(e) => {
+              setLastName(e.target.value)
+              setLastNameError('')
+            }}
+            className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+          />
+        </FormField>
+      </div>
+      <FormField label={t('partner.staff.phoneLabel')} required error={phoneError} scheme="admin">
+        <input
+          type="tel"
+          value={phone}
+          onChange={(e) => {
+            setPhone(e.target.value)
+            setPhoneError('')
+          }}
+          placeholder={phonePlaceholder}
+          className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+        />
+      </FormField>
+      <FormField label={t('partner.staff.shiftLabel')} scheme="admin">
+        <Select value={shift} onChange={setShift} options={shiftPresets(t).map((p) => ({ value: p.value, label: p.label }))} />
+      </FormField>
     </FormModal>
   )
 }
@@ -352,18 +572,139 @@ function InvitationRow({ invitation, onChanged }: { invitation: StoreEmployeeInv
   )
 }
 
+function EmployeeRow({
+  employee,
+  isSelf,
+  onChanged,
+  onEdit,
+  onPasswordReset,
+}: {
+  employee: StoreEmployee
+  isSelf: boolean
+  onChanged: () => Promise<void>
+  onEdit: () => void
+  onPasswordReset: (result: { email: string; password: string; title: string; hint: string }) => void
+}) {
+  const t = useT()
+  const { date } = useLocaleFormat()
+  const [busy, setBusy] = useState<'reset' | 'toggle' | null>(null)
+  const [error, setError] = useState('')
+
+  const displayName =
+    employee.firstName && employee.lastName ? `${employee.firstName} ${employee.lastName}` : shortId(employee.userId, isSelf ? employee.userId : undefined, t)
+  const shift = shiftLabel(t, employee.scheduleStart, employee.scheduleEnd)
+
+  async function handleResetPassword() {
+    if (!window.confirm(t('partner.staff.resetPasswordConfirm', { name: displayName }))) return
+    setBusy('reset')
+    setError('')
+    try {
+      const res = await storesApi.resetCashierPassword(employee.storeEmployeeId)
+      if (res.outcome === 'Reset' && res.password) {
+        onPasswordReset({
+          email: employee.email ?? '',
+          password: res.password,
+          title: t('partner.staff.passwordResetTitle'),
+          hint: t('partner.staff.passwordResetHint'),
+        })
+      } else if (res.outcome === 'Forbidden') {
+        setError(t('partner.staff.forbidden'))
+      } else {
+        setError(t('partner.staff.employeeNotFound'))
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('partner.staff.resetPasswordError'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleToggleActive() {
+    const nextActive = !employee.isActive
+    if (!nextActive && !window.confirm(t('partner.staff.disableConfirm', { name: displayName }))) return
+    setBusy('toggle')
+    setError('')
+    try {
+      const res = await storesApi.setStoreEmployeeActive(employee.storeEmployeeId, nextActive)
+      if (res.outcome === 'Updated') {
+        await onChanged()
+      } else if (res.outcome === 'Forbidden') {
+        setError(t('partner.staff.forbidden'))
+      } else {
+        setError(t('partner.staff.employeeNotFound'))
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('partner.staff.toggleActiveError'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5 rounded-[14px] bg-[color:var(--admin-hover)] p-3.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="truncate text-[13px] font-semibold text-[color:var(--admin-text)]">{displayName}</span>
+          <Badge scheme="admin" variant={employee.isActive ? 'success' : 'neutral'} size="sm">
+            {employee.isActive ? t('partner.staff.statusActive') : t('partner.staff.statusDisabled')}
+          </Badge>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[color:var(--admin-text-tertiary)]">
+          <span>{employee.role === 'Owner' ? t('partner.staff.roleOwner') : t('partner.staff.roleCashier')}</span>
+          {employee.email && <span>· {employee.email}</span>}
+          {employee.phoneNumber && <span>· {employee.phoneNumber}</span>}
+          {shift && <span>· {shift}</span>}
+          <span>· {t('partner.staff.employedSince', { date: date(employee.addedAt) })}</span>
+        </div>
+        {error && <div className="mt-1 text-[11px] font-medium text-[color:var(--admin-danger)]">{error}</div>}
+      </div>
+      {!isSelf && employee.role === 'Cashier' && (
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          <button
+            onClick={onEdit}
+            disabled={busy !== null}
+            aria-label={t('partner.staff.editEmployee')}
+            className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)] disabled:opacity-50"
+          >
+            <EditIcon width={13} height={13} />
+            {t('partner.staff.editEmployee')}
+          </button>
+          <button
+            onClick={handleResetPassword}
+            disabled={busy !== null}
+            className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)] disabled:opacity-50"
+          >
+            <KeyIcon width={13} height={13} />
+            {t('partner.staff.resetPassword')}
+          </button>
+          <button
+            onClick={handleToggleActive}
+            disabled={busy !== null}
+            className={`rounded-lg px-3 py-1.5 text-[11.5px] font-semibold disabled:opacity-50 ${
+              employee.isActive
+                ? 'bg-[color:var(--admin-danger-dim)] text-[color:var(--admin-danger)] hover:opacity-80'
+                : 'bg-[color:var(--admin-success-dim)] text-[color:var(--admin-success)] hover:opacity-80'
+            }`}
+          >
+            {employee.isActive ? t('partner.staff.disable') : t('partner.staff.enable')}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function EmployeesSection() {
   const { storeId, user } = useAuth()
   const t = useT()
-  const { date } = useLocaleFormat()
   const [employees, setEmployees] = useState<StoreEmployee[] | null>(null)
   const [invitations, setInvitations] = useState<StoreEmployeeInvitation[]>([])
   const [error, setError] = useState('')
   const [errorKind, setErrorKind] = useState<ErrorKind>('unknown')
-  const [removingId, setRemovingId] = useState<number | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [createCashierOpen, setCreateCashierOpen] = useState(false)
-  const [cashierCredentials, setCashierCredentials] = useState<{ email: string; password: string } | null>(null)
+  const [editingEmployee, setEditingEmployee] = useState<StoreEmployee | null>(null)
+  const [credentialsResult, setCredentialsResult] = useState<{ email: string; password: string; title: string; hint: string } | null>(null)
   const [toastMessage, setToastMessage] = useState('')
 
   const load = useCallback(async () => {
@@ -410,26 +751,14 @@ function EmployeesSection() {
   async function handleCashierCreated(result: { email: string; password: string }) {
     await load()
     setCreateCashierOpen(false)
-    setCashierCredentials(result)
+    setCredentialsResult({ ...result, title: t('partner.staff.cashierCreatedTitle'), hint: t('partner.staff.cashierCreatedHint') })
   }
 
-  async function handleRemove(storeEmployeeId: number) {
-    setRemovingId(storeEmployeeId)
-    setError('')
-    try {
-      const res = await storesApi.removeStoreEmployee(storeEmployeeId)
-      if (res.outcome === 'Removed') {
-        await load()
-      } else if (res.outcome === 'Forbidden') {
-        setError(t('partner.staff.noAccessRemove'))
-      } else {
-        setError(t('partner.staff.employeeNotFound'))
-      }
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('partner.staff.removeError'))
-    } finally {
-      setRemovingId(null)
-    }
+  async function handleEmployeeSaved() {
+    await load()
+    setEditingEmployee(null)
+    setToastMessage(t('partner.staff.employeeSaved'))
+    setTimeout(() => setToastMessage(''), 3200)
   }
 
   return (
@@ -442,16 +771,15 @@ function EmployeesSection() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setCreateCashierOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-[color:var(--admin-border)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-text)] hover:bg-[color:var(--admin-hover)]"
+            className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
           >
-            <KeyIcon width={14} height={14} />
+            <PlusIcon width={14} height={14} />
             {t('partner.staff.createCashierButton')}
           </button>
           <button
             onClick={() => setInviteOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
+            className="flex items-center gap-1.5 rounded-xl border border-[color:var(--admin-border)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-text)] hover:bg-[color:var(--admin-hover)]"
           >
-            <PlusIcon width={14} height={14} />
             {t('partner.staff.inviteButton')}
           </button>
         </div>
@@ -467,27 +795,14 @@ function EmployeesSection() {
           <InvitationRow key={inv.invitationId} invitation={inv} onChanged={load} />
         ))}
         {employees?.map((emp) => (
-          <div
+          <EmployeeRow
             key={emp.storeEmployeeId}
-            className="flex items-center justify-between gap-3 rounded-[14px] bg-[color:var(--admin-hover)] p-3.5"
-          >
-            <div className="min-w-0">
-              <div className="truncate text-[13px] font-semibold text-[color:var(--admin-text)]">
-                {shortId(emp.userId, user?.userId, t)}
-              </div>
-              <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
-                {emp.role === 'Owner' ? t('partner.staff.roleOwner') : t('partner.staff.roleCashier')} · {t('partner.staff.employedSince', { date: date(emp.addedAt) })}
-              </div>
-            </div>
-            <button
-              onClick={() => handleRemove(emp.storeEmployeeId)}
-              disabled={removingId === emp.storeEmployeeId}
-              aria-label={t('partner.staff.removeEmployee')}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[color:var(--admin-text-tertiary)] hover:bg-[color:var(--admin-danger-dim)] hover:text-[color:var(--admin-danger)] disabled:opacity-50"
-            >
-              <TrashIcon width={14} height={14} />
-            </button>
-          </div>
+            employee={emp}
+            isSelf={emp.userId === user?.userId}
+            onChanged={load}
+            onEdit={() => setEditingEmployee(emp)}
+            onPasswordReset={setCredentialsResult}
+          />
         ))}
         {employees?.length === 0 && invitations.length === 0 && (
           <div className="py-6 text-center text-[13px] text-[color:var(--admin-text-tertiary)]">{t('partner.staff.noEmployees')}</div>
@@ -496,7 +811,8 @@ function EmployeesSection() {
 
       <InviteEmployeeModal open={inviteOpen} onClose={() => setInviteOpen(false)} storeId={storeId} onSuccess={handleInviteSuccess} />
       <CreateCashierModal open={createCashierOpen} onClose={() => setCreateCashierOpen(false)} storeId={storeId} onCreated={handleCashierCreated} />
-      <CashierCredentialsModal result={cashierCredentials} onClose={() => setCashierCredentials(null)} />
+      <EditCashierModal employee={editingEmployee} onClose={() => setEditingEmployee(null)} onSaved={handleEmployeeSaved} />
+      <CashierCredentialsModal result={credentialsResult} onClose={() => setCredentialsResult(null)} />
       <Toast open={!!toastMessage} variant="success" scheme="admin">
         {toastMessage}
       </Toast>

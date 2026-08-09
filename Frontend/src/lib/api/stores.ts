@@ -98,6 +98,13 @@ export interface StoreEmployee {
   userId: string
   role: StoreEmployeeRole
   addedAt: string
+  firstName?: string
+  lastName?: string
+  email?: string
+  phoneNumber?: string
+  scheduleStart?: string
+  scheduleEnd?: string
+  isActive: boolean
 }
 
 export function removeStoreEmployee(storeEmployeeId: number) {
@@ -106,6 +113,46 @@ export function removeStoreEmployee(storeEmployeeId: number) {
 
 export function getStoreEmployees(storeId: number) {
   return apiFetch<{ outcome: string; employees?: StoreEmployee[] }>(`/api/stores/${storeId}/employees`)
+}
+
+export type UpdateStoreEmployeeOutcome = 'Updated' | 'NotFound' | 'Forbidden'
+
+// firstName/lastName/phoneNumber: omit a field to leave it unchanged (this is also the "изменить"
+// action on a cashier's card, which only ever edits a subset at once).
+export function updateStoreEmployee(
+  storeEmployeeId: number,
+  fields: { firstName?: string; lastName?: string; phoneNumber?: string; scheduleStart?: string | null; scheduleEnd?: string | null },
+) {
+  return apiFetch<{ outcome: UpdateStoreEmployeeOutcome }>(`/api/store-employees/${storeEmployeeId}`, {
+    method: 'PATCH',
+    body: {
+      monthlySalaryAmount: null,
+      monthlySalaryCurrency: null,
+      scheduleStart: fields.scheduleStart,
+      scheduleEnd: fields.scheduleEnd,
+      firstName: fields.firstName,
+      lastName: fields.lastName,
+      phoneNumber: fields.phoneNumber,
+    },
+  })
+}
+
+export type ResetCashierPasswordOutcome = 'Reset' | 'NotFound' | 'Forbidden'
+
+export function resetCashierPassword(storeEmployeeId: number) {
+  return apiFetch<{ outcome: ResetCashierPasswordOutcome; password?: string }>(
+    `/api/store-employees/${storeEmployeeId}/reset-password`,
+    { method: 'POST' },
+  )
+}
+
+export type SetStoreEmployeeActiveOutcome = 'Updated' | 'NotFound' | 'Forbidden'
+
+export function setStoreEmployeeActive(storeEmployeeId: number, isActive: boolean) {
+  return apiFetch<{ outcome: SetStoreEmployeeActiveOutcome }>(`/api/store-employees/${storeEmployeeId}/active`, {
+    method: 'POST',
+    body: { isActive },
+  })
 }
 
 // Every new employee — existing account or not — now goes through an emailed link they click and
@@ -126,10 +173,13 @@ export function createStoreEmployeeInvitation(storeId: number, email: string, ro
 // real, immediately-usable password once (never retrievable again after this response).
 export type CreateCashierAccountOutcome = 'Created' | 'StoreNotFound' | 'Forbidden' | 'EmailAlreadyRegistered'
 
-export function createCashierAccount(storeId: number, email: string, displayName: string) {
+export function createCashierAccount(
+  storeId: number,
+  fields: { firstName: string; lastName: string; email: string; phoneNumber: string; scheduleStart?: string; scheduleEnd?: string },
+) {
   return apiFetch<{ outcome: CreateCashierAccountOutcome; email?: string; password?: string }>(
     `/api/stores/${storeId}/cashier-accounts`,
-    { method: 'POST', body: { email, displayName } },
+    { method: 'POST', body: fields },
   )
 }
 

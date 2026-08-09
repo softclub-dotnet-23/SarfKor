@@ -5,6 +5,9 @@ export interface AuthResult {
   accessToken: string
   refreshToken: string
   expiresAt: string
+  /** True when someone else (a store owner) set this account's password on its behalf — the
+   *  frontend must force a change-password screen before anything else. */
+  mustChangePassword?: boolean
 }
 
 // Never returns tokens directly anymore — every self-registration requires the emailed 6-digit

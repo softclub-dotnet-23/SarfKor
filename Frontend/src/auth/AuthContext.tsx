@@ -1,5 +1,17 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { authApi, meApi, ApiError, decodeJwt, rolesFromToken, getTokens, setTokens, clearTokens, refreshTokens, type MyStore } from '../lib/api'
+import {
+  authApi,
+  meApi,
+  ApiError,
+  decodeJwt,
+  rolesFromToken,
+  mustChangePasswordFromToken,
+  getTokens,
+  setTokens,
+  clearTokens,
+  refreshTokens,
+  type MyStore,
+} from '../lib/api'
 
 export interface AuthUser {
   userId: string
@@ -30,6 +42,12 @@ interface AuthContextValue {
   currentStoreRole: MyStore['role'] | null
   /** True only while resolving the session on first load (deciding whether a stored token is still valid). */
   loading: boolean
+  /** True when someone else (a store owner) set this account's password — every route but the
+   *  forced change-password screen should be blocked until clearMustChangePassword() runs. */
+  mustChangePassword: boolean
+  /** Call once ChangePasswordCommand actually succeeds — the JWT claim itself stays stale until
+   *  the token naturally rotates, so this is the real signal the app acts on. */
+  clearMustChangePassword: () => void
   login: (email: string, password: string) => Promise<LoginResult>
   register: (email: string, password: string) => Promise<RegisterResult>
   /** Confirms the 6-digit code emailed on register and logs the caller in on success. */
@@ -100,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
   const [myStores, setMyStores] = useState<MyStore[] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [mustChangePassword, setMustChangePassword] = useState(false)
 
   // Fetches the caller's owned/employed stores and, if none is cached locally yet and there's
   // exactly one, adopts it automatically — this is what recovers a StorePartner's/cashier's store
@@ -136,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokens(tokens)
     const nextUser = userFromAccessToken(tokens.accessToken)
     setUser(nextUser)
+    setMustChangePassword(mustChangePasswordFromToken(tokens.accessToken))
     await fetchAndApplyMyStores()
     return { roles: nextUser?.roles ?? [] }
   }
@@ -153,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isExpired) {
         const nextUser = userFromAccessToken(tokens.accessToken)
         setUser(nextUser)
+        setMustChangePassword(mustChangePasswordFromToken(tokens.accessToken))
         await fetchAndApplyMyStores()
         if (!cancelled) setLoading(false)
         return
@@ -174,6 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         const nextUser = userFromAccessToken(refreshed.accessToken)
         setUser(nextUser)
+        setMustChangePassword(mustChangePasswordFromToken(refreshed.accessToken))
         await fetchAndApplyMyStores()
       } catch {
         if (cancelled) return
@@ -196,6 +218,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       myStores,
       currentStoreRole: myStores?.find((s) => s.storeId === storeId)?.role ?? null,
       loading,
+      mustChangePassword,
+      clearMustChangePassword: () => setMustChangePassword(false),
       login: async (email, password) => {
         try {
           const result = await authApi.login(email, password)
@@ -232,6 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null)
         setStoreIdState(null)
         setMyStores(null)
+        setMustChangePassword(false)
       },
       setStoreId: (id: number) => {
         localStorage.setItem(STORE_ID_KEY, String(id))
@@ -252,7 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       hasRole: (role: string) => user?.roles.includes(role) ?? false,
     }),
-    [user, storeId, myStores, loading],
+    [user, storeId, myStores, loading, mustChangePassword],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

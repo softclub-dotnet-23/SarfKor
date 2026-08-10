@@ -26,6 +26,12 @@ public sealed class InitiateStockTransferCommandHandler(
             || !await storeAccessAuthorizer.IsOwnerAsync(command.ToStoreId, command.PerformedByUserId, cancellationToken))
             return new InitiateStockTransferResult(InitiateStockTransferOutcome.Forbidden, null);
 
+        // Stock moves out of FromStoreId and into ToStoreId -- either end being Suspended closes
+        // the operation, same as every other cabinet write.
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.FromStoreId, cancellationToken)
+            || !await storeAccessAuthorizer.IsOperationalAsync(command.ToStoreId, cancellationToken))
+            return new InitiateStockTransferResult(InitiateStockTransferOutcome.SubscriptionInactive, null);
+
         var transfer = new StockTransfer
         {
             ProductId = command.ProductId,

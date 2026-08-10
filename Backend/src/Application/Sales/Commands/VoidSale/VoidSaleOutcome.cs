@@ -5,5 +5,6 @@ public enum VoidSaleOutcome
     Voided,
     NotFound,
     AlreadyVoided,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }

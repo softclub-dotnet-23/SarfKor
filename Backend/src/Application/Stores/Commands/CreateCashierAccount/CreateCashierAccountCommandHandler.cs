@@ -27,6 +27,9 @@ public sealed class CreateCashierAccountCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new CreateCashierAccountResult(CreateCashierAccountOutcome.Forbidden);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new CreateCashierAccountResult(CreateCashierAccountOutcome.SubscriptionInactive);
+
         var email = command.Email.Trim();
 
         // Never resets an existing account's password -- if the email is already registered

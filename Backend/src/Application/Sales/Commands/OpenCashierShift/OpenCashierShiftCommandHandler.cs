@@ -21,6 +21,9 @@ public sealed class OpenCashierShiftCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new OpenCashierShiftResult(OpenCashierShiftOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new OpenCashierShiftResult(OpenCashierShiftOutcome.SubscriptionInactive, null);
+
         var shift = new CashierShift
         {
             StoreId = command.StoreId,

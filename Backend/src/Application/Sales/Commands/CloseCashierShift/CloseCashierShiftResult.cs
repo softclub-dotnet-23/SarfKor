@@ -5,7 +5,8 @@ public enum CloseCashierShiftOutcome
     Closed,
     NotFound,
     Forbidden,
-    AlreadyClosed
+    AlreadyClosed,
+    SubscriptionInactive
 }
 
 public sealed record CloseCashierShiftResult(CloseCashierShiftOutcome Outcome, decimal? ExpectedCash, decimal? ClosingCash, decimal? Discrepancy);

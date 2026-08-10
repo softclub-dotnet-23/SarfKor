@@ -78,6 +78,7 @@ public sealed class ReviewsController : ControllerBase
             ReplyToReviewOutcome.Replied => Ok(result),
             ReplyToReviewOutcome.ReviewNotFound => NotFound(),
             ReplyToReviewOutcome.Forbidden => Forbid(),
+            ReplyToReviewOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

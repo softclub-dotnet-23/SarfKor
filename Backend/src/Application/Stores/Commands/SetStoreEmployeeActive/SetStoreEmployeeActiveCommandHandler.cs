@@ -8,6 +8,7 @@ namespace Application.Stores.Commands.SetStoreEmployeeActive;
 public sealed class SetStoreEmployeeActiveCommandHandler(
     IStoreEmployeeRepository storeEmployeeRepository,
     IStoreAccessAuthorizer storeAccessAuthorizer,
+    IRefreshTokenRepository refreshTokenRepository,
     IAuditLogRepository auditLogRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<SetStoreEmployeeActiveCommand, SetStoreEmployeeActiveResult>
 {
@@ -20,8 +21,25 @@ public sealed class SetStoreEmployeeActiveCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(employee.StoreId, command.PerformedByUserId, cancellationToken))
             return new SetStoreEmployeeActiveResult(SetStoreEmployeeActiveOutcome.Forbidden);
 
+        // Code review 2026-08-10 finding #7: nothing stopped an owner from disabling their OWN
+        // employee row via a direct API call (the frontend hides the button for isSelf, but per
+        // CLAUDE.md that's UX, not enforcement) -- self-lockout with no in-app recovery path.
+        if (employee.UserId == command.PerformedByUserId)
+            return new SetStoreEmployeeActiveResult(SetStoreEmployeeActiveOutcome.CannotDisableSelf);
+
+        if (!await storeAccessAuthorizer.IsOperationalAsync(employee.StoreId, cancellationToken))
+            return new SetStoreEmployeeActiveResult(SetStoreEmployeeActiveOutcome.SubscriptionInactive);
+
         employee.IsActive = command.IsActive;
         storeEmployeeRepository.Update(employee);
+
+        // Code review 2026-08-10 finding #6: every other password/security-sensitive mutation in
+        // this codebase (ChangePasswordAsync, ResetPasswordAsync, AdminResetPasswordAsync) revokes
+        // refresh tokens "the moment an existing session should die" -- disabling a cashier is
+        // exactly that moment too, and relying solely on every future endpoint re-checking IsActive
+        // live is defense-in-depth's whole point, not a substitute for it.
+        if (!command.IsActive)
+            await refreshTokenRepository.RevokeAllForUserAsync(employee.UserId, cancellationToken);
 
         auditLogRepository.Add(new AuditLog
         {

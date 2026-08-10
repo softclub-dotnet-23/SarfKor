@@ -6,7 +6,8 @@ public enum CreateReorderRuleOutcome
     StoreNotFound,
     Forbidden,
     ProductNotFound,
-    SupplierNotFound
+    SupplierNotFound,
+    SubscriptionInactive
 }
 
 public sealed record CreateReorderRuleResult(CreateReorderRuleOutcome Outcome, int? ReorderRuleId);

@@ -5,7 +5,8 @@ public enum CreateLoyaltyProgramOutcome
     Created,
     StoreNotFound,
     Forbidden,
-    AlreadyExists
+    AlreadyExists,
+    SubscriptionInactive
 }
 
 public sealed record CreateLoyaltyProgramResult(CreateLoyaltyProgramOutcome Outcome, int? LoyaltyProgramId);

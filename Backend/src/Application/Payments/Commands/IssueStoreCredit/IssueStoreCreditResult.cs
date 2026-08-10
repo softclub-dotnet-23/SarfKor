@@ -6,7 +6,8 @@ public enum IssueStoreCreditOutcome
     StoreNotFound,
     CustomerNotFound,
     Forbidden,
-    CurrencyMismatch
+    CurrencyMismatch,
+    SubscriptionInactive
 }
 
 public sealed record IssueStoreCreditResult(IssueStoreCreditOutcome Outcome, decimal? NewBalance);

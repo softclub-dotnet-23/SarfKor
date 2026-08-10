@@ -21,6 +21,9 @@ public sealed class ResetCashierPasswordCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(employee.StoreId, command.PerformedByUserId, cancellationToken))
             return new ResetCashierPasswordResult(ResetCashierPasswordOutcome.Forbidden);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(employee.StoreId, cancellationToken))
+            return new ResetCashierPasswordResult(ResetCashierPasswordOutcome.SubscriptionInactive);
+
         var newPassword = GeneratedPassword.Generate();
         var succeeded = await authService.AdminResetPasswordAsync(employee.UserId, newPassword, cancellationToken);
         if (!succeeded)

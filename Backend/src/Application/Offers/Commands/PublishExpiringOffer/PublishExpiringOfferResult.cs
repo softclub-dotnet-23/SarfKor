@@ -5,7 +5,8 @@ public enum PublishExpiringOfferOutcome
     Published,
     StoreNotFound,
     ProductNotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record PublishExpiringOfferResult(PublishExpiringOfferOutcome Outcome, int? OfferId);

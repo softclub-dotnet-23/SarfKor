@@ -283,50 +283,67 @@ export function useBarcodeScanner(options: UseBarcodeScannerOptions): UseBarcode
     [continuous, dedupeWindowMs, stop],
   )
 
-  const start = useCallback(async () => {
-    const staticPhase = detectStaticPhase()
-    if (staticPhase) {
-      setPhase(staticPhase)
-      return
-    }
-    if (startingRef.current) return
-    startingRef.current = true
-    setPhase('starting')
-    try {
-      const stream = await openStream(selectedDeviceId)
-      streamRef.current = stream
-      const video = videoRef.current
-      if (!video) {
-        stream.getTracks().forEach((t) => t.stop())
-        streamRef.current = null
+  // Code review 2026-08-10 finding #2: this used to be `start`, called both directly and (via a
+  // stale closure) from `selectDevice`. `start` was a useCallback whose deps included
+  // selectedDeviceId, so a fresh version was created on every device change -- but `selectDevice`
+  // itself was memoized on `[stop]` only (deliberately, to avoid recreating it and its consumers
+  // on every render) and so *never* picked up that fresh `start`, permanently closing over
+  // whatever `start` (and therefore whatever selectedDeviceId) existed the very first time
+  // `selectDevice` was created. Net effect: picking a different camera from the dropdown updated
+  // the displayed label but restarted the stream against the OLD device, not the new one.
+  // Splitting the actual "open this specific device" logic out into its own function that takes
+  // deviceId as an explicit parameter (instead of reading it from a closure) fixes this at the
+  // root -- both `start` and `selectDevice` call it with the device id they actually mean, and
+  // neither has to guess whether the other's closure is fresh.
+  const startWithDevice = useCallback(
+    async (deviceId: string | null) => {
+      const staticPhase = detectStaticPhase()
+      if (staticPhase) {
+        setPhase(staticPhase)
         return
       }
-      video.srcObject = stream
-      await video.play()
-      setPhase('live')
+      if (startingRef.current) return
+      startingRef.current = true
+      setPhase('starting')
+      try {
+        const stream = await openStream(deviceId)
+        streamRef.current = stream
+        const video = videoRef.current
+        if (!video) {
+          stream.getTracks().forEach((t) => t.stop())
+          streamRef.current = null
+          return
+        }
+        video.srcObject = stream
+        await video.play()
+        setPhase('live')
 
-      // Labels are blank until permission is granted at least once -- refresh now that it has
-      // been, so a real camera-picker (not "Camera 1"/"Camera 2") can show up.
-      void refreshDevices()
+        // Labels are blank until permission is granted at least once -- refresh now that it has
+        // been, so a real camera-picker (not "Camera 1"/"Camera 2") can show up.
+        void refreshDevices()
 
-      const detector = new BarcodeDetector({ formats })
-      runDetectionLoop(video, detector)
-    } catch (err) {
-      if (err instanceof DOMException && (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError')) {
-        setPhase('no-camera')
-      } else if (
-        err instanceof DOMException &&
-        (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.name === 'SecurityError')
-      ) {
-        setPhase('denied')
-      } else {
-        setPhase('error')
+        const detector = new BarcodeDetector({ formats })
+        runDetectionLoop(video, detector)
+      } catch (err) {
+        if (err instanceof DOMException && (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError')) {
+          setPhase('no-camera')
+        } else if (
+          err instanceof DOMException &&
+          (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.name === 'SecurityError')
+        ) {
+          setPhase('denied')
+        } else {
+          setPhase('error')
+        }
+        stop()
+      } finally {
+        startingRef.current = false
       }
-      stop()
-    } finally {
-      startingRef.current = false
-    }
-  }, [formats, openStream, refreshDevices, runDetectionLoop, selectedDeviceId, stop])
+    },
+    [formats, openStream, refreshDevices, runDetectionLoop, stop],
+  )
+
+  const start = useCallback(() => startWithDevice(selectedDeviceId), [startWithDevice, selectedDeviceId])
 
   const selectDevice = useCallback(
     (deviceId: string) => {
@@ -337,16 +354,14 @@ export function useBarcodeScanner(options: UseBarcodeScannerOptions): UseBarcode
         /* persistence is a convenience, not a requirement */
       }
       // Switching camera mid-scan needs a real restart -- a running MediaStream can't swap its
-      // source device in place.
+      // source device in place. Calls startWithDevice directly with the id just picked, not
+      // `start()` -- see the comment on startWithDevice for why that distinction is the fix.
       if (streamRef.current) {
         stop()
-        // Deferred one tick so `start` picks up the just-set selectedDeviceId (state update
-        // above hasn't flushed to this closure yet within the same synchronous call).
-        setTimeout(() => start(), 0)
+        setTimeout(() => startWithDevice(deviceId), 0)
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stop],
+    [stop, startWithDevice],
   )
 
   // Device labels/list can change (a USB camera plugged in mid-session) -- listen instead of

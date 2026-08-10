@@ -5,7 +5,8 @@ public enum RedeemLoyaltyPointsOutcome
     Redeemed,
     AccountNotFound,
     Forbidden,
-    InsufficientPoints
+    InsufficientPoints,
+    SubscriptionInactive
 }
 
 public sealed record RedeemLoyaltyPointsResult(RedeemLoyaltyPointsOutcome Outcome, int? NewBalance);

@@ -6,7 +6,8 @@ public enum CreatePromotionOutcome
     StoreNotFound,
     Forbidden,
     ProductNotFound,
-    CategoryNotFound
+    CategoryNotFound,
+    SubscriptionInactive
 }
 
 public sealed record CreatePromotionResult(CreatePromotionOutcome Outcome, int? PromotionId);

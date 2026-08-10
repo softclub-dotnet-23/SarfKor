@@ -26,6 +26,9 @@ public sealed class SubmitPriceUpdateCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(command.StoreId, command.UserId, cancellationToken))
             return new SubmitPriceUpdateResult(SubmitPriceUpdateOutcome.Forbidden, null, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new SubmitPriceUpdateResult(SubmitPriceUpdateOutcome.SubscriptionInactive, null, null);
+
         var trustScore = await trustScoreRepository.GetByUserIdAsync(command.UserId, cancellationToken);
         if (trustScore is null)
         {

@@ -70,6 +70,7 @@ public sealed class StockController : ControllerBase
             SetCostPriceOutcome.StoreNotFound => NotFound("Store not found."),
             SetCostPriceOutcome.ProductNotFound => NotFound("Product not found."),
             SetCostPriceOutcome.Forbidden => Forbid(),
+            SetCostPriceOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

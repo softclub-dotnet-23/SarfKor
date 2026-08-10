@@ -77,6 +77,7 @@ public sealed class StoresController : ControllerBase
             UpdateStoreOutcome.Updated => Ok(result),
             UpdateStoreOutcome.StoreNotFound => NotFound("Store not found."),
             UpdateStoreOutcome.Forbidden => Forbid(),
+            UpdateStoreOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -106,6 +107,7 @@ public sealed class StoresController : ControllerBase
             RemoveStoreEmployeeOutcome.Removed => Ok(result),
             RemoveStoreEmployeeOutcome.NotFound => NotFound(),
             RemoveStoreEmployeeOutcome.Forbidden => Forbid(),
+            RemoveStoreEmployeeOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -138,6 +140,7 @@ public sealed class StoresController : ControllerBase
             UpdateStoreEmployeeOutcome.Updated => Ok(result),
             UpdateStoreEmployeeOutcome.NotFound => NotFound(),
             UpdateStoreEmployeeOutcome.Forbidden => Forbid(),
+            UpdateStoreEmployeeOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -199,6 +202,7 @@ public sealed class StoresController : ControllerBase
             CreateStoreEmployeeInvitationOutcome.StoreNotFound => NotFound("Store not found."),
             CreateStoreEmployeeInvitationOutcome.Forbidden => Forbid(),
             CreateStoreEmployeeInvitationOutcome.AlreadyEmployed => Conflict("This user is already an employee of this store."),
+            CreateStoreEmployeeInvitationOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -237,6 +241,7 @@ public sealed class StoresController : ControllerBase
             CreateCashierAccountOutcome.StoreNotFound => NotFound("Store not found."),
             CreateCashierAccountOutcome.Forbidden => Forbid(),
             CreateCashierAccountOutcome.EmailAlreadyRegistered => Conflict("This email is already registered — invite them instead."),
+            CreateCashierAccountOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -266,6 +271,7 @@ public sealed class StoresController : ControllerBase
             ResetCashierPasswordOutcome.Reset => Ok(result),
             ResetCashierPasswordOutcome.NotFound => NotFound(),
             ResetCashierPasswordOutcome.Forbidden => Forbid(),
+            ResetCashierPasswordOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -296,6 +302,8 @@ public sealed class StoresController : ControllerBase
             SetStoreEmployeeActiveOutcome.Updated => Ok(result),
             SetStoreEmployeeActiveOutcome.NotFound => NotFound(),
             SetStoreEmployeeActiveOutcome.Forbidden => Forbid(),
+            SetStoreEmployeeActiveOutcome.CannotDisableSelf => Conflict("You can't disable your own employee record."),
+            SetStoreEmployeeActiveOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

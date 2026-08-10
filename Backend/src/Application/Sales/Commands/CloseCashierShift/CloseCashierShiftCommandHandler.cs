@@ -25,6 +25,9 @@ public sealed class CloseCashierShiftCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(shift.StoreId, command.PerformedByUserId, cancellationToken))
             return new CloseCashierShiftResult(CloseCashierShiftOutcome.Forbidden, null, null, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(shift.StoreId, cancellationToken))
+            return new CloseCashierShiftResult(CloseCashierShiftOutcome.SubscriptionInactive, null, null, null);
+
         if (shift.EndedAt is not null)
             return new CloseCashierShiftResult(CloseCashierShiftOutcome.AlreadyClosed, null, null, null);
 

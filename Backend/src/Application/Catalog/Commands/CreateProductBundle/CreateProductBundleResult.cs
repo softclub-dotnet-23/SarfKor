@@ -5,7 +5,8 @@ public enum CreateProductBundleOutcome
     Created,
     StoreNotFound,
     Forbidden,
-    ProductNotFound
+    ProductNotFound,
+    SubscriptionInactive
 }
 
 public sealed record CreateProductBundleResult(CreateProductBundleOutcome Outcome, int? ProductBundleId);

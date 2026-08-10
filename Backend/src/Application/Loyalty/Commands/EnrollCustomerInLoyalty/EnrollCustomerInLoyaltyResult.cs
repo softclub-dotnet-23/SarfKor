@@ -6,7 +6,8 @@ public enum EnrollCustomerInLoyaltyOutcome
     AlreadyEnrolled,
     CustomerNotFound,
     ProgramNotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record EnrollCustomerInLoyaltyResult(EnrollCustomerInLoyaltyOutcome Outcome, int? LoyaltyAccountId);

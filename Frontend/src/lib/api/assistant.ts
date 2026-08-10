@@ -21,10 +21,16 @@ export interface AssistantChatResult {
 // storeId/UserId-adjacent identity is re-verified server-side against real store
 // ownership/employment (see AskAssistantCommandHandler) -- this is just what tells the backend
 // which store's own data the caller is currently working in, same as every other partner endpoint.
+//
+// timeoutMs: 65s, not the apiFetch default of 15s -- AnthropicAssistantChatClient's own HttpClient
+// deliberately allows the real Anthropic call up to 60s (a genuine LLM round-trip, not a DB query),
+// and the default would silently abort a legitimately-still-working reply well before the backend
+// itself gives up (code review 2026-08-10 finding #3).
 export function chat(storeId: number | null, history: AssistantChatMessage[], message: string) {
   return apiFetch<AssistantChatResult>('/api/assistant/chat', {
     method: 'POST',
     body: { storeId, history, message },
+    timeoutMs: 65000,
   })
 }
 

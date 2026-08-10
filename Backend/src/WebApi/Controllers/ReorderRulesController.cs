@@ -40,6 +40,7 @@ public sealed class ReorderRulesController : ControllerBase
             CreateReorderRuleOutcome.Forbidden => Forbid(),
             CreateReorderRuleOutcome.ProductNotFound => NotFound("Product not found."),
             CreateReorderRuleOutcome.SupplierNotFound => NotFound("Supplier not found."),
+            CreateReorderRuleOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

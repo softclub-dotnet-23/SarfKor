@@ -118,6 +118,12 @@ interface ApiFetchOptions {
   auth?: boolean // defaults to true — set false for anonymous endpoints
   /** Skip JSON body parsing/serialization (used for multipart uploads). */
   raw?: RequestInit
+  /** Overrides DEFAULT_TIMEOUT_MS for this one call. Code review 2026-08-10 finding #3: the
+   *  backend's AI assistant client deliberately allows up to 60s for a reply (a real LLM call, not
+   *  a DB-backed request), but every apiFetch call used to inherit the same 15s default regardless
+   *  — silently killing any assistant reply that took longer than that, even though the backend
+   *  would have answered successfully. assistant.ts's chat() is the one caller that sets this. */
+  timeoutMs?: number
 }
 
 function buildUrl(path: string, query?: ApiFetchOptions['query']) {
@@ -141,7 +147,7 @@ function buildUrl(path: string, query?: ApiFetchOptions['query']) {
  * non-2xx response (after the retry, if a retry was attempted).
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { method = 'GET', body, query, auth = true } = options
+  const { method = 'GET', body, query, auth = true, timeoutMs } = options
 
   const doFetch = async (): Promise<Response> => {
     const headers: Record<string, string> = {}
@@ -150,11 +156,15 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
       const tokens = getTokens()
       if (tokens) headers['Authorization'] = `Bearer ${tokens.accessToken}`
     }
-    return fetchWithTimeout(buildUrl(path, query), {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    })
+    return fetchWithTimeout(
+      buildUrl(path, query),
+      {
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      },
+      timeoutMs,
+    )
   }
 
   let res = await doFetch()

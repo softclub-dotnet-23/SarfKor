@@ -18,6 +18,9 @@ public sealed class CreateSupplierCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new CreateSupplierResult(CreateSupplierOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new CreateSupplierResult(CreateSupplierOutcome.SubscriptionInactive, null);
+
         var supplier = new Supplier
         {
             StoreId = command.StoreId,

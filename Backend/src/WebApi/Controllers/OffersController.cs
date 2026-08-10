@@ -40,6 +40,7 @@ public sealed class OffersController : ControllerBase
             PublishExpiringOfferOutcome.StoreNotFound => NotFound("Store not found."),
             PublishExpiringOfferOutcome.ProductNotFound => NotFound("Product not found."),
             PublishExpiringOfferOutcome.Forbidden => Forbid(),
+            PublishExpiringOfferOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

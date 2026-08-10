@@ -85,6 +85,7 @@ public sealed class SalesController : ControllerBase
             VoidSaleOutcome.NotFound => NotFound(),
             VoidSaleOutcome.Forbidden => Forbid(),
             VoidSaleOutcome.AlreadyVoided => Conflict("This sale has already been voided."),
+            VoidSaleOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the register is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -114,6 +115,7 @@ public sealed class SalesController : ControllerBase
             RecordCommissionOutcome.Recorded => Ok(result),
             RecordCommissionOutcome.SaleNotFound => NotFound(),
             RecordCommissionOutcome.Forbidden => Forbid(),
+            RecordCommissionOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the register is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -172,6 +174,7 @@ public sealed class SalesController : ControllerBase
             ProcessReturnOutcome.SaleNotCompleted => Conflict("This sale is not completed."),
             ProcessReturnOutcome.LineNotFound => NotFound("Sale line item not found."),
             ProcessReturnOutcome.ExceedsAvailableQuantity => Conflict("Return quantity exceeds what's available for this line."),
+            ProcessReturnOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the register is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

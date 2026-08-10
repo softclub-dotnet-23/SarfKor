@@ -41,6 +41,7 @@ public sealed class StoreCreditController : ControllerBase
             IssueStoreCreditOutcome.CustomerNotFound => NotFound("Customer not found."),
             IssueStoreCreditOutcome.Forbidden => Forbid(),
             IssueStoreCreditOutcome.CurrencyMismatch => Conflict("This customer's existing store credit is in a different currency."),
+            IssueStoreCreditOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -72,6 +73,7 @@ public sealed class StoreCreditController : ControllerBase
             RedeemStoreCreditOutcome.NoCreditOnFile => NotFound("No store credit on file for this customer."),
             RedeemStoreCreditOutcome.InsufficientBalance => Conflict("Insufficient store credit balance."),
             RedeemStoreCreditOutcome.CurrencyMismatch => Conflict("This customer's store credit is in a different currency."),
+            RedeemStoreCreditOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

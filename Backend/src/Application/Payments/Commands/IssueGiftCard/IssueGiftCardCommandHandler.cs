@@ -19,6 +19,9 @@ public sealed class IssueGiftCardCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new IssueGiftCardResult(IssueGiftCardOutcome.Forbidden, null, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new IssueGiftCardResult(IssueGiftCardOutcome.SubscriptionInactive, null, null);
+
         var giftCard = new GiftCard
         {
             Code = GenerateCode(),

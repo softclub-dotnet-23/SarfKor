@@ -23,6 +23,9 @@ public sealed class EnrollCustomerInLoyaltyCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(program.StoreId, command.PerformedByUserId, cancellationToken))
             return new EnrollCustomerInLoyaltyResult(EnrollCustomerInLoyaltyOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(program.StoreId, cancellationToken))
+            return new EnrollCustomerInLoyaltyResult(EnrollCustomerInLoyaltyOutcome.SubscriptionInactive, null);
+
         var existing = await loyaltyAccountRepository.GetByCustomerAndProgramAsync(command.CustomerId, command.LoyaltyProgramId, cancellationToken);
         if (existing is not null)
             return new EnrollCustomerInLoyaltyResult(EnrollCustomerInLoyaltyOutcome.AlreadyEnrolled, existing.Id);

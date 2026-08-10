@@ -49,6 +49,7 @@ public class CreatePurchaseOrderCommandHandlerTests
     {
         _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         PurchaseOrder? added = null;
         _purchaseOrderRepository.Setup(r => r.Add(It.IsAny<PurchaseOrder>())).Callback<PurchaseOrder>(o =>
         {

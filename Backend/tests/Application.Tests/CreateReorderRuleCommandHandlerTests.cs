@@ -50,6 +50,7 @@ public class CreateReorderRuleCommandHandlerTests
     {
         _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _productRepository.Setup(r => r.ExistsAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _reorderRuleRepository.Setup(r => r.Add(It.IsAny<ReorderRule>())).Callback<ReorderRule>(rule => rule.Id = 1);
 

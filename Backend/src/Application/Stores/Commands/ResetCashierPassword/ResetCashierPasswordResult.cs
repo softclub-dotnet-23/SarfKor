@@ -5,6 +5,7 @@ public enum ResetCashierPasswordOutcome
     Reset,
     NotFound,
     Forbidden,
+    SubscriptionInactive,
 }
 
 /// <summary>Password is set only on Reset, and only ever appears in this one response.</summary>

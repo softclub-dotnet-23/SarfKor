@@ -5,7 +5,8 @@ public enum CreateStoreEmployeeInvitationOutcome
     Sent,
     StoreNotFound,
     Forbidden,
-    AlreadyEmployed
+    AlreadyEmployed,
+    SubscriptionInactive
 }
 
 public sealed record CreateStoreEmployeeInvitationResult(CreateStoreEmployeeInvitationOutcome Outcome, int? InvitationId);

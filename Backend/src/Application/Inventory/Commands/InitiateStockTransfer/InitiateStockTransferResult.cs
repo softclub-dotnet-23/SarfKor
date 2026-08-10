@@ -6,7 +6,8 @@ public enum InitiateStockTransferOutcome
     FromStoreNotFound,
     ToStoreNotFound,
     Forbidden,
-    InsufficientStock
+    InsufficientStock,
+    SubscriptionInactive
 }
 
 public sealed record InitiateStockTransferResult(InitiateStockTransferOutcome Outcome, int? StockTransferId);

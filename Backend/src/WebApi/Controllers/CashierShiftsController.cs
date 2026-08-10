@@ -41,6 +41,7 @@ public sealed class CashierShiftsController : ControllerBase
             OpenCashierShiftOutcome.Opened => Ok(result),
             OpenCashierShiftOutcome.StoreNotFound => NotFound("Store not found."),
             OpenCashierShiftOutcome.Forbidden => Forbid(),
+            OpenCashierShiftOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the register is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -71,6 +72,7 @@ public sealed class CashierShiftsController : ControllerBase
             CloseCashierShiftOutcome.NotFound => NotFound(),
             CloseCashierShiftOutcome.Forbidden => Forbid(),
             CloseCashierShiftOutcome.AlreadyClosed => Conflict("This shift has already been closed."),
+            CloseCashierShiftOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the register is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

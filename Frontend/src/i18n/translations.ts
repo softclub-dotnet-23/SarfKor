@@ -169,6 +169,7 @@ const RU = {
   'partner.staff.emailRequired': 'Укажите email',
   'partner.staff.alreadyEmployed': 'Этот пользователь уже числится сотрудником магазина',
   'partner.staff.forbidden': 'Нет доступа к этому магазину',
+  'partner.staff.subscriptionInactive': 'Подписка магазина не активна — операции в кабинете закрыты, пока подписка не будет продлена',
   'partner.staff.inviteHint':
     'Сотрудник получит письмо со ссылкой — сам придумает пароль и подтвердит приглашение. Если аккаунт с этим email уже есть, он привяжется к магазину после подтверждения по той же ссылке.',
   'partner.staff.createCashierButton': 'Создать кассира',
@@ -210,6 +211,7 @@ const RU = {
   'partner.staff.disable': 'Отключить',
   'partner.staff.enable': 'Включить',
   'partner.staff.disableConfirm': 'Отключить {name}? Кассир потеряет доступ к этому магазину.',
+  'partner.staff.removeOwnerConfirm': 'Удалить {name} из совладельцев магазина? Это действие нельзя отменить из кабинета.',
   'partner.staff.toggleActiveError': 'Не удалось изменить статус сотрудника',
   'partner.staff.statusActive': 'Активен',
   'partner.staff.statusDisabled': 'Отключён',
@@ -447,6 +449,7 @@ const TG: Record<Key, string> = {
   'partner.staff.emailRequired': 'Email-ро нависед',
   'partner.staff.alreadyEmployed': 'Ин корбар аллакай корманди мағоза аст',
   'partner.staff.forbidden': 'Ба ин мағоза дастрасӣ нест',
+  'partner.staff.subscriptionInactive': 'Обунаи мағоза фаъол нест — то дароз кардани обуна амалиётҳо дар кабинет баста ҳастанд',
   'partner.staff.inviteHint':
     'Корманд ба почтаи худ паёме бо истинод мегирад — худаш парол месозад ва даъватро тасдиқ мекунад. Агар бо ин email аллакай ҳисоб мавҷуд бошад, пас аз тасдиқ бо ҳамон истинод он ба мағоза пайваст мешавад.',
   'partner.staff.createCashierButton': 'Кассирро сохтан',
@@ -488,6 +491,7 @@ const TG: Record<Key, string> = {
   'partner.staff.disable': 'Хомӯш кардан',
   'partner.staff.enable': 'Фаъол кардан',
   'partner.staff.disableConfirm': '{name}-ро хомӯш мекунед? Кассир ба ин мағоза дастрасӣ надорад.',
+  'partner.staff.removeOwnerConfirm': '{name}-ро аз ҳаммолики мағоза хориҷ мекунед? Ин амалро аз кабинет бекор кардан мумкин нест.',
   'partner.staff.toggleActiveError': 'Ҳолати корманд иваз нашуд',
   'partner.staff.statusActive': 'Фаъол',
   'partner.staff.statusDisabled': 'Хомӯш',

@@ -4,7 +4,8 @@ public enum IssueGiftCardOutcome
 {
     Issued,
     StoreNotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record IssueGiftCardResult(IssueGiftCardOutcome Outcome, int? GiftCardId, string? Code);

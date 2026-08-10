@@ -6,7 +6,7 @@ import { Loading } from '../components/Loading'
 import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
 import { FormModal, FormField } from '../components/FormModal'
 import { Toast } from '../components/Toast'
-import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, RefreshIcon, KeyIcon, CheckIcon, EditIcon } from '../components/icons'
+import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, RefreshIcon, KeyIcon, CheckIcon, EditIcon, TrashIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { useT } from '../../i18n/translations'
 import { useLocaleFormat } from '../../i18n/format'
@@ -431,9 +431,15 @@ function EditCashierModal({
       phoneNumber: trimmedPhone,
       scheduleStart: preset?.start,
       scheduleEnd: preset?.end,
+      // This form has no salary field -- pass the employee's own current value straight through so
+      // an edit here can never silently clear it (code review 2026-08-10 finding #1).
+      monthlySalaryAmount: employee.monthlySalaryAmount,
+      monthlySalaryCurrency: employee.monthlySalaryCurrency,
     })
     if (res.outcome === 'Updated') {
       await onSaved()
+    } else if (res.outcome === 'SubscriptionInactive') {
+      throw new Error(t('partner.staff.subscriptionInactive'))
     } else if (res.outcome === 'Forbidden') {
       throw new Error(t('partner.staff.forbidden'))
     } else {
@@ -587,11 +593,15 @@ function EmployeeRow({
 }) {
   const t = useT()
   const { date } = useLocaleFormat()
-  const [busy, setBusy] = useState<'reset' | 'toggle' | null>(null)
+  const [busy, setBusy] = useState<'reset' | 'toggle' | 'remove' | null>(null)
   const [error, setError] = useState('')
 
-  const displayName =
-    employee.firstName && employee.lastName ? `${employee.firstName} ${employee.lastName}` : shortId(employee.userId, isSelf ? employee.userId : undefined, t)
+  // A directly-created Cashier has both firstName and lastName. A co-owner attached via the
+  // email-invite flow only ever has firstName populated, as a fallback to their UserProfile.
+  // DisplayName (see GetStoreEmployeesQueryHandler) -- lastName stays null there, so this can't
+  // require both to be present or a co-owner's row falls straight back to a raw id fragment,
+  // exactly the thing this list exists to avoid (code review 2026-08-10 finding #5).
+  const displayName = [employee.firstName, employee.lastName].filter(Boolean).join(' ') || shortId(employee.userId, isSelf ? employee.userId : undefined, t)
   const shift = shiftLabel(t, employee.scheduleStart, employee.scheduleEnd)
 
   async function handleResetPassword() {
@@ -635,6 +645,32 @@ function EmployeeRow({
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('partner.staff.toggleActiveError'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // Code review 2026-08-10 finding #4: the redesign dropped the old per-row "remove" action
+  // entirely and never replaced it for co-owners specifically (a Cashier now has "Отключить" as
+  // its intended lifecycle-pause action instead, per the original task spec -- that part was
+  // deliberate and stays as-is). Owners were left with zero management actions at all, including
+  // no way to undo a mistaken co-owner invite. Reusing the pre-existing removeStoreEmployee
+  // endpoint (already gated by IsOperationalAsync, see StoresController).
+  async function handleRemoveOwner() {
+    if (!window.confirm(t('partner.staff.removeOwnerConfirm', { name: displayName }))) return
+    setBusy('remove')
+    setError('')
+    try {
+      const res = await storesApi.removeStoreEmployee(employee.storeEmployeeId)
+      if (res.outcome === 'Removed') {
+        await onChanged()
+      } else if (res.outcome === 'Forbidden') {
+        setError(t('partner.staff.noAccessRemove'))
+      } else {
+        setError(t('partner.staff.employeeNotFound'))
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('partner.staff.removeError'))
     } finally {
       setBusy(null)
     }
@@ -687,6 +723,19 @@ function EmployeeRow({
             }`}
           >
             {employee.isActive ? t('partner.staff.disable') : t('partner.staff.enable')}
+          </button>
+        </div>
+      )}
+      {!isSelf && employee.role === 'Owner' && (
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          <button
+            onClick={handleRemoveOwner}
+            disabled={busy !== null}
+            aria-label={t('partner.staff.removeEmployee')}
+            className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-danger-dim)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-danger)] hover:opacity-80 disabled:opacity-50"
+          >
+            <TrashIcon width={13} height={13} />
+            {t('partner.staff.removeEmployee')}
           </button>
         </div>
       )}

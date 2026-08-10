@@ -5,7 +5,8 @@ public enum SubmitPriceUpdateOutcome
     Submitted,
     ProductNotFound,
     StoreNotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record SubmitPriceUpdateResult(SubmitPriceUpdateOutcome Outcome, int? PriceEntryId, DateTimeOffset? RecordedAt);

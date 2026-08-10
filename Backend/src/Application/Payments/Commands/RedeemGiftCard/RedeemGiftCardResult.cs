@@ -8,7 +8,8 @@ public enum RedeemGiftCardOutcome
     Expired,
     InsufficientBalance,
     CurrencyMismatch,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record RedeemGiftCardResult(RedeemGiftCardOutcome Outcome, decimal? RemainingBalance);

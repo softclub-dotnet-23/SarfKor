@@ -18,6 +18,9 @@ public sealed class UpdateStoreCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.RequestedByUserId, cancellationToken))
             return new UpdateStoreResult(UpdateStoreOutcome.Forbidden);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new UpdateStoreResult(UpdateStoreOutcome.SubscriptionInactive);
+
         store.Name = command.Name;
         store.Address = command.Address;
         store.Location = new GeoLocation(command.Latitude, command.Longitude);

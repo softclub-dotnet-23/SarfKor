@@ -5,7 +5,8 @@ public enum SubmitPurchaseOrderOutcome
     Submitted,
     NotFound,
     Forbidden,
-    NotDraft
+    NotDraft,
+    SubscriptionInactive
 }
 
 public sealed record SubmitPurchaseOrderResult(SubmitPurchaseOrderOutcome Outcome);

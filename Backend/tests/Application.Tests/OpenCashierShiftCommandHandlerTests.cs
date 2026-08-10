@@ -47,6 +47,7 @@ public class OpenCashierShiftCommandHandlerTests
     {
         _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         CashierShift? added = null;
         _cashierShiftRepository.Setup(r => r.Add(It.IsAny<CashierShift>())).Callback<CashierShift>(s =>
         {

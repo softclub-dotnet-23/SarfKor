@@ -4,7 +4,8 @@ public enum OpenCashierShiftOutcome
 {
     Opened,
     StoreNotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record OpenCashierShiftResult(OpenCashierShiftOutcome Outcome, int? CashierShiftId);

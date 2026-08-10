@@ -105,6 +105,8 @@ export interface StoreEmployee {
   scheduleStart?: string
   scheduleEnd?: string
   isActive: boolean
+  monthlySalaryAmount?: number
+  monthlySalaryCurrency?: string
 }
 
 export function removeStoreEmployee(storeEmployeeId: number) {
@@ -115,19 +117,36 @@ export function getStoreEmployees(storeId: number) {
   return apiFetch<{ outcome: string; employees?: StoreEmployee[] }>(`/api/stores/${storeId}/employees`)
 }
 
-export type UpdateStoreEmployeeOutcome = 'Updated' | 'NotFound' | 'Forbidden'
+export type UpdateStoreEmployeeOutcome = 'Updated' | 'NotFound' | 'Forbidden' | 'SubscriptionInactive'
 
 // firstName/lastName/phoneNumber: omit a field to leave it unchanged (this is also the "изменить"
 // action on a cashier's card, which only ever edits a subset at once).
+//
+// monthlySalaryAmount/Currency are NOT "omit to leave unchanged" like the three fields above --
+// the backend command treats a null salary pair as "clear the salary" (predates this session, see
+// UpdateStoreEmployeeCommand's own doc comment). Code review 2026-08-10 finding #1: this function
+// used to hardcode both to null on every call, which meant using "Изменить" to fix a cashier's
+// phone number silently erased any salary that had been set through any other means (SQL, a future
+// payroll screen). Callers MUST now explicitly pass the salary they want to end up with --
+// EditCashierModal passes the employee's own current value straight through, so an edit that has
+// nothing to do with salary leaves it exactly as it was.
 export function updateStoreEmployee(
   storeEmployeeId: number,
-  fields: { firstName?: string; lastName?: string; phoneNumber?: string; scheduleStart?: string | null; scheduleEnd?: string | null },
+  fields: {
+    firstName?: string
+    lastName?: string
+    phoneNumber?: string
+    scheduleStart?: string | null
+    scheduleEnd?: string | null
+    monthlySalaryAmount?: number | null
+    monthlySalaryCurrency?: string | null
+  },
 ) {
   return apiFetch<{ outcome: UpdateStoreEmployeeOutcome }>(`/api/store-employees/${storeEmployeeId}`, {
     method: 'PATCH',
     body: {
-      monthlySalaryAmount: null,
-      monthlySalaryCurrency: null,
+      monthlySalaryAmount: fields.monthlySalaryAmount ?? null,
+      monthlySalaryCurrency: fields.monthlySalaryCurrency ?? null,
       scheduleStart: fields.scheduleStart,
       scheduleEnd: fields.scheduleEnd,
       firstName: fields.firstName,

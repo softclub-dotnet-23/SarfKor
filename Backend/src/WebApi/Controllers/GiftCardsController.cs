@@ -39,6 +39,7 @@ public sealed class GiftCardsController : ControllerBase
             IssueGiftCardOutcome.Issued => Ok(result),
             IssueGiftCardOutcome.StoreNotFound => NotFound(),
             IssueGiftCardOutcome.Forbidden => Forbid(),
+            IssueGiftCardOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -73,6 +74,7 @@ public sealed class GiftCardsController : ControllerBase
             RedeemGiftCardOutcome.Expired => Conflict("This gift card has expired."),
             RedeemGiftCardOutcome.CurrencyMismatch => Conflict("This gift card's currency doesn't match the sale's currency."),
             RedeemGiftCardOutcome.InsufficientBalance => Conflict("Insufficient gift card balance."),
+            RedeemGiftCardOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

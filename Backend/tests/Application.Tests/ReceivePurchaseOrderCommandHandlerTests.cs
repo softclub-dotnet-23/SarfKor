@@ -27,6 +27,7 @@ public class ReceivePurchaseOrderCommandHandlerTests
         _storeAccessAuthorizer
             .Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
     }
 
     private ReceivePurchaseOrderCommandHandler CreateHandler() => new(

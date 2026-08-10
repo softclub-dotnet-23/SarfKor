@@ -20,6 +20,9 @@ public sealed class ReplyToReviewCommandHandler(
         if (review.StoreId is null || !await storeAccessAuthorizer.IsOwnerAsync(review.StoreId.Value, command.StorePartnerUserId, cancellationToken))
             return new ReplyToReviewResult(ReplyToReviewOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(review.StoreId.Value, cancellationToken))
+            return new ReplyToReviewResult(ReplyToReviewOutcome.SubscriptionInactive, null);
+
         var reply = new ReviewReply
         {
             ReviewId = command.ReviewId,

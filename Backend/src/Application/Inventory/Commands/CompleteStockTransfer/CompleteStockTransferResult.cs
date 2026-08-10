@@ -5,7 +5,8 @@ public enum CompleteStockTransferOutcome
     Completed,
     NotFound,
     Forbidden,
-    NotInTransit
+    NotInTransit,
+    SubscriptionInactive
 }
 
 public sealed record CompleteStockTransferResult(CompleteStockTransferOutcome Outcome);

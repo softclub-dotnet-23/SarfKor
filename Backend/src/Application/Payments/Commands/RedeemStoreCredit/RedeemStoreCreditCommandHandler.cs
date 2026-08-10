@@ -16,6 +16,9 @@ public sealed class RedeemStoreCreditCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new RedeemStoreCreditResult(RedeemStoreCreditOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new RedeemStoreCreditResult(RedeemStoreCreditOutcome.SubscriptionInactive, null);
+
         var credit = await storeCreditRepository.GetByStoreAndCustomerAsync(command.StoreId, command.CustomerId, cancellationToken);
         if (credit is null)
             return new RedeemStoreCreditResult(RedeemStoreCreditOutcome.NoCreditOnFile, null);

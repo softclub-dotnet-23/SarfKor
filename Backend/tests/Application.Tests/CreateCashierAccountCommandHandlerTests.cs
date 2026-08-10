@@ -78,6 +78,7 @@ public class CreateCashierAccountCommandHandlerTests
     {
         _storeRepository.Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(ValidStore());
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerUserId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _authService.Setup(a => a.FindUserIdByEmailAsync(Email, It.IsAny<CancellationToken>())).ReturnsAsync("some-existing-user");
 
         var handler = CreateHandler();
@@ -94,6 +95,7 @@ public class CreateCashierAccountCommandHandlerTests
     {
         _storeRepository.Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(ValidStore());
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerUserId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _authService.Setup(a => a.FindUserIdByEmailAsync(Email, It.IsAny<CancellationToken>())).ReturnsAsync((string?)null);
         var registerAuth = new AuthResult(NewUserId, "access-token", "refresh-token", DateTimeOffset.UtcNow.AddMinutes(15));
         _authService

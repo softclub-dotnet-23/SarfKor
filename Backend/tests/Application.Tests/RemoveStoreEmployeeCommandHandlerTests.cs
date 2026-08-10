@@ -39,6 +39,7 @@ public class RemoveStoreEmployeeCommandHandlerTests
             .Setup(r => r.GetByIdAsync(EmployeeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StoreEmployee { StoreId = StoreId, UserId = "cashier-1", Role = StoreEmployeeRole.Cashier, AddedAt = DateTimeOffset.UtcNow });
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new RemoveStoreEmployeeCommand(EmployeeId, "someone-else"), CancellationToken.None);
@@ -52,6 +53,7 @@ public class RemoveStoreEmployeeCommandHandlerTests
         var employee = new StoreEmployee { StoreId = StoreId, UserId = "cashier-1", Role = StoreEmployeeRole.Cashier, AddedAt = DateTimeOffset.UtcNow };
         _storeEmployeeRepository.Setup(r => r.GetByIdAsync(EmployeeId, It.IsAny<CancellationToken>())).ReturnsAsync(employee);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new RemoveStoreEmployeeCommand(EmployeeId, OwnerId), CancellationToken.None);
@@ -66,6 +68,7 @@ public class RemoveStoreEmployeeCommandHandlerTests
         var employee = new StoreEmployee { StoreId = StoreId, UserId = "cashier-1", Role = StoreEmployeeRole.Cashier, AddedAt = DateTimeOffset.UtcNow };
         _storeEmployeeRepository.Setup(r => r.GetByIdAsync(EmployeeId, It.IsAny<CancellationToken>())).ReturnsAsync(employee);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeRepository.Setup(r => r.OwnsAnyStoreAsync("cashier-1", It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _storeEmployeeRepository.Setup(r => r.IsEmployedAnywhereAsync("cashier-1", It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
@@ -81,6 +84,7 @@ public class RemoveStoreEmployeeCommandHandlerTests
         var employee = new StoreEmployee { StoreId = StoreId, UserId = "cashier-1", Role = StoreEmployeeRole.Cashier, AddedAt = DateTimeOffset.UtcNow };
         _storeEmployeeRepository.Setup(r => r.GetByIdAsync(EmployeeId, It.IsAny<CancellationToken>())).ReturnsAsync(employee);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeRepository.Setup(r => r.OwnsAnyStoreAsync("cashier-1", It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _storeEmployeeRepository.Setup(r => r.IsEmployedAnywhereAsync("cashier-1", It.IsAny<CancellationToken>())).ReturnsAsync(true);
 

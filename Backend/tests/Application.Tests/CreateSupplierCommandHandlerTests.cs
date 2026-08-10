@@ -44,7 +44,9 @@ public class CreateSupplierCommandHandlerTests
     public async Task Handle_CreatesSupplier_AndReturnsItsId()
     {
         _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _supplierRepository.Setup(r => r.Add(It.IsAny<Supplier>())).Callback<Supplier>(s => s.Id = 3);
 
         var handler = CreateHandler();

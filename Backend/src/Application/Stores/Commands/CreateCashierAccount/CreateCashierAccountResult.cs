@@ -7,6 +7,7 @@ public enum CreateCashierAccountOutcome
     StoreNotFound,
     EmailAlreadyRegistered,
     RegistrationFailed,
+    SubscriptionInactive,
 }
 
 /// <summary>Password is set only on Created, and only ever appears in this one response -- never

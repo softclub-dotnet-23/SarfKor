@@ -58,6 +58,7 @@ public class UpdateStoreEmployeeCommandHandlerTests
         var employee = CreateEmployee();
         _storeEmployeeRepository.Setup(r => r.GetByIdAsync(StoreEmployeeId, It.IsAny<CancellationToken>())).ReturnsAsync(employee);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(ValidCommand(), CancellationToken.None);
@@ -79,6 +80,7 @@ public class UpdateStoreEmployeeCommandHandlerTests
         employee.ScheduleEnd = new TimeOnly(17, 0);
         _storeEmployeeRepository.Setup(r => r.GetByIdAsync(StoreEmployeeId, It.IsAny<CancellationToken>())).ReturnsAsync(employee);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var command = new UpdateStoreEmployeeCommand(StoreEmployeeId, null, null, null, null, null, null, null, OwnerId);

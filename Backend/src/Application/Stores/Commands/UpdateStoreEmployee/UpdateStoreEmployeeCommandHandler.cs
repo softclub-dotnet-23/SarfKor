@@ -18,6 +18,9 @@ public sealed class UpdateStoreEmployeeCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(employee.StoreId, command.PerformedByUserId, cancellationToken))
             return new UpdateStoreEmployeeResult(UpdateStoreEmployeeOutcome.Forbidden);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(employee.StoreId, cancellationToken))
+            return new UpdateStoreEmployeeResult(UpdateStoreEmployeeOutcome.SubscriptionInactive);
+
         employee.MonthlySalary = command.MonthlySalaryAmount is null
             ? null
             : new Money(command.MonthlySalaryAmount.Value, command.MonthlySalaryCurrency!);

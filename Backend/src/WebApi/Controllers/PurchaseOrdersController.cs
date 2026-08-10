@@ -40,6 +40,7 @@ public sealed class PurchaseOrdersController : ControllerBase
             CreatePurchaseOrderOutcome.Created => Ok(result),
             CreatePurchaseOrderOutcome.StoreNotFound => NotFound("Store not found."),
             CreatePurchaseOrderOutcome.Forbidden => Forbid(),
+            CreatePurchaseOrderOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -69,6 +70,7 @@ public sealed class PurchaseOrdersController : ControllerBase
             SubmitPurchaseOrderOutcome.NotFound => NotFound(),
             SubmitPurchaseOrderOutcome.Forbidden => Forbid(),
             SubmitPurchaseOrderOutcome.NotDraft => Conflict("This purchase order is no longer a draft."),
+            SubmitPurchaseOrderOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -98,6 +100,7 @@ public sealed class PurchaseOrdersController : ControllerBase
             ReceivePurchaseOrderOutcome.NotFound => NotFound(),
             ReceivePurchaseOrderOutcome.Forbidden => Forbid(),
             ReceivePurchaseOrderOutcome.NotSubmitted => Conflict("This purchase order has not been submitted."),
+            ReceivePurchaseOrderOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

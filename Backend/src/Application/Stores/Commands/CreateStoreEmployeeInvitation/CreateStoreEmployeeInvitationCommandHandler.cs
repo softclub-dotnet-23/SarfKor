@@ -28,6 +28,9 @@ public sealed class CreateStoreEmployeeInvitationCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new CreateStoreEmployeeInvitationResult(CreateStoreEmployeeInvitationOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new CreateStoreEmployeeInvitationResult(CreateStoreEmployeeInvitationOutcome.SubscriptionInactive, null);
+
         var email = command.Email.Trim();
 
         // Already on this store's team — the owner already sees this in the employee list, so

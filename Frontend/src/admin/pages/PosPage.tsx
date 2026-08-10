@@ -5,6 +5,7 @@ import { Select } from '../components/Select'
 import { Toast } from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
 import { BarcodeScannerView } from '../components/BarcodeScannerView'
+import { ProductPicker } from '../components/ProductPicker'
 import {
   BarcodeIcon,
   CameraIcon,
@@ -16,6 +17,7 @@ import {
   ChevronDownIcon,
   CashIcon,
   EyeIcon,
+  SearchIcon,
 } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner'
@@ -32,6 +34,7 @@ import {
   type ProductBundle,
   type Commission,
   type SaleReturn,
+  type ProductSearchItem,
 } from '../../lib/api'
 
 const CURRENCY = 'TJS'
@@ -449,6 +452,10 @@ export function PosPage() {
   const [scanError, setScanError] = useState('')
   const [lastScan, setLastScan] = useState<ScanBarcodeResult | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
+  // Fallback path #2 alongside manual barcode entry (task spec: "Поиск товара по названию тоже
+  // доступен на экране кассы") -- for when a barcode is scuffed/missing/unreadable and retyping
+  // it isn't realistic, but the cashier knows the product's name.
+  const [nameSearchOpen, setNameSearchOpen] = useState(false)
 
   const [cart, setCart] = useState<CartLine[]>([])
   const [cartBundles, setCartBundles] = useState<{ productBundleId: number; name: string; bundlePrice: number; currency: string; quantity: number }[]>([])
@@ -533,12 +540,30 @@ export function PosPage() {
   // continuous: true -- a cashier rings up many items in a row, so the camera keeps
   // reading after each hit instead of closing (the hook's own value-based dedupe
   // stops the same barcode from being added twice while it's still in frame).
+  // beepOnDetect: true -- POS is the one screen where an audience actually needs to hear
+  // that a scan landed, not just see a border flash.
   const scanner = useBarcodeScanner({
     onDetect: (code) => {
       lookupAndAddToCart(code)
     },
     continuous: true,
+    beepOnDetect: true,
   })
+
+  function handleNamePicked(item: ProductSearchItem | null) {
+    if (!item) return
+    if (item.price == null) {
+      setScanError(`«${item.name}» не продаётся в вашем магазине — нет цены`)
+    } else {
+      setScanError('')
+      addToCart(item.productId, item.name, item.price)
+    }
+    // Hands focus back to the barcode field -- a hardware scanner emulates a keyboard, so
+    // whatever field has focus after this is where its next scan lands. Closing the picker
+    // instead of leaving it open also means that's the barcode input again, not a dead panel.
+    setNameSearchOpen(false)
+    inputRef.current?.focus()
+  }
 
   useEffect(() => {
     if (cameraOpen) {
@@ -654,7 +679,10 @@ export function PosPage() {
           </form>
           <button
             type="button"
-            onClick={() => setCameraOpen((v) => !v)}
+            onClick={() => {
+              setCameraOpen((v) => !v)
+              setNameSearchOpen(false)
+            }}
             title={cameraOpen ? 'Скрыть камеру' : 'Сканировать камерой'}
             aria-pressed={cameraOpen}
             className={`shrink-0 rounded-[14px] border px-4 transition-colors ${
@@ -665,15 +693,42 @@ export function PosPage() {
           >
             <CameraIcon width={17} height={17} />
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setNameSearchOpen((v) => !v)
+              setCameraOpen(false)
+            }}
+            title={nameSearchOpen ? 'Скрыть поиск по названию' : 'Найти товар по названию'}
+            aria-pressed={nameSearchOpen}
+            className={`shrink-0 rounded-[14px] border px-4 transition-colors ${
+              nameSearchOpen
+                ? 'border-[color:var(--admin-accent)] bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]'
+                : 'border-[color:var(--admin-border)] bg-[color:var(--admin-card)] text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]'
+            }`}
+          >
+            <SearchIcon width={17} height={17} />
+          </button>
         </div>
 
+        {/* Desktop demo note: a real chunk of the screen (size="large"), not a phone-sized
+            rectangle -- a laptop screen has the room, and a bigger preview is also just easier
+            to line a barcode up in. */}
         {cameraOpen && (
           <BarcodeScannerView
             videoRef={scanner.videoRef}
             phase={scanner.phase}
             onStart={scanner.start}
-            className="aspect-video max-h-[280px] w-full"
+            justDetected={scanner.justDetected}
+            devices={scanner.devices}
+            selectedDeviceId={scanner.selectedDeviceId}
+            onSelectDevice={scanner.selectDevice}
+            size="large"
           />
+        )}
+
+        {nameSearchOpen && (
+          <ProductPicker value={null} onChange={handleNamePicked} storeId={storeId ?? undefined} placeholder="Название, штрихкод или бренд…" />
         )}
 
         {scanError && (

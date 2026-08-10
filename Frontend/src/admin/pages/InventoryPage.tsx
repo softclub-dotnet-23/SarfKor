@@ -239,6 +239,7 @@ export function InventoryPage() {
     onDetect: (code) => {
       lookupBarcode(code)
     },
+    beepOnDetect: true,
   })
 
   useEffect(() => {
@@ -586,7 +587,15 @@ export function InventoryPage() {
           </button>
 
           {cameraOpen && (
-            <BarcodeScannerView videoRef={scanner.videoRef} phase={scanner.phase} onStart={scanner.start} />
+            <BarcodeScannerView
+              videoRef={scanner.videoRef}
+              phase={scanner.phase}
+              onStart={scanner.start}
+              justDetected={scanner.justDetected}
+              devices={scanner.devices}
+              selectedDeviceId={scanner.selectedDeviceId}
+              onSelectDevice={scanner.selectDevice}
+            />
           )}
 
           <input

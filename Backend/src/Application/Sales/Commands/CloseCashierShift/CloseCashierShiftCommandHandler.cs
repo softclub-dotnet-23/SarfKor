@@ -43,6 +43,9 @@ public sealed class CloseCashierShiftCommandHandler(
         shift.ClosingCash = new Money(command.ClosingCash, shift.OpeningCash.Currency);
         shift.EndedAt = DateTimeOffset.UtcNow;
 
+        // GetByIdAsync returns an untracked instance (see CashierShiftRepository) -- SaveChanges
+        // alone would see no pending changes without this explicit attach-and-mark-modified.
+        cashierShiftRepository.Update(shift);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new CloseCashierShiftResult(CloseCashierShiftOutcome.Closed, expectedCash, command.ClosingCash, command.ClosingCash - expectedCash);

@@ -75,6 +75,7 @@ const RU = {
   'common.saving': 'Секунду…',
   'common.retry': 'Повторить',
   'common.routeCrashed': 'Не удалось показать этот раздел. Попробуйте ещё раз.',
+  'common.routeCrashedNamed': 'Не удалось загрузить раздел «{section}»',
   'common.errorForbidden': 'Нет доступа',
   'common.errorNotFound': 'Не найдено',
   'common.errorServer': 'Ошибка сервера. Мы уже знаем и разбираемся.',
@@ -131,6 +132,7 @@ const RU = {
   'partner.shift.title': 'Смена',
   'partner.shift.onSince': 'На смене с {time}',
   'partner.shift.notOpen': 'Смена не открыта',
+  'partner.shift.checkError': 'Не удалось проверить смену',
   'partner.shift.amountInDrawer': 'Сумма в кассе',
   'partner.shift.openingAmount': 'Начальная сумма',
   'partner.shift.close': 'Закрыть смену',
@@ -355,6 +357,7 @@ const TG: Record<Key, string> = {
   'common.retry': 'Такрор кардан',
   // Best-effort, not verified by a native speaker — see delivery report.
   'common.routeCrashed': 'Ин бахш кушода нашуд. Лутфан такрор кунед.',
+  'common.routeCrashedNamed': 'Бахши «{section}» бор нашуд',
   // Best-effort, not verified by a native speaker — see delivery report.
   'common.errorForbidden': 'Дастрасӣ нест',
   'common.errorNotFound': 'Ёфт нашуд',
@@ -411,6 +414,7 @@ const TG: Record<Key, string> = {
   'partner.shift.title': 'Смена',
   'partner.shift.onSince': 'Дар смена аз {time}',
   'partner.shift.notOpen': 'Смена кушода нашудааст',
+  'partner.shift.checkError': 'Ҳолати смена тафтиш нашуд',
   'partner.shift.amountInDrawer': 'Маблағ дар касса',
   'partner.shift.openingAmount': 'Маблағи ибтидоӣ',
   'partner.shift.close': 'Пӯшидани смена',

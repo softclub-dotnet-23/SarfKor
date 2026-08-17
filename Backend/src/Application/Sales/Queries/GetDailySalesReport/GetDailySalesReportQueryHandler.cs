@@ -22,7 +22,11 @@ public sealed class GetDailySalesReportQueryHandler(
         var sales = await saleTransactionRepository.GetCompletedInRangeAsync(query.StoreId, from, to, cancellationToken);
 
         var revenue = sales.SelectMany(s => s.Lines).Sum(l => l.UnitPriceAtSale.Amount * l.Quantity);
-        var currency = sales.FirstOrDefault()?.Currency;
+        // FirstOrDefault()?.Currency is null on a zero-sales day (empty set, nothing to read a
+        // currency off of) -- same convention as GetPlatformMetricsQueryHandler: fall back to the
+        // platform's sole operating currency rather than surface null to a frontend field typed
+        // as a plain string.
+        var currency = sales.FirstOrDefault()?.Currency ?? "TJS";
 
         return new GetDailySalesReportResult(GetDailySalesReportOutcome.Found, query.Date, sales.Count, revenue, currency);
     }

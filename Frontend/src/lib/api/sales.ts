@@ -131,8 +131,12 @@ export interface CashierShift {
   cashierShiftId: number
   cashierUserId: string
   openingCash: number
-  expectedCash?: number
-  closingCash?: number
+  // The backend serializes these as JSON `null` for a shift that's still open, not by omitting
+  // the key -- `?: number` alone types this as `number | undefined` and lets `!== undefined`
+  // guards pass straight through a real `null`, which is exactly the crash this type was hiding
+  // (money(null) -> null.toLocaleString()). See StaffPage.tsx's shift history render.
+  expectedCash?: number | null
+  closingCash?: number | null
   currency: string
   startedAt: string
   endedAt?: string
@@ -146,7 +150,7 @@ export function openCashierShift(storeId: number, openingCash: number, currency:
 }
 
 export function closeCashierShift(cashierShiftId: number, closingCash: number) {
-  return apiFetch<{ outcome: string; expectedCash?: number; closingCash?: number; discrepancy?: number }>(
+  return apiFetch<{ outcome: string; expectedCash?: number | null; closingCash?: number | null; discrepancy?: number }>(
     `/api/cashier-shifts/${cashierShiftId}/close`,
     { method: 'POST', body: { closingCash } },
   )

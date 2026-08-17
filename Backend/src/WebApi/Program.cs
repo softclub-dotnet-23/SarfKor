@@ -216,6 +216,14 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("account-security", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
+
+    // Client-side render-crash reporting (RouteErrorBoundary -> ClientErrorsController) —
+    // unauthenticated by necessity (see controller remarks), so partitioned by IP like "scan".
+    // Generous enough that one real crash storm during a demo doesn't get itself throttled away
+    // right when it matters most, bounded enough that it can't be used to flood the log.
+    options.AddPolicy("client-error-report", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(5) }));
 });
 
 var app = builder.Build();

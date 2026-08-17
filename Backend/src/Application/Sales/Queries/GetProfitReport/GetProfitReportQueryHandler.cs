@@ -27,7 +27,8 @@ public sealed class GetProfitReportQueryHandler(
         var lines = sales.SelectMany(s => s.Lines).ToList();
         var revenue = lines.Sum(l => l.UnitPriceAtSale.Amount * l.Quantity);
         var totalCost = lines.Sum(l => (costByProduct.TryGetValue(l.ProductId, out var cost) ? cost : 0) * l.Quantity);
-        var currency = sales.FirstOrDefault()?.Currency;
+        // Same empty-set fallback as GetDailySalesReportQueryHandler -- see its comment.
+        var currency = sales.FirstOrDefault()?.Currency ?? "TJS";
 
         return new GetProfitReportResult(GetProfitReportOutcome.Found, query.FromDate, query.ToDate, revenue, totalCost, revenue - totalCost, currency);
     }

@@ -37,6 +37,10 @@ function ShiftBar() {
   const t = useT()
   const { time } = useLocaleFormat()
   const [shifts, setShifts] = useState<CashierShift[] | null>(null)
+  // Distinct from "loaded, no open shift" -- a cashier standing at the register reads this
+  // strip as ground truth about the drawer. Defaulting to "не открыта" on a failed request
+  // is indistinguishable from a genuinely closed shift and hides a real backend failure.
+  const [loadError, setLoadError] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [amount, setAmount] = useState('')
 
@@ -45,8 +49,9 @@ function ShiftBar() {
     try {
       const res = await salesApi.getCashierShifts(storeId)
       setShifts(res.shifts ?? [])
+      setLoadError(false)
     } catch {
-      setShifts([])
+      setLoadError(true)
     }
   }, [storeId])
 
@@ -82,21 +87,28 @@ function ShiftBar() {
         <div className="flex min-w-0 items-center gap-2">
           <span
             aria-hidden
-            className={clsx('h-2 w-2 shrink-0 rounded-full', myOpenShift ? 'bg-[color:var(--admin-success)]' : 'bg-[color:var(--admin-text-tertiary)] opacity-50')}
+            className={clsx(
+              'h-2 w-2 shrink-0 rounded-full',
+              loadError ? 'bg-[color:var(--admin-danger)]' : myOpenShift ? 'bg-[color:var(--admin-success)]' : 'bg-[color:var(--admin-text-tertiary)] opacity-50',
+            )}
           />
-          <span className="truncate text-[12.5px] font-medium text-[color:var(--admin-text-secondary)]">
-            {myOpenShift ? t('partner.shift.onSince', { time: time(myOpenShift.startedAt) }) : t('partner.shift.notOpen')}
+          <span className={clsx('truncate text-[12.5px] font-medium', loadError ? 'text-[color:var(--admin-danger)]' : 'text-[color:var(--admin-text-secondary)]')}>
+            {loadError ? t('partner.shift.checkError') : myOpenShift ? t('partner.shift.onSince', { time: time(myOpenShift.startedAt) }) : t('partner.shift.notOpen')}
           </span>
         </div>
         <button
-          onClick={openModal}
+          onClick={loadError ? load : openModal}
           disabled={!storeId}
           className={clsx(
             'shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-opacity disabled:opacity-50',
-            myOpenShift ? 'bg-[color:var(--admin-danger-dim)] text-[color:var(--admin-danger)]' : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
+            loadError
+              ? 'bg-[color:var(--admin-danger-dim)] text-[color:var(--admin-danger)]'
+              : myOpenShift
+              ? 'bg-[color:var(--admin-danger-dim)] text-[color:var(--admin-danger)]'
+              : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
           )}
         >
-          {myOpenShift ? t('partner.shift.close') : t('partner.shift.open')}
+          {loadError ? t('common.retry') : myOpenShift ? t('partner.shift.close') : t('partner.shift.open')}
         </button>
       </div>
 
@@ -195,7 +207,7 @@ export function CashierShell() {
 
       <main className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-3">
         <PageTransition pathKey={location.pathname}>
-          <RouteErrorBoundary key={location.pathname}>
+          <RouteErrorBoundary key={location.pathname} sectionLabel={t(page.key)}>
             <Outlet />
           </RouteErrorBoundary>
         </PageTransition>

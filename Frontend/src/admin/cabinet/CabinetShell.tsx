@@ -81,6 +81,15 @@ const NAV_ITEMS = [
   { to: '/admin/settings',  label: 'Настройки',  icon: SettingsIcon, end: false, ownerOnly: true  },
 ]
 
+// Which nav item the current route belongs to, for RouteErrorBoundary's "не удалось загрузить
+// раздел «...»" message -- longest matching `to` wins so e.g. '/admin/staff' doesn't get
+// shadowed by the '/admin' dashboard entry ('end: true' there means it can only match exactly).
+function sectionLabelFor(pathname: string): string | undefined {
+  return NAV_ITEMS
+    .filter((item) => (item.end ? pathname === item.to : pathname.startsWith(item.to)))
+    .sort((a, b) => b.to.length - a.to.length)[0]?.label
+}
+
 // ─── useDismiss ───────────────────────────────────────────────────────────────
 function useDismiss(open: boolean, onDismiss: () => void) {
   const ref = useRef<HTMLDivElement>(null)
@@ -114,6 +123,11 @@ function ShiftBadge({ collapsed }: { collapsed: boolean }) {
   const { storeId, user } = useAuth()
   const [open, setOpen] = useState(false)
   const [shifts, setShifts] = useState<CashierShift[] | null>(null)
+  // Distinct from "shifts loaded and empty" -- a failed request must never collapse into
+  // the same "Смена закрыта" state as a genuinely confirmed-closed shift. This badge is
+  // the one place in the cabinet that reads as a source of truth about live cash-drawer
+  // state; defaulting to "closed" on a network/server error is a plausible-looking lie.
+  const [loadError, setLoadError] = useState(false)
   const [amount, setAmount] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -127,7 +141,8 @@ function ShiftBadge({ collapsed }: { collapsed: boolean }) {
     try {
       const res = await salesApi.getCashierShifts(storeId)
       setShifts(res.shifts ?? [])
-    } catch { setShifts([]) }
+      setLoadError(false)
+    } catch { setLoadError(true) }
   }, [storeId])
 
   useEffect(() => { load() }, [load])
@@ -167,19 +182,21 @@ function ShiftBadge({ collapsed }: { collapsed: boolean }) {
       <button
         ref={btnRef}
         onClick={handleOpen}
-        aria-label={isOpen ? 'Смена открыта — управление сменой' : 'Смена закрыта — управление сменой'}
-        title={isOpen ? 'Смена открыта' : 'Смена закрыта'}
+        aria-label={loadError ? 'Не удалось проверить смену — повторить' : isOpen ? 'Смена открыта — управление сменой' : 'Смена закрыта — управление сменой'}
+        title={loadError ? 'Не удалось проверить смену' : isOpen ? 'Смена открыта' : 'Смена закрыта'}
         className={clsx(
           'flex items-center gap-2 rounded-[6px] border transition-colors duration-150',
           collapsed ? 'h-9 w-9 justify-center' : 'w-full px-3 py-2',
-          isOpen
+          loadError
+            ? 'border-[color:var(--admin-danger-dim)] bg-[color:var(--admin-danger-dim)] text-[color:var(--admin-danger)]'
+            : isOpen
             ? 'border-[color:var(--admin-success-dim)] bg-[color:var(--admin-success-dim)] text-[color:var(--admin-success)]'
             : 'border-[color:var(--admin-border)] text-[color:var(--admin-text-tertiary)] hover:border-[color:var(--admin-border-strong)] hover:text-[color:var(--admin-text-secondary)]',
         )}
       >
-        <span className={clsx('h-1.5 w-1.5 shrink-0 rounded-full', isOpen ? 'bg-[color:var(--admin-success)]' : 'bg-current opacity-40')} aria-hidden />
+        <span className={clsx('h-1.5 w-1.5 shrink-0 rounded-full', loadError ? 'bg-[color:var(--admin-danger)]' : isOpen ? 'bg-[color:var(--admin-success)]' : 'bg-current opacity-40')} aria-hidden />
         {!collapsed && (
-          <span className="text-[12px] font-[500]">{isOpen ? 'Смена открыта' : 'Смена закрыта'}</span>
+          <span className="text-[12px] font-[500]">{loadError ? 'Ошибка проверки' : isOpen ? 'Смена открыта' : 'Смена закрыта'}</span>
         )}
       </button>
 
@@ -202,29 +219,45 @@ function ShiftBadge({ collapsed }: { collapsed: boolean }) {
             }}
           >
             <div className="mb-1 text-[11px] font-[600] uppercase tracking-[0.1em] text-[color:var(--admin-text-tertiary)]">Управление сменой</div>
-            <div className="mb-4 text-[12px] text-[color:var(--admin-text-secondary)]">
-              {isOpen
-                ? `Открыта в ${new Date(myOpenShift!.startedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
-                : 'Смена не открыта'}
-            </div>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder={isOpen ? 'Итоговая сумма в кассе' : 'Начальная сумма, TJS'}
-              className="mb-3 w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]"
-            />
-            {error && <div className="mb-2 text-[11px] font-[500] text-[color:var(--admin-danger)]">{error}</div>}
-            <button
-              onClick={handleToggle}
-              disabled={busy}
-              className={clsx(
-                'w-full rounded-[8px] py-2.5 text-[13px] font-[500] transition-opacity disabled:opacity-40',
-                isOpen ? 'bg-[color:var(--admin-danger)] text-[color:var(--admin-danger-fg)]' : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
-              )}
-            >
-              {busy ? '…' : isOpen ? 'Закрыть смену' : 'Открыть смену'}
-            </button>
+            {loadError ? (
+              <>
+                <div className="mb-4 text-[12px] text-[color:var(--admin-danger)]">
+                  Не удалось проверить статус смены. Показанная кнопка — не подтверждённое состояние, а сбой запроса.
+                </div>
+                <button
+                  onClick={load}
+                  className="w-full rounded-[8px] py-2.5 text-[13px] font-[500] bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)] transition-opacity"
+                >
+                  Повторить
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="mb-4 text-[12px] text-[color:var(--admin-text-secondary)]">
+                  {isOpen
+                    ? `Открыта в ${new Date(myOpenShift!.startedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Смена не открыта'}
+                </div>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder={isOpen ? 'Итоговая сумма в кассе' : 'Начальная сумма, TJS'}
+                  className="mb-3 w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]"
+                />
+                {error && <div className="mb-2 text-[11px] font-[500] text-[color:var(--admin-danger)]">{error}</div>}
+                <button
+                  onClick={handleToggle}
+                  disabled={busy}
+                  className={clsx(
+                    'w-full rounded-[8px] py-2.5 text-[13px] font-[500] transition-opacity disabled:opacity-40',
+                    isOpen ? 'bg-[color:var(--admin-danger)] text-[color:var(--admin-danger-fg)]' : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
+                  )}
+                >
+                  {busy ? '…' : isOpen ? 'Закрыть смену' : 'Открыть смену'}
+                </button>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -636,7 +669,7 @@ export function CabinetShell() {
 
         <main className="flex-1 overflow-y-auto px-4 py-5 pb-20 sm:px-6 sm:py-6 md:pb-6 lg:px-8 lg:py-7">
           <PageTransition pathKey={location.pathname}>
-            <RouteErrorBoundary key={location.pathname}>
+            <RouteErrorBoundary key={location.pathname} sectionLabel={sectionLabelFor(location.pathname)}>
               <Outlet />
             </RouteErrorBoundary>
           </PageTransition>

@@ -998,7 +998,11 @@ export function StaffPage() {
               <div className="flex items-center gap-4">
                 <div className="text-right text-[12px] text-[color:var(--admin-text-secondary)]">
                   <div>{t('partner.staff.shiftOpening')}: {money(s.openingCash)} {s.currency}</div>
-                  {s.closingCash !== undefined && <div>{t('partner.staff.shiftClosing')}: {money(s.closingCash)} {s.currency}</div>}
+                  {/* Backend sends null (not a missing key) for a shift that's still open --
+                      != null intentionally catches both null and undefined; a strict !==
+                      undefined check let a real null slip through into money(), which crashed
+                      on null.toLocaleString() for every store with an open shift. */}
+                  {s.closingCash != null && <div>{t('partner.staff.shiftClosing')}: {money(s.closingCash)} {s.currency}</div>}
                 </div>
                 <span
                   className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold ${

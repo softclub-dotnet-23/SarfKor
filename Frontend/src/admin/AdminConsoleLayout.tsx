@@ -270,7 +270,7 @@ export function AdminConsoleLayout() {
 
         <main className="flex-1 overflow-y-auto px-6 py-6">
           <PageTransition pathKey={location.pathname}>
-            <RouteErrorBoundary key={location.pathname}>
+            <RouteErrorBoundary key={location.pathname} sectionLabel={t(pageKeys.title)}>
               <Outlet />
             </RouteErrorBoundary>
           </PageTransition>

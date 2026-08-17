@@ -2,11 +2,11 @@ import { apiFetch } from './client'
 
 export interface AdminUserListItem {
   userId: string
-  email?: string
+  email: string | null
   createdAt: string
   isBlocked: boolean
   roles: string[]
-  trustScore?: number
+  trustScore: number | null
 }
 
 export function getUsers(params: { skip?: number; take?: number; search?: string }) {
@@ -22,13 +22,13 @@ export interface UserStoreAttachment {
 export interface AdminUserDetail {
   outcome: 'Found' | 'NotFound'
   userId: string
-  email?: string
-  createdAt?: string
+  email: string | null
+  createdAt: string | null
   isBlocked: boolean
-  blockedReason?: string
-  blockedAt?: string
+  blockedReason: string | null
+  blockedAt: string | null
   roles: string[]
-  trustScore?: number
+  trustScore: number | null
   priceSubmissionsTotal: number
   priceSubmissionsVerified: number
   reportsAgainstLast90Days: number
@@ -55,7 +55,7 @@ export function unblockUser(userId: string, reason: string) {
 
 export interface TrustScoreListItem {
   userId: string
-  email?: string
+  email: string | null
   score: number
   updatedAt: string
 }
@@ -74,9 +74,9 @@ export interface UserInvitationListItem {
   invitationId: number
   email: string
   invitedRole: InvitedRole
-  storeId?: number
-  storeName?: string
-  employeeRole?: 'Owner' | 'Cashier'
+  storeId: number | null
+  storeName: string | null
+  employeeRole: 'Owner' | 'Cashier' | null
   status: UserInvitationStatus
   expiresAt: string
   createdAt: string
@@ -90,7 +90,7 @@ export function getUserInvitations() {
 export type CreateUserInvitationOutcome = 'Sent' | 'Forbidden' | 'StoreNotFound'
 
 export function createUserInvitation(email: string, invitedRole: InvitedRole, storeId?: number) {
-  return apiFetch<{ outcome: CreateUserInvitationOutcome; invitationId?: number; expiresAt?: string }>('/api/admin/users/invitations', {
+  return apiFetch<{ outcome: CreateUserInvitationOutcome; invitationId: number | null; expiresAt: string | null }>('/api/admin/users/invitations', {
     method: 'POST',
     body: { email, invitedRole, storeId },
   })

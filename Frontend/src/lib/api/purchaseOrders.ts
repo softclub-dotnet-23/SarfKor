@@ -12,12 +12,12 @@ export interface PurchaseOrder {
   supplierId: number
   status: 'Draft' | 'Submitted' | 'Received' | 'Cancelled'
   createdAt: string
-  receivedAt?: string
+  receivedAt: string | null
 }
 
 export interface CreatePurchaseOrderResult {
   outcome: 'Created' | 'StoreNotFound' | 'Forbidden'
-  purchaseOrderId?: number
+  purchaseOrderId: number | null
 }
 
 export function createPurchaseOrder(storeId: number, supplierId: number, lines: PurchaseOrderLine[]) {
@@ -49,7 +49,7 @@ export function receivePurchaseOrder(purchaseOrderId: number) {
 
 export interface GetPurchaseOrdersResult {
   outcome: 'Found' | 'StoreNotFound' | 'Forbidden'
-  orders?: PurchaseOrder[]
+  orders: PurchaseOrder[] | null
 }
 
 export function getPurchaseOrders(storeId: number) {

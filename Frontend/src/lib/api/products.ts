@@ -5,7 +5,7 @@ export interface ScanResultStore {
   storeName: string
   price: number
   currency: string
-  distanceKm?: number
+  distanceKm: number | null
   priceEntryId: number
 }
 
@@ -53,7 +53,7 @@ export interface StoreBasket {
   storeName: string
   totalPrice: number
   currency: string
-  distanceKm?: number
+  distanceKm: number | null
 }
 
 export function compareBasket(productIds: number[], lat?: number, lng?: number) {
@@ -83,7 +83,7 @@ export function getMostScannedProducts(limit = 10) {
  * failed price lookup.
  */
 export function recordScan(productId: number, storeId?: number) {
-  return apiFetch<{ outcome: string; scanId?: number }>('/api/scans', {
+  return apiFetch<{ outcome: string; scanId: number | null }>('/api/scans', {
     method: 'POST',
     body: { productId, storeId },
   })
@@ -100,10 +100,10 @@ export interface ProductSearchItem {
   productId: number
   name: string
   barcode: string
-  brandName?: string
-  categoryName?: string
-  price?: number
-  currency?: string
+  brandName: string | null
+  categoryName: string | null
+  price: number | null
+  currency: string | null
 }
 
 // Backs the shared entity picker (EntityPicker/ProductPicker) -- server-side search by
@@ -127,7 +127,7 @@ export interface SubmitNewProductRequest {
 // Moderation is gone -- every submission (partner or plain user) publishes a Product immediately,
 // so the response always carries productId alongside the provenance-only productSubmissionId.
 export function submitNewProduct(req: SubmitNewProductRequest) {
-  return apiFetch<{ outcome: string; productSubmissionId?: number; productId?: number }>('/api/products/submissions', {
+  return apiFetch<{ outcome: string; productSubmissionId: number | null; productId: number | null }>('/api/products/submissions', {
     method: 'POST',
     body: req,
   })

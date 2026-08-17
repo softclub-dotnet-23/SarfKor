@@ -83,7 +83,7 @@ export function Stat({
 }: {
   label: string
   value: string | number
-  suffix?: string
+  suffix?: string | null
   accent?: string
 }) {
   return (

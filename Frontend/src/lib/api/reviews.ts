@@ -3,7 +3,7 @@ import { apiFetch } from './client'
 export interface Review {
   reviewId: number
   userId: string
-  storeId?: number
+  storeId: number | null
   rating: number
   comment: string
   createdAt: string
@@ -14,7 +14,7 @@ export function getReviews(productId: number) {
 }
 
 export function replyToReview(reviewId: number, message: string) {
-  return apiFetch<{ outcome: string; replyId?: number }>(`/api/reviews/${reviewId}/reply`, {
+  return apiFetch<{ outcome: string; replyId: number | null }>(`/api/reviews/${reviewId}/reply`, {
     method: 'POST',
     body: { message },
   })

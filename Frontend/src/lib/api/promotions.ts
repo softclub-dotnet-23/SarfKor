@@ -4,8 +4,8 @@ export type PromotionDiscountType = 'PercentageOff' | 'FixedAmountOff' | 'BuyOne
 
 export interface Promotion {
   promotionId: number
-  productId?: number
-  categoryId?: number
+  productId: number | null
+  categoryId: number | null
   discountType: string
   discountValue: number
   startsAt: string
@@ -25,7 +25,7 @@ export interface CreatePromotionInput {
 
 export interface CreatePromotionResult {
   outcome: 'Created' | 'StoreNotFound' | 'Forbidden'
-  promotionId?: number
+  promotionId: number | null
 }
 
 export function createPromotion(storeId: number, input: CreatePromotionInput) {

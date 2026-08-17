@@ -2,16 +2,16 @@ import { apiFetch, apiFetchBlob, apiUpload } from './client'
 
 export interface UserProfile {
   found: boolean
-  displayName?: string
-  avatarReference?: string
-  preferredLanguage?: string
+  displayName: string | null
+  avatarReference: string | null
+  preferredLanguage: string | null
 }
 
 export function getProfile() {
   return apiFetch<UserProfile>('/api/me/profile')
 }
 
-export function updateProfile(displayName: string, avatarReference: string | undefined, preferredLanguage: string) {
+export function updateProfile(displayName: string, avatarReference: string | null | undefined, preferredLanguage: string) {
   return apiFetch<{ userProfileId: number }>('/api/me/profile', {
     method: 'PUT',
     body: { displayName, avatarReference, preferredLanguage },
@@ -53,8 +53,8 @@ export type SecurityEventType = 'LoginSucceeded' | 'LoginFailed' | 'NewDeviceLog
 
 export interface SecurityEvent {
   type: SecurityEventType
-  ipAddress?: string
-  userAgent?: string
+  ipAddress: string | null
+  userAgent: string | null
   occurredAt: string
 }
 

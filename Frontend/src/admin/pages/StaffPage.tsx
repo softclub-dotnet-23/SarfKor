@@ -48,7 +48,7 @@ function shiftPresets(t: (key: any) => string) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function shiftLabel(t: (key: any) => string, start?: string, end?: string) {
+function shiftLabel(t: (key: any) => string, start?: string | null, end?: string | null) {
   if (!start || !end) return null
   const preset = SHIFT_PRESETS.find((p) => p.start === start && p.end === end)
   if (preset) return t(`partner.staff.shiftPreset.${preset.value}`)

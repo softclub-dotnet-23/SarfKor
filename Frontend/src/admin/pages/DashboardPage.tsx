@@ -10,8 +10,11 @@ import { daysAgo, firstOfMonth, today, weekdayLabel } from '../lib/dates'
 
 const DAILY_GOAL_KEY = 'sarfkor-daily-goal'
 
-function fmt(n: number) {
-  return Math.round(n).toLocaleString('ru-RU')
+// n is null on any report row that isn't the 'Found' outcome (see StoreDashboard/ProfitReport
+// comment in lib/api/stores.ts) -- every KpiStat call below reads that as "0", the same way an
+// empty/not-yet-loaded number already displays, rather than crashing on Math.round(null).
+function fmt(n: number | null) {
+  return Math.round(n ?? 0).toLocaleString('ru-RU')
 }
 
 interface DashboardData {
@@ -51,7 +54,7 @@ function useDashboardData(storeId: number) {
         dashboard,
         profitToday,
         profitMonth,
-        week: weekDates.map((d, i) => ({ day: weekdayLabel(d), value: weekReports[i].revenue })),
+        week: weekDates.map((d, i) => ({ day: weekdayLabel(d), value: weekReports[i].revenue ?? 0 })),
         alerts: alertsRes.alerts ?? [],
         shifts: shiftsRes.shifts ?? [],
       })
@@ -83,7 +86,7 @@ function KpiStat({
 }: {
   label: string
   value: string
-  suffix?: string
+  suffix?: string | null
   sub?: string
   accentColor?: string
 }) {
@@ -121,8 +124,13 @@ export function DashboardPage() {
   }
 
   const { dashboard, profitToday, profitMonth, week, alerts, shifts } = data
-  const marginPct = profitMonth.revenue > 0 ? Math.round((profitMonth.profit / profitMonth.revenue) * 100) : 0
-  const goalPct = Math.min(Math.round((dashboard.todaySalesCount / dailyGoal) * 100), 100)
+  const monthRevenue = profitMonth.revenue ?? 0
+  const monthProfit = profitMonth.profit ?? 0
+  const marginPct = monthRevenue > 0 ? Math.round((monthProfit / monthRevenue) * 100) : 0
+  const goalPct = Math.min(Math.round(((dashboard.todaySalesCount ?? 0) / dailyGoal) * 100), 100)
+  const todayRevenue = profitToday.revenue ?? 0
+  const todayProfit = profitToday.profit ?? 0
+  const todayMarginPct = todayRevenue > 0 ? Math.round((todayProfit / todayRevenue) * 100) : null
   const recentShifts = [...shifts].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, 4)
 
   return (
@@ -150,7 +158,7 @@ export function DashboardPage() {
               label="Прибыль сегодня"
               value={fmt(profitToday.profit)}
               suffix={profitToday.currency}
-              sub={profitToday.revenue > 0 ? `маржа ${Math.round((profitToday.profit / profitToday.revenue) * 100)}%` : undefined}
+              sub={todayMarginPct !== null ? `маржа ${todayMarginPct}%` : undefined}
               accentColor="var(--admin-success)"
             />
           </div>

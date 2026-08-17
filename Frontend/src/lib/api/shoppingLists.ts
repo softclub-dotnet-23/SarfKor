@@ -30,7 +30,7 @@ export function createShoppingList(name: string) {
 }
 
 export function addShoppingListItem(listId: number, productId: number, quantity: number) {
-  return apiFetch<{ outcome: string; itemId?: number }>(`/api/shopping-lists/${listId}/items`, {
+  return apiFetch<{ outcome: string; itemId: number | null }>(`/api/shopping-lists/${listId}/items`, {
     method: 'POST',
     body: { productId, quantity },
   })

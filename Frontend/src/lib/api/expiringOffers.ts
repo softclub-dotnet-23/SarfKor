@@ -10,12 +10,12 @@ export interface ExpiringOffer {
   discountedPrice: number
   currency: string
   expiresAt: string
-  distanceKm?: number
+  distanceKm: number | null
 }
 
 export interface PublishExpiringOfferResult {
   outcome: 'Published' | 'StoreNotFound' | 'ProductNotFound' | 'Forbidden'
-  offerId?: number
+  offerId: number | null
 }
 
 export function publishExpiringOffer(

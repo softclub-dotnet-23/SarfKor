@@ -52,7 +52,7 @@ export function mergeBrands(targetBrandId: number, sourceBrandIds: number[]) {
 export interface Category {
   categoryId: number
   name: string
-  parentCategoryId?: number
+  parentCategoryId: number | null
   displayOrder: number
   isHidden: boolean
 }
@@ -62,7 +62,7 @@ export function getCategories() {
 }
 
 export function createCategory(name: string, parentCategoryId?: number) {
-  return apiFetch<{ outcome: string; categoryId?: number }>('/api/catalog/categories', {
+  return apiFetch<{ outcome: string; categoryId: number | null }>('/api/catalog/categories', {
     method: 'POST',
     body: { name, parentCategoryId },
   })
@@ -83,9 +83,9 @@ export interface TaxRate {
   taxRateId: number
   name: string
   percentage: number
-  categoryId?: number
-  effectiveFrom?: string
-  effectiveTo?: string
+  categoryId: number | null
+  effectiveFrom: string | null
+  effectiveTo: string | null
 }
 
 export function getTaxRates() {

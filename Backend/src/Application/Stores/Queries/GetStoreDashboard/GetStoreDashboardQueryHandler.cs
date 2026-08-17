@@ -22,7 +22,9 @@ public sealed class GetStoreDashboardQueryHandler(
 
         var todaySales = await saleTransactionRepository.GetCompletedInRangeAsync(query.StoreId, todayStart, todayEnd, cancellationToken);
         var todayRevenue = todaySales.SelectMany(s => s.Lines).Sum(l => l.UnitPriceAtSale.Amount * l.Quantity);
-        var currency = todaySales.FirstOrDefault()?.Currency;
+        // Same empty-set fallback as GetDailySalesReportQueryHandler/GetProfitReportQueryHandler --
+        // null here before the first sale of the day, which is most of every morning.
+        var currency = todaySales.FirstOrDefault()?.Currency ?? "TJS";
 
         var stockLevels = await stockLevelRepository.GetByStoreAsync(query.StoreId, cancellationToken);
         var productsInStock = stockLevels.Count(s => s.Quantity > 0);

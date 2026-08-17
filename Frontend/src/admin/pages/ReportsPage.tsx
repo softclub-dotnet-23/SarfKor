@@ -28,8 +28,8 @@ interface TopProduct {
   totalQuantity: number
 }
 
-function fmt(n: number) {
-  return Math.round(n).toLocaleString('ru-RU')
+function fmt(n: number | null) {
+  return Math.round(n ?? 0).toLocaleString('ru-RU')
 }
 
 function downloadCsv(rows: (string | number)[][], filename: string) {
@@ -68,7 +68,7 @@ export function ReportsPage() {
           productsApi.getTopSellingProducts(storeId, 8),
         ])
         setProfit(profitRes)
-        setChartData(chartDates.map((d, i) => ({ day: weekdayLabel(d), value: chartReports[i].revenue })))
+        setChartData(chartDates.map((d, i) => ({ day: weekdayLabel(d), value: chartReports[i].revenue ?? 0 })))
         setTopProducts(topRes.products ?? [])
       } catch (err) {
         console.error('Failed to load reports:', err)
@@ -88,7 +88,7 @@ export function ReportsPage() {
 
   function exportReport() {
     if (!profit) return
-    const marginPct = profit.revenue > 0 ? Math.round((profit.profit / profit.revenue) * 100) : 0
+    const marginPct = (profit.revenue ?? 0) > 0 ? Math.round(((profit.profit ?? 0) / (profit.revenue ?? 1)) * 100) : 0
     const rows: (string | number)[][] = [
       ['Отчёт', RANGE_LABEL[range]],
       ['Период', `${profit.fromDate} — ${profit.toDate}`],
@@ -122,7 +122,7 @@ export function ReportsPage() {
     )
   }
 
-  const marginPct = profit.revenue > 0 ? Math.round((profit.profit / profit.revenue) * 100) : 0
+  const marginPct = (profit.revenue ?? 0) > 0 ? Math.round(((profit.profit ?? 0) / (profit.revenue ?? 1)) * 100) : 0
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-5">

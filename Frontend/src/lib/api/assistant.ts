@@ -14,8 +14,8 @@ export interface ProposedAction {
 
 export interface AssistantChatResult {
   outcome: 'Answered' | 'StoreNotFound' | 'Forbidden'
-  replyText?: string
-  proposedAction?: ProposedAction
+  replyText: string | null
+  proposedAction: ProposedAction | null
 }
 
 // storeId/UserId-adjacent identity is re-verified server-side against real store
@@ -36,7 +36,7 @@ export function chat(storeId: number | null, history: AssistantChatMessage[], me
 
 export interface ConfirmActionResult {
   outcome: 'Confirmed' | 'AlreadyConfirmed' | 'NotFound' | 'Forbidden' | 'Expired' | 'FeatureDisabled' | 'ExecutionFailed'
-  summary?: string
+  summary: string | null
 }
 
 // Separate, explicitly user-triggered request -- never fired automatically just because the

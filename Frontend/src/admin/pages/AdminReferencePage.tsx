@@ -21,7 +21,7 @@ import {
 
 type MainTab = 'categories' | 'brands' | 'tax-rates'
 
-function fmtDate(iso?: string) {
+function fmtDate(iso?: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
 }
@@ -601,7 +601,7 @@ function TaxRatesSection({ createOpen, onCloseCreate }: { createOpen: boolean; o
     }
   }
 
-  const categoryName = (id?: number) => categories.find((c) => c.categoryId === id)?.name
+  const categoryName = (id?: number | null) => categories.find((c) => c.categoryId === id)?.name
 
   return (
     <div>

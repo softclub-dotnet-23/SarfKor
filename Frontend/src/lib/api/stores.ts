@@ -25,12 +25,19 @@ export function updateStore(storeId: number, req: UpdateStoreRequest) {
   })
 }
 
+// All payload fields below are null (not omitted) on every outcome except 'Found' -- see
+// GetStoreDashboardResult.cs/GetDailySalesReportResult.cs/GetProfitReportResult.cs, same
+// discriminated-outcome shape as everywhere else in this API. The previous "always present"
+// typing here was never actually enforced by any runtime check the compiler could see (callers
+// happen to early-return on outcome !== 'Found', but nothing tied that branch to these fields
+// becoming safe) -- currency specifically really could arrive null before the report handlers'
+// zero-sales-period fix (`?? "TJS"`), which this typing would have hidden from tsc entirely.
 export interface StoreDashboard {
   outcome: 'Found' | 'StoreNotFound' | 'Forbidden'
-  todaySalesCount: number
-  todayRevenue: number
-  currency: string
-  productsInStockCount: number
+  todaySalesCount: number | null
+  todayRevenue: number | null
+  currency: string | null
+  productsInStockCount: number | null
 }
 
 export function getStoreDashboard(storeId: number) {
@@ -39,10 +46,10 @@ export function getStoreDashboard(storeId: number) {
 
 export interface DailySalesReport {
   outcome: 'Found' | 'StoreNotFound' | 'Forbidden'
-  date: string
-  salesCount: number
-  revenue: number
-  currency: string
+  date: string | null
+  salesCount: number | null
+  revenue: number | null
+  currency: string | null
 }
 
 export function getDailySalesReport(storeId: number, date: string) {
@@ -51,12 +58,12 @@ export function getDailySalesReport(storeId: number, date: string) {
 
 export interface ProfitReport {
   outcome: 'Found' | 'StoreNotFound' | 'Forbidden'
-  fromDate: string
-  toDate: string
-  revenue: number
-  totalCost: number
-  profit: number
-  currency: string
+  fromDate: string | null
+  toDate: string | null
+  revenue: number | null
+  totalCost: number | null
+  profit: number | null
+  currency: string | null
 }
 
 export function getProfitReport(storeId: number, from: string, to: string) {
@@ -72,7 +79,7 @@ export interface CashierAnomaly {
 }
 
 export function getCashierAnomalies(storeId: number, from: string, to: string) {
-  return apiFetch<{ outcome: string; cashiers: CashierAnomaly[] }>(
+  return apiFetch<{ outcome: string; cashiers: CashierAnomaly[] | null }>(
     `/api/stores/${storeId}/reports/cashier-anomalies`,
     { query: { from, to } },
   )
@@ -84,11 +91,11 @@ export interface ReorderAlert {
   currentQuantity: number
   thresholdQuantity: number
   reorderQuantity: number
-  preferredSupplierId?: number
+  preferredSupplierId: number | null
 }
 
 export function getReorderAlerts(storeId: number) {
-  return apiFetch<{ outcome: string; alerts?: ReorderAlert[] }>(`/api/stores/${storeId}/reorder-alerts`)
+  return apiFetch<{ outcome: string; alerts: ReorderAlert[] | null }>(`/api/stores/${storeId}/reorder-alerts`)
 }
 
 export type StoreEmployeeRole = 'Owner' | 'Cashier'
@@ -98,15 +105,15 @@ export interface StoreEmployee {
   userId: string
   role: StoreEmployeeRole
   addedAt: string
-  firstName?: string
-  lastName?: string
-  email?: string
-  phoneNumber?: string
-  scheduleStart?: string
-  scheduleEnd?: string
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+  phoneNumber: string | null
+  scheduleStart: string | null
+  scheduleEnd: string | null
   isActive: boolean
-  monthlySalaryAmount?: number
-  monthlySalaryCurrency?: string
+  monthlySalaryAmount: number | null
+  monthlySalaryCurrency: string | null
 }
 
 export function removeStoreEmployee(storeEmployeeId: number) {
@@ -114,7 +121,7 @@ export function removeStoreEmployee(storeEmployeeId: number) {
 }
 
 export function getStoreEmployees(storeId: number) {
-  return apiFetch<{ outcome: string; employees?: StoreEmployee[] }>(`/api/stores/${storeId}/employees`)
+  return apiFetch<{ outcome: string; employees: StoreEmployee[] | null }>(`/api/stores/${storeId}/employees`)
 }
 
 export type UpdateStoreEmployeeOutcome = 'Updated' | 'NotFound' | 'Forbidden' | 'SubscriptionInactive'
@@ -159,7 +166,7 @@ export function updateStoreEmployee(
 export type ResetCashierPasswordOutcome = 'Reset' | 'NotFound' | 'Forbidden'
 
 export function resetCashierPassword(storeEmployeeId: number) {
-  return apiFetch<{ outcome: ResetCashierPasswordOutcome; password?: string }>(
+  return apiFetch<{ outcome: ResetCashierPasswordOutcome; password: string | null }>(
     `/api/store-employees/${storeEmployeeId}/reset-password`,
     { method: 'POST' },
   )
@@ -182,7 +189,7 @@ export function setStoreEmployeeActive(storeEmployeeId: number, isActive: boolea
 export type CreateStoreEmployeeInvitationOutcome = 'Sent' | 'StoreNotFound' | 'Forbidden' | 'AlreadyEmployed'
 
 export function createStoreEmployeeInvitation(storeId: number, email: string, role: StoreEmployeeRole) {
-  return apiFetch<{ outcome: CreateStoreEmployeeInvitationOutcome; invitationId?: number }>(
+  return apiFetch<{ outcome: CreateStoreEmployeeInvitationOutcome; invitationId: number | null }>(
     `/api/stores/${storeId}/employee-invitations`,
     { method: 'POST', body: { email, role } },
   )
@@ -196,7 +203,7 @@ export function createCashierAccount(
   storeId: number,
   fields: { firstName: string; lastName: string; email: string; phoneNumber: string; scheduleStart?: string; scheduleEnd?: string },
 ) {
-  return apiFetch<{ outcome: CreateCashierAccountOutcome; email?: string; password?: string }>(
+  return apiFetch<{ outcome: CreateCashierAccountOutcome; email: string | null; password: string | null }>(
     `/api/stores/${storeId}/cashier-accounts`,
     { method: 'POST', body: fields },
   )
@@ -215,7 +222,7 @@ export interface StoreEmployeeInvitation {
 }
 
 export function getStoreEmployeeInvitations(storeId: number, status?: StoreEmployeeInvitationStatus) {
-  return apiFetch<{ outcome: string; invitations?: StoreEmployeeInvitation[] }>(`/api/stores/${storeId}/employee-invitations`, {
+  return apiFetch<{ outcome: string; invitations: StoreEmployeeInvitation[] | null }>(`/api/stores/${storeId}/employee-invitations`, {
     query: { status },
   })
 }

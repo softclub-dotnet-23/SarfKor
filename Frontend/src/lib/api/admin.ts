@@ -15,10 +15,10 @@ export interface AdminStoreListItem {
   address: string
   status: StoreStatus
   ownerUserId: string
-  ownerEmail?: string
-  subscriptionStatus?: SubscriptionStatus
-  subscriptionPlanName?: string
-  subscriptionCurrentPeriodEndsAt?: string
+  ownerEmail: string | null
+  subscriptionStatus: SubscriptionStatus | null
+  subscriptionPlanName: string | null
+  subscriptionCurrentPeriodEndsAt: string | null
 }
 
 export function getStores(params: {
@@ -44,24 +44,24 @@ export interface AdminStoreSubscription {
   currentPeriodEndsAt: string
   priceAtIssueAmount: number
   priceAtIssueCurrency: string
-  note?: string
+  note: string | null
 }
 
 export interface AdminStoreDetail {
   outcome: 'Found' | 'NotFound'
   storeId: number
-  name?: string
-  address?: string
-  latitude?: number
-  longitude?: number
-  status?: StoreStatus
-  statusReason?: string
-  statusChangedAt?: string
-  ownerUserId?: string
-  ownerEmail?: string
-  isVatPayer?: boolean
-  taxRegime?: TaxRegime
-  subscription?: AdminStoreSubscription
+  name: string | null
+  address: string | null
+  latitude: number | null
+  longitude: number | null
+  status: StoreStatus | null
+  statusReason: string | null
+  statusChangedAt: string | null
+  ownerUserId: string | null
+  ownerEmail: string | null
+  isVatPayer: boolean | null
+  taxRegime: TaxRegime | null
+  subscription: AdminStoreSubscription | null
 }
 
 export function getStoreDetail(storeId: number) {
@@ -71,16 +71,16 @@ export function getStoreDetail(storeId: number) {
 export interface AdminStoreDiagnostics {
   outcome: 'Found' | 'NotFound'
   storeId: number
-  storeStatus?: StoreStatus
-  ownerLastLoginAt?: string
-  lastSaleAt?: string
-  storeLocationsOwnedByThisOwner?: number
-  employeeCount?: number
-  distinctProductsInStock?: number
-  totalStockUnits?: number
-  subscriptionStatus?: SubscriptionStatus
-  subscriptionPlanName?: string
-  subscriptionCurrentPeriodEndsAt?: string
+  storeStatus: StoreStatus | null
+  ownerLastLoginAt: string | null
+  lastSaleAt: string | null
+  storeLocationsOwnedByThisOwner: number | null
+  employeeCount: number | null
+  distinctProductsInStock: number | null
+  totalStockUnits: number | null
+  subscriptionStatus: SubscriptionStatus | null
+  subscriptionPlanName: string | null
+  subscriptionCurrentPeriodEndsAt: string | null
 }
 
 export function getStoreDiagnostics(storeId: number) {
@@ -97,23 +97,23 @@ export interface AdminStoreLocation {
 // "Торговые точки" tab -- every Store row owned by the same owner as this one (a Store row *is* a
 // single physical location; an owner with several shops has several Store rows).
 export function getStoreLocations(storeId: number) {
-  return apiFetch<{ outcome: string; locations?: AdminStoreLocation[] }>(`/api/admin/stores/${storeId}/locations`)
+  return apiFetch<{ outcome: string; locations: AdminStoreLocation[] | null }>(`/api/admin/stores/${storeId}/locations`)
 }
 
 export interface AdminStoreEmployee {
   storeEmployeeId: number
   userId: string
-  email?: string
+  email: string | null
   role: StoreEmployeeRole
   addedAt: string
-  scheduleStart?: string
-  scheduleEnd?: string
+  scheduleStart: string | null
+  scheduleEnd: string | null
 }
 
 // "Сотрудники" tab -- deliberately carries no salary figures (see backend's
 // GetStoreEmployeesForAdminQueryHandler comment: same trust boundary as store diagnostics).
 export function getStoreEmployees(storeId: number) {
-  return apiFetch<{ outcome: string; employees?: AdminStoreEmployee[] }>(`/api/admin/stores/${storeId}/employees`)
+  return apiFetch<{ outcome: string; employees: AdminStoreEmployee[] | null }>(`/api/admin/stores/${storeId}/employees`)
 }
 
 export function approveStore(storeId: number) {
@@ -135,7 +135,7 @@ export function updateStoreTaxSettings(storeId: number, isVatPayer: boolean, tax
 }
 
 export function inviteAdmin(email: string) {
-  return apiFetch<{ outcome: string; adminInvitationId?: number }>('/api/admin/invitations', {
+  return apiFetch<{ outcome: string; adminInvitationId: number | null }>('/api/admin/invitations', {
     method: 'POST',
     body: { email },
   })
@@ -144,15 +144,15 @@ export function inviteAdmin(email: string) {
 export interface AuditLogEntry {
   auditLogId: number
   performedByUserId: string
-  performedByEmail?: string
+  performedByEmail: string | null
   action: string
   entityType: string
   entityId: number
-  details?: string
-  reason?: string
-  ipAddress?: string
-  beforeStateJson?: string
-  afterStateJson?: string
+  details: string | null
+  reason: string | null
+  ipAddress: string | null
+  beforeStateJson: string | null
+  afterStateJson: string | null
   occurredAt: string
 }
 

@@ -8,12 +8,12 @@ export interface StockTransfer {
   quantity: number
   status: 'Pending' | 'InTransit' | 'Completed' | 'Cancelled'
   createdAt: string
-  completedAt?: string
+  completedAt: string | null
 }
 
 export interface InitiateStockTransferResult {
   outcome: 'Initiated' | 'FromStoreNotFound' | 'ToStoreNotFound' | 'Forbidden' | 'InsufficientStock'
-  stockTransferId?: number
+  stockTransferId: number | null
 }
 
 export function initiateStockTransfer(productId: number, fromStoreId: number, toStoreId: number, quantity: number) {
@@ -35,7 +35,7 @@ export function completeStockTransfer(stockTransferId: number) {
 
 export interface GetStockTransfersResult {
   outcome: 'Found' | 'StoreNotFound' | 'Forbidden'
-  transfers?: StockTransfer[]
+  transfers: StockTransfer[] | null
 }
 
 export function getStockTransfers(storeId: number) {

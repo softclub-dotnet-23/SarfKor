@@ -2,7 +2,7 @@ import { apiFetch } from './client'
 
 export interface CreateReorderRuleResult {
   outcome: 'Created' | 'StoreNotFound' | 'Forbidden'
-  reorderRuleId?: number
+  reorderRuleId: number | null
 }
 
 export function createReorderRule(

@@ -15,7 +15,7 @@ export interface ProductBundle {
 
 export interface CreateProductBundleResult {
   outcome: 'Created' | 'StoreNotFound' | 'Forbidden'
-  productBundleId?: number
+  productBundleId: number | null
 }
 
 export function createProductBundle(

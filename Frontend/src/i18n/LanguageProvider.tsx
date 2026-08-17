@@ -44,7 +44,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(getInitialLanguage)
   // Guards against clobbering a profile fetched mid-flight with a stale full-profile PUT (the
   // profile endpoint is a full replace, not a PATCH — see persistLanguage below).
-  const profileRef = useRef<{ displayName: string; avatarReference?: string } | null>(null)
+  const profileRef = useRef<{ displayName: string; avatarReference?: string | null } | null>(null)
 
   useEffect(() => {
     if (!getTokens()) return

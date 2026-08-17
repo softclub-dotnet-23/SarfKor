@@ -54,12 +54,12 @@ const TRANSITIONS: Record<StoreStatus, { to: StoreStatus; label: string; danger:
   Rejected: [],
 }
 
-function fmtDate(iso?: string) {
+function fmtDate(iso?: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function fmtDateTime(iso?: string) {
+function fmtDateTime(iso?: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }

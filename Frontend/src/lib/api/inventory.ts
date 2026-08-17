@@ -12,14 +12,17 @@ export function getStockLevels(storeId: number) {
 }
 
 export function recordStockReceipt(storeId: number, productId: number, quantity: number, supplierId?: number) {
-  return apiFetch<{ outcome: string; stockMovementId?: string }>('/api/stock/receipts', {
+  // Backend sends a number here (int? StockMovementId), not a string -- was typed as an optional
+  // string, which is wrong on two axes: primitive type and nullability.
+  return apiFetch<{ outcome: string; stockMovementId: number | null }>('/api/stock/receipts', {
     method: 'POST',
     body: { storeId, productId, quantity, supplierId },
   })
 }
 
 export function setCostPrice(storeId: number, productId: number, amount: number, currency: string) {
-  return apiFetch<{ outcome: string; costPriceId?: string }>('/api/stock/cost-price', {
+  // Same as stockMovementId above -- backend's CostPriceId is int?, not string.
+  return apiFetch<{ outcome: string; costPriceId: number | null }>('/api/stock/cost-price', {
     method: 'POST',
     body: { storeId, productId, amount, currency },
   })

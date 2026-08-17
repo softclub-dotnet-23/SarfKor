@@ -6,7 +6,7 @@ function fmtDateTime(iso: string) {
   return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-function tryPretty(json?: string) {
+function tryPretty(json?: string | null) {
   if (!json) return null
   try {
     return JSON.stringify(JSON.parse(json), null, 2)

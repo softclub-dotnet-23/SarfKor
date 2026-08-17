@@ -5,7 +5,7 @@ import { XIcon } from './icons'
 
 // A right-side slide-over for record detail views (store card, user card) -- roomier than
 // AdminModal's centered dialog, which suits a multi-tab record better than a small confirm form.
-export function SidePanel({ open, onClose, title, subtitle, children }: { open: boolean; onClose: () => void; title: ReactNode; subtitle?: string; children: ReactNode }) {
+export function SidePanel({ open, onClose, title, subtitle, children }: { open: boolean; onClose: () => void; title: ReactNode; subtitle?: string | null; children: ReactNode }) {
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()

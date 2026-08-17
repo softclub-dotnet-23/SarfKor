@@ -7,8 +7,8 @@ export interface SubscriptionPlan {
   code: string
   monthlyPriceAmount: number
   monthlyPriceCurrency: string
-  maxStores?: number
-  maxEmployees?: number
+  maxStores: number | null
+  maxEmployees: number | null
   features: string[]
   isActive: boolean
 }
@@ -21,7 +21,7 @@ export function createSubscriptionPlan(input: {
   name: string; code: string; monthlyPriceAmount: number; monthlyPriceCurrency: string
   maxStores?: number; maxEmployees?: number; features?: string[]
 }) {
-  return apiFetch<{ outcome: string; subscriptionPlanId?: number }>('/api/admin/subscriptions/plans', {
+  return apiFetch<{ outcome: string; subscriptionPlanId: number | null }>('/api/admin/subscriptions/plans', {
     method: 'POST',
     body: input,
   })
@@ -92,14 +92,14 @@ export function recordSubscriptionPayment(storeSubscriptionId: number, input: {
   amount: number; currency: string; periodStart: string; periodEnd: string
   method: SubscriptionPaymentMethod; comment?: string
 }) {
-  return apiFetch<{ outcome: string; subscriptionPaymentId?: number; newPeriodEndsAt?: string }>(
+  return apiFetch<{ outcome: string; subscriptionPaymentId: number | null; newPeriodEndsAt: string | null }>(
     `/api/admin/subscriptions/${storeSubscriptionId}/payments`,
     { method: 'POST', body: input },
   )
 }
 
 export function reverseSubscriptionPayment(subscriptionPaymentId: number, reason: string) {
-  return apiFetch<{ outcome: string; reversalPaymentId?: number }>(`/api/admin/subscriptions/payments/${subscriptionPaymentId}/reverse`, {
+  return apiFetch<{ outcome: string; reversalPaymentId: number | null }>(`/api/admin/subscriptions/payments/${subscriptionPaymentId}/reverse`, {
     method: 'POST',
     body: { reason },
   })
@@ -115,12 +115,12 @@ export interface SubscriptionPayment {
   periodStart: string
   periodEnd: string
   method: SubscriptionPaymentMethod
-  comment?: string
-  recordedByUserId?: string
-  recordedByEmail?: string
+  comment: string | null
+  recordedByUserId: string | null
+  recordedByEmail: string | null
   recordedAt: string
   isReversal: boolean
-  reversedPaymentId?: number
+  reversedPaymentId: number | null
 }
 
 export function getSubscriptionPayments(params: { skip?: number; take?: number; storeId?: number; from?: string; to?: string }) {

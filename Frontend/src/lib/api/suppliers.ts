@@ -3,8 +3,8 @@ import { apiFetch } from './client'
 export interface Supplier {
   supplierId: number
   name: string
-  contactPhone?: string
-  contactEmail?: string
+  contactPhone: string | null
+  contactEmail: string | null
 }
 
 // Suppliers are scoped to the store that created them — the backend checks the caller is that

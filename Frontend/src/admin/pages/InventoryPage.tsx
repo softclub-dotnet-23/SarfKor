@@ -276,7 +276,7 @@ export function InventoryPage() {
       })
       // Moderation is gone — every submission publishes a Product immediately, so productId is
       // always present on success.
-      const newProductId: number | undefined = submitResult.productId
+      const newProductId: number | null = submitResult.productId
       setSubmitDone(true)
       setTimeout(() => {
         setSubmitOpen(false)
@@ -309,7 +309,7 @@ export function InventoryPage() {
     try {
       const res = await catalogApi.createCategory(newCategoryName.trim())
       if (res.outcome === 'Created' && res.categoryId) {
-        const created = { categoryId: res.categoryId, name: newCategoryName.trim(), displayOrder: 0, isHidden: false }
+        const created = { categoryId: res.categoryId, name: newCategoryName.trim(), parentCategoryId: null, displayOrder: 0, isHidden: false }
         setCategories((c) => [...c, created])
         setSubmitCategoryId(String(res.categoryId))
         setNewCategoryOpen(false)

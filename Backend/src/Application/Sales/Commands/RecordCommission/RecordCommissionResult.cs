@@ -4,7 +4,8 @@ public enum RecordCommissionOutcome
 {
     Recorded,
     SaleNotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record RecordCommissionResult(RecordCommissionOutcome Outcome, int? CommissionId);

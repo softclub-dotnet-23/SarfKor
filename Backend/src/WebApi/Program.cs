@@ -191,6 +191,13 @@ builder.Services.AddRateLimiter(options =>
         httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
 
+    // Creates a real, immediately-usable login (not an email link) -- same order of caution as
+    // invite-create, a bit more headroom than invite-resend since an owner onboarding a shift of
+    // cashiers may do this several times in one sitting.
+    options.AddPolicy("cashier-create", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
+
     // Операции, двигающие реальные деньги вне обычного чека (выпуск/погашение подарочных
     // карт и store credit, отмена продажи) — плотнее, чем обычные операции.
     options.AddPolicy("money-write", httpContext => RateLimitPartition.GetFixedWindowLimiter(
@@ -332,6 +339,9 @@ public sealed record UpdateUserProfileRequest(string? DisplayName, string? Avata
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public sealed record RecordUserConsentRequest(Domain.Identity.ConsentType Type, bool IsGranted);
 public sealed record CreateStoreEmployeeInvitationRequest(string Email, Domain.Stores.StoreEmployeeRole Role);
+public sealed record CreateCashierAccountRequest(
+    string FirstName, string LastName, string Email, string PhoneNumber, TimeOnly? ScheduleStart, TimeOnly? ScheduleEnd);
+public sealed record SetStoreEmployeeActiveRequest(bool IsActive);
 public sealed record ConfirmAdminInvitationRequest(string Email, string Code, string Password);
 public sealed record OpenCashierShiftRequest(int StoreId, decimal OpeningCash, string Currency);
 public sealed record CloseCashierShiftRequest(decimal ClosingCash);
@@ -359,7 +369,9 @@ public sealed record RegisterDeviceTokenRequest(string Token, Domain.Notificatio
 public sealed record CreateStoreRequest(string Name, string Address, double Latitude, double Longitude);
 public sealed record UpdateStoreRequest(string Name, string Address, double Latitude, double Longitude);
 public sealed record AdminCreateStorePartnerRequest(string Email, string StoreName, string Address, double Latitude, double Longitude);
-public sealed record UpdateStoreEmployeeRequest(decimal? MonthlySalaryAmount, string? MonthlySalaryCurrency, TimeOnly? ScheduleStart, TimeOnly? ScheduleEnd);
+public sealed record UpdateStoreEmployeeRequest(
+    decimal? MonthlySalaryAmount, string? MonthlySalaryCurrency, TimeOnly? ScheduleStart, TimeOnly? ScheduleEnd,
+    string? FirstName, string? LastName, string? PhoneNumber);
 public sealed record SetCostPriceRequest(int StoreId, int ProductId, decimal Amount, string Currency);
 public sealed record SubmitPriceUpdateRequest(int ProductId, int StoreId, decimal Price, string Currency);
 public sealed record ProcessSaleRequest(

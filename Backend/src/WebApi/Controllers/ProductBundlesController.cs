@@ -39,6 +39,7 @@ public sealed class ProductBundlesController : ControllerBase
             CreateProductBundleOutcome.StoreNotFound => NotFound("Store not found."),
             CreateProductBundleOutcome.Forbidden => Forbid(),
             CreateProductBundleOutcome.ProductNotFound => NotFound("One or more products not found."),
+            CreateProductBundleOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

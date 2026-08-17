@@ -29,6 +29,7 @@ public class ProcessReturnCommandHandlerTests
         _storeAccessAuthorizer
             .Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
     }
 
     private ProcessReturnCommandHandler CreateHandler() => new(

@@ -45,7 +45,9 @@ public class IssueGiftCardCommandHandlerTests
     public async Task Handle_IssuesActiveCardWithGeneratedCode()
     {
         _storeRepository.Setup(r => r.ExistsAsync(StoreId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _giftCardRepository.Setup(r => r.Add(It.IsAny<GiftCard>())).Callback<GiftCard>(g => g.Id = 1);
 
         var handler = CreateHandler();

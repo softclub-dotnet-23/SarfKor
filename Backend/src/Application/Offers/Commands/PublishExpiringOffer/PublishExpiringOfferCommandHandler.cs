@@ -20,6 +20,9 @@ public sealed class PublishExpiringOfferCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new PublishExpiringOfferResult(PublishExpiringOfferOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new PublishExpiringOfferResult(PublishExpiringOfferOutcome.SubscriptionInactive, null);
+
         if (!await productRepository.ExistsAsync(command.ProductId, cancellationToken))
             return new PublishExpiringOfferResult(PublishExpiringOfferOutcome.ProductNotFound, null);
 

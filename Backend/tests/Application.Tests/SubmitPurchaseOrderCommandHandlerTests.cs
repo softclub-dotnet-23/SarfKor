@@ -44,6 +44,7 @@ public class SubmitPurchaseOrderCommandHandlerTests
     {
         _purchaseOrderRepository.Setup(r => r.GetByIdAsync(OrderId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateOrder(PurchaseOrderStatus.Draft));
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new SubmitPurchaseOrderCommand(OrderId, "someone-else"), CancellationToken.None);
@@ -56,6 +57,7 @@ public class SubmitPurchaseOrderCommandHandlerTests
     {
         _purchaseOrderRepository.Setup(r => r.GetByIdAsync(OrderId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateOrder(PurchaseOrderStatus.Submitted));
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new SubmitPurchaseOrderCommand(OrderId, OwnerId), CancellationToken.None);
@@ -69,6 +71,7 @@ public class SubmitPurchaseOrderCommandHandlerTests
         var order = CreateOrder(PurchaseOrderStatus.Draft);
         _purchaseOrderRepository.Setup(r => r.GetByIdAsync(OrderId, It.IsAny<CancellationToken>())).ReturnsAsync(order);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new SubmitPurchaseOrderCommand(OrderId, OwnerId), CancellationToken.None);

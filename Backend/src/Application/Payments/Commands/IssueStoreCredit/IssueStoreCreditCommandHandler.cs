@@ -20,6 +20,9 @@ public sealed class IssueStoreCreditCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new IssueStoreCreditResult(IssueStoreCreditOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new IssueStoreCreditResult(IssueStoreCreditOutcome.SubscriptionInactive, null);
+
         if (await customerRepository.GetByIdAsync(command.CustomerId, cancellationToken) is null)
             return new IssueStoreCreditResult(IssueStoreCreditOutcome.CustomerNotFound, null);
 

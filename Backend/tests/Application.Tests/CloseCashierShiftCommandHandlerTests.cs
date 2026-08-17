@@ -33,8 +33,11 @@ public class CloseCashierShiftCommandHandlerTests
         EndedAt = endedAt
     };
 
-    private void SetupOwnedStore() =>
+    private void SetupOwnedStore()
+    {
         _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+    }
 
     [Fact]
     public async Task Handle_ShiftNotFound_ReturnsNotFound()

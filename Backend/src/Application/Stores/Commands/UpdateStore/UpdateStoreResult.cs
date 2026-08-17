@@ -4,7 +4,8 @@ public enum UpdateStoreOutcome
 {
     Updated,
     StoreNotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record UpdateStoreResult(UpdateStoreOutcome Outcome);

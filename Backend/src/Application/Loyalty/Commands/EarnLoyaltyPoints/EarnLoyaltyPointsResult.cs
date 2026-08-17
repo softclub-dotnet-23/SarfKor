@@ -4,7 +4,8 @@ public enum EarnLoyaltyPointsOutcome
 {
     Earned,
     AccountNotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record EarnLoyaltyPointsResult(EarnLoyaltyPointsOutcome Outcome, int? NewBalance);

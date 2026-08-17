@@ -13,6 +13,7 @@ import { RequireOwner } from './auth/RequireOwner'
 import { LoginPage, RegisterPage } from './auth/AuthPage'
 import { ForgotPasswordPage } from './auth/ForgotPasswordPage'
 import { AcceptInvitePage } from './auth/AcceptInvitePage'
+import { ForceChangePasswordPage } from './auth/ForceChangePasswordPage'
 import { AppShell } from './app/AppShell'
 import { CabinetShell } from './admin/cabinet/CabinetShell'
 import { CashierShell } from './admin/CashierShell'
@@ -104,6 +105,9 @@ root.render(
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/accept-invite" element={<AcceptInvitePage />} />
                 <Route path="/invite/:token" element={<AcceptInvitePage />} />
+                <Route path="/change-password" element={<RequireAuth />}>
+                  <Route index element={<ForceChangePasswordPage />} />
+                </Route>
                 {/* Consumer app. Reuses the existing RequireAuth guard rather than
                     introducing a second notion of "signed in". */}
                 <Route path="/app" element={<RequireAuth />}>

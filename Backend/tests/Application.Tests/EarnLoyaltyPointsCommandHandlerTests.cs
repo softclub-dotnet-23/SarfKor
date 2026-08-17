@@ -48,6 +48,7 @@ public class EarnLoyaltyPointsCommandHandlerTests
             .Setup(r => r.GetByIdAsync(ProgramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new LoyaltyProgram { StoreId = StoreId, PointsPerCurrencyUnit = 1, RedemptionRate = 0.1m, IsActive = true });
         _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new EarnLoyaltyPointsCommand(AccountId, 10, null, "someone-else"), CancellationToken.None);
@@ -64,6 +65,7 @@ public class EarnLoyaltyPointsCommandHandlerTests
             .Setup(r => r.GetByIdAsync(ProgramId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new LoyaltyProgram { StoreId = StoreId, PointsPerCurrencyUnit = 1, RedemptionRate = 0.1m, IsActive = true });
         _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new EarnLoyaltyPointsCommand(AccountId, 10, 42, OwnerId), CancellationToken.None);

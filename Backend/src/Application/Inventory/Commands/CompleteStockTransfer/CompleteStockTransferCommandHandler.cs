@@ -20,6 +20,9 @@ public sealed class CompleteStockTransferCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(transfer.ToStoreId, command.PerformedByUserId, cancellationToken))
             return new CompleteStockTransferResult(CompleteStockTransferOutcome.Forbidden);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(transfer.ToStoreId, cancellationToken))
+            return new CompleteStockTransferResult(CompleteStockTransferOutcome.SubscriptionInactive);
+
         if (transfer.Status != StockTransferStatus.InTransit)
             return new CompleteStockTransferResult(CompleteStockTransferOutcome.NotInTransit);
 

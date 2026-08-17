@@ -4,7 +4,8 @@ public enum RemoveStoreEmployeeOutcome
 {
     Removed,
     NotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record RemoveStoreEmployeeResult(RemoveStoreEmployeeOutcome Outcome);

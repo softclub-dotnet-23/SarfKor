@@ -41,6 +41,7 @@ public class RedeemLoyaltyPointsCommandHandlerTests
             .Setup(r => r.GetByIdAsync(StoreId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Store { Id = StoreId, OwnerUserId = OwnerId, Name = "Test", Address = "Addr", Location = new GeoLocation(0, 0) });
         _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
     }
 
     [Fact]

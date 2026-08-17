@@ -42,6 +42,7 @@ public sealed class StockTransfersController : ControllerBase
             InitiateStockTransferOutcome.ToStoreNotFound => NotFound("Destination store not found."),
             InitiateStockTransferOutcome.Forbidden => Forbid(),
             InitiateStockTransferOutcome.InsufficientStock => Conflict("Insufficient stock at the source store."),
+            InitiateStockTransferOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -71,6 +72,7 @@ public sealed class StockTransfersController : ControllerBase
             CompleteStockTransferOutcome.NotFound => NotFound(),
             CompleteStockTransferOutcome.Forbidden => Forbid(),
             CompleteStockTransferOutcome.NotInTransit => Conflict("This transfer is not in transit."),
+            CompleteStockTransferOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

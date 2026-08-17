@@ -20,6 +20,9 @@ public sealed class RecordCommissionCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(sale.StoreId, command.PerformedByUserId, cancellationToken))
             return new RecordCommissionResult(RecordCommissionOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(sale.StoreId, cancellationToken))
+            return new RecordCommissionResult(RecordCommissionOutcome.SubscriptionInactive, null);
+
         // CashierUserId comes from the sale itself, not the caller — the commission always
         // belongs to whoever actually rang up the sale, not whoever happens to be recording it.
         var commission = new Commission

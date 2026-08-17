@@ -10,6 +10,12 @@ public sealed class UpdateStoreEmployeeCommandValidator : AbstractValidator<Upda
         RuleFor(x => x.StoreEmployeeId).GreaterThan(0);
         RuleFor(x => x.PerformedByUserId).NotEmpty();
 
+        RuleFor(x => x.FirstName).NotEmpty().MaximumLength(100).When(x => x.FirstName is not null);
+        RuleFor(x => x.LastName).NotEmpty().MaximumLength(100).When(x => x.LastName is not null);
+        RuleFor(x => x.PhoneNumber).Must(TajikPhoneNumber.IsValid)
+            .WithMessage("Введите номер телефона в формате +992 XX XXX XX XX.")
+            .When(x => x.PhoneNumber is not null);
+
         RuleFor(x => x.MonthlySalaryAmount).GreaterThanOrEqualTo(0).When(x => x.MonthlySalaryAmount.HasValue);
         RuleFor(x => x.MonthlySalaryCurrency)
             .NotEmpty()

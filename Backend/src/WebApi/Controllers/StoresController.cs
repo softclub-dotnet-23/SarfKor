@@ -4,10 +4,13 @@ using Application.Sales.Queries.GetCashierAnomalyReport;
 using Application.Sales.Queries.GetDailySalesReport;
 using Application.Sales.Queries.GetProfitReport;
 using Application.Stores.Commands.CreateStore;
+using Application.Stores.Commands.CreateCashierAccount;
 using Application.Stores.Commands.CreateStoreEmployeeInvitation;
 using Application.Stores.Commands.RemoveStoreEmployee;
 using Application.Stores.Commands.ResendStoreEmployeeInvitation;
+using Application.Stores.Commands.ResetCashierPassword;
 using Application.Stores.Commands.RevokeStoreEmployeeInvitation;
+using Application.Stores.Commands.SetStoreEmployeeActive;
 using Application.Stores.Commands.UpdateStore;
 using Application.Stores.Commands.UpdateStoreEmployee;
 using Application.Stores.Queries.GetStoreDashboard;
@@ -74,6 +77,7 @@ public sealed class StoresController : ControllerBase
             UpdateStoreOutcome.Updated => Ok(result),
             UpdateStoreOutcome.StoreNotFound => NotFound("Store not found."),
             UpdateStoreOutcome.Forbidden => Forbid(),
+            UpdateStoreOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -103,6 +107,7 @@ public sealed class StoresController : ControllerBase
             RemoveStoreEmployeeOutcome.Removed => Ok(result),
             RemoveStoreEmployeeOutcome.NotFound => NotFound(),
             RemoveStoreEmployeeOutcome.Forbidden => Forbid(),
+            RemoveStoreEmployeeOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -122,7 +127,8 @@ public sealed class StoresController : ControllerBase
             return Unauthorized();
 
         var command = new UpdateStoreEmployeeCommand(
-            storeEmployeeId, request.MonthlySalaryAmount, request.MonthlySalaryCurrency, request.ScheduleStart, request.ScheduleEnd, userId);
+            storeEmployeeId, request.MonthlySalaryAmount, request.MonthlySalaryCurrency, request.ScheduleStart, request.ScheduleEnd,
+            request.FirstName, request.LastName, request.PhoneNumber, userId);
 
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -134,6 +140,7 @@ public sealed class StoresController : ControllerBase
             UpdateStoreEmployeeOutcome.Updated => Ok(result),
             UpdateStoreEmployeeOutcome.NotFound => NotFound(),
             UpdateStoreEmployeeOutcome.Forbidden => Forbid(),
+            UpdateStoreEmployeeOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -195,6 +202,108 @@ public sealed class StoresController : ControllerBase
             CreateStoreEmployeeInvitationOutcome.StoreNotFound => NotFound("Store not found."),
             CreateStoreEmployeeInvitationOutcome.Forbidden => Forbid(),
             CreateStoreEmployeeInvitationOutcome.AlreadyEmployed => Conflict("This user is already an employee of this store."),
+            CreateStoreEmployeeInvitationOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
+            _ => Problem()
+        };
+    }
+
+    // Deliberately separate from CreateEmployeeInvitation above: a cashier hired in person doesn't
+    // need the emailed-link round-trip, and the owner handing them a working password right there is
+    // the common real-world flow for a small shop. Only ever creates a brand-new account — an email
+    // that already exists on the platform falls back to the invitation flow instead (see
+    // CreateCashierAccountCommandHandler), so this never resets someone else's password.
+    [HttpPost("stores/{storeId:int}/cashier-accounts")]
+    [Authorize("StorePartner")]
+    [EnableRateLimiting("cashier-create")]
+    public async Task<IActionResult> CreateCashierAccount(
+        int storeId,
+        CreateCashierAccountRequest request,
+        [FromServices] ICommandHandler<CreateCashierAccountCommand, CreateCashierAccountResult> handler,
+        [FromServices] IValidator<CreateCashierAccountCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new CreateCashierAccountCommand(
+            storeId, request.FirstName, request.LastName, request.Email, request.PhoneNumber, request.ScheduleStart, request.ScheduleEnd,
+            userId, HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            CreateCashierAccountOutcome.Created => Ok(result),
+            CreateCashierAccountOutcome.StoreNotFound => NotFound("Store not found."),
+            CreateCashierAccountOutcome.Forbidden => Forbid(),
+            CreateCashierAccountOutcome.EmailAlreadyRegistered => Conflict("This email is already registered — invite them instead."),
+            CreateCashierAccountOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
+            _ => Problem()
+        };
+    }
+
+    [HttpPost("store-employees/{storeEmployeeId:int}/reset-password")]
+    [Authorize("StorePartner")]
+    [EnableRateLimiting("cashier-create")]
+    public async Task<IActionResult> ResetCashierPassword(
+        int storeEmployeeId,
+        [FromServices] ICommandHandler<ResetCashierPasswordCommand, ResetCashierPasswordResult> handler,
+        [FromServices] IValidator<ResetCashierPasswordCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new ResetCashierPasswordCommand(storeEmployeeId, userId, HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            ResetCashierPasswordOutcome.Reset => Ok(result),
+            ResetCashierPasswordOutcome.NotFound => NotFound(),
+            ResetCashierPasswordOutcome.Forbidden => Forbid(),
+            ResetCashierPasswordOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
+            _ => Problem()
+        };
+    }
+
+    [HttpPost("store-employees/{storeEmployeeId:int}/active")]
+    [Authorize("StorePartner")]
+    [EnableRateLimiting("partner-write")]
+    public async Task<IActionResult> SetStoreEmployeeActive(
+        int storeEmployeeId,
+        SetStoreEmployeeActiveRequest request,
+        [FromServices] ICommandHandler<SetStoreEmployeeActiveCommand, SetStoreEmployeeActiveResult> handler,
+        [FromServices] IValidator<SetStoreEmployeeActiveCommand> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var command = new SetStoreEmployeeActiveCommand(storeEmployeeId, request.IsActive, userId, HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        var validationResult = await validator.ValidateAsync(command, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(command, cancellationToken);
+        return result.Outcome switch
+        {
+            SetStoreEmployeeActiveOutcome.Updated => Ok(result),
+            SetStoreEmployeeActiveOutcome.NotFound => NotFound(),
+            SetStoreEmployeeActiveOutcome.Forbidden => Forbid(),
+            SetStoreEmployeeActiveOutcome.CannotDisableSelf => Conflict("You can't disable your own employee record."),
+            SetStoreEmployeeActiveOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

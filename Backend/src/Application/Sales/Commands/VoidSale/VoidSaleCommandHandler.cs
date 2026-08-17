@@ -28,6 +28,12 @@ public sealed class VoidSaleCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(saleTransaction.StoreId, command.VoidedByUserId, cancellationToken))
             return new VoidSaleResult(VoidSaleOutcome.Forbidden, null);
 
+        // ADMIN_PROMPT.md §2.1: "партнёрский кабинет и касса закрыты" for a Suspended subscription —
+        // voiding a sale is as much a register operation as ringing one up (ProcessSaleCommandHandler
+        // already gates this the same way).
+        if (!await storeAccessAuthorizer.IsOperationalAsync(saleTransaction.StoreId, cancellationToken))
+            return new VoidSaleResult(VoidSaleOutcome.SubscriptionInactive, null);
+
         if (saleTransaction.Status == SaleStatus.Voided)
             return new VoidSaleResult(VoidSaleOutcome.AlreadyVoided, null);
 

@@ -43,6 +43,7 @@ public sealed class SuppliersController : ControllerBase
             CreateSupplierOutcome.Created => Ok(result),
             CreateSupplierOutcome.StoreNotFound => NotFound(),
             CreateSupplierOutcome.Forbidden => Forbid(),
+            CreateSupplierOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -97,6 +98,7 @@ public sealed class SuppliersController : ControllerBase
             UpdateSupplierOutcome.Updated => Ok(result),
             UpdateSupplierOutcome.NotFound => NotFound(),
             UpdateSupplierOutcome.Forbidden => Forbid(),
+            UpdateSupplierOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -125,6 +127,7 @@ public sealed class SuppliersController : ControllerBase
             DeleteSupplierOutcome.NotFound => NotFound(),
             DeleteSupplierOutcome.Forbidden => Forbid(),
             DeleteSupplierOutcome.InUse => Conflict("This supplier is still referenced by stock movements, purchase orders, or reorder rules."),
+            DeleteSupplierOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

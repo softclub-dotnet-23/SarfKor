@@ -5,5 +5,6 @@ public enum SetCostPriceOutcome
     Set,
     StoreNotFound,
     ProductNotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }

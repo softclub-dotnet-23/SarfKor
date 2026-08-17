@@ -1,6 +1,10 @@
 namespace Application.Abstractions;
 
-public sealed record AuthResult(string UserId, string AccessToken, string RefreshToken, DateTimeOffset ExpiresAt);
+/// <summary>MustChangePassword mirrors ApplicationUser.MustChangePassword at the moment this token
+/// pair was issued (IssueTokenPairAsync reads it fresh every time — never a stale JWT claim) — true
+/// means someone else set this account's password on its behalf and the frontend must force a
+/// change-password screen before anything else.</summary>
+public sealed record AuthResult(string UserId, string AccessToken, string RefreshToken, DateTimeOffset ExpiresAt, bool MustChangePassword = false);
 
 /// <summary>Auth is set only when registration completed and logged the caller straight in
 /// (email pre-verified, e.g. accepting a cashier/store-owner invite that already proved email
@@ -69,6 +73,18 @@ public interface IAuthService
     Task<bool> BlockUserAsync(string userId, string reason, string performedByAdminUserId, CancellationToken cancellationToken);
 
     Task<bool> UnblockUserAsync(string userId, CancellationToken cancellationToken);
+
+    /// <summary>Flags a just-created account (CreateCashierAccountCommandHandler) as needing a
+    /// password change before it's fully usable — the password itself was already set correctly via
+    /// RegisterAsync, this only sets the flag ChangePasswordCommandHandler later clears.</summary>
+    Task MarkMustChangePasswordAsync(string userId, CancellationToken cancellationToken);
+
+    /// <summary>Owner-resets-a-cashier's-password: sets a brand new password on an EXISTING account
+    /// without knowing the old one (unlike ChangePasswordAsync) and flags MustChangePassword — the
+    /// same "shown once, forced change on next login" contract as account creation. Also revokes
+    /// every refresh token, same reasoning as ChangePasswordAsync/ResetPasswordAsync: a password
+    /// reset is exactly the moment any existing session should die. False if no such user.</summary>
+    Task<bool> AdminResetPasswordAsync(string userId, string newPassword, CancellationToken cancellationToken);
 }
 
 public sealed record AdminUserSummary(string UserId, string? Email, DateTimeOffset CreatedAt, bool IsBlocked, IReadOnlyList<string> Roles);

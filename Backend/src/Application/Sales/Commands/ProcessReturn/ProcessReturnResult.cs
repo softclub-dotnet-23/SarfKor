@@ -7,7 +7,8 @@ public enum ProcessReturnOutcome
     Forbidden,
     SaleNotCompleted,
     LineNotFound,
-    ExceedsAvailableQuantity
+    ExceedsAvailableQuantity,
+    SubscriptionInactive
 }
 
 public sealed record ProcessReturnResult(ProcessReturnOutcome Outcome, int? SaleReturnId, decimal? TotalRefund, int? FailedSaleLineItemId);

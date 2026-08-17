@@ -20,6 +20,9 @@ public sealed class CreateProductBundleCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new CreateProductBundleResult(CreateProductBundleOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new CreateProductBundleResult(CreateProductBundleOutcome.SubscriptionInactive, null);
+
         // Batched existence check — without this, a bad ProductId only surfaces as a raw
         // DbUpdateException from the FK constraint when SaveChangesAsync runs.
         var requestedProductIds = command.Items.Select(i => i.ProductId).Distinct().ToList();

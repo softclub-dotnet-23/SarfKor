@@ -8,9 +8,10 @@ import { useThemeTransition } from '../theme/useThemeTransition'
 import { SunIcon, MoonIcon } from '../components/icons'
 import { useAuth } from '../auth/AuthContext'
 import { salesApi, ApiError, type CashierShift } from '../lib/api'
-import { RegisterIcon, PackageIcon, LogOutIcon, RefreshIcon } from './components/icons'
+import { RegisterIcon, PackageIcon, LogOutIcon } from './components/icons'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
+import { FormModal, FormField } from './components/FormModal'
 import { useT } from '../i18n/translations'
 import { useLocaleFormat } from '../i18n/format'
 
@@ -26,14 +27,18 @@ const TABS = [
   { to: '/admin/inventory', key: 'partner.nav.inventory', icon: PackageIcon, titleKey: 'partner.page.inventory.title' },
 ] as const
 
-function ShiftCard({ collapsed }: { collapsed: boolean }) {
+// Was a permanently-open card (amount input + button always on screen, pushing the actual POS
+// content down) — same "постоянно открытая форма -> кнопка + модалка" complaint ADMIN_PROMPT's
+// own follow-up raised about the old admin add-forms, just never applied here since this predates
+// that pass. Now: a single-line status strip that's just a status dot + a button; the amount
+// input only exists inside the FormModal it opens, on demand.
+function ShiftBar() {
   const { storeId, user } = useAuth()
   const t = useT()
   const { time } = useLocaleFormat()
   const [shifts, setShifts] = useState<CashierShift[] | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
   const [amount, setAmount] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
 
   const load = useCallback(async () => {
     if (!storeId) return
@@ -51,64 +56,72 @@ function ShiftCard({ collapsed }: { collapsed: boolean }) {
 
   const myOpenShift = shifts?.find((s) => s.cashierUserId === user?.userId && !s.endedAt) ?? null
 
-  async function handleToggleShift() {
+  function openModal() {
+    setAmount('')
+    setModalOpen(true)
+  }
+
+  async function handleSubmit() {
     if (!storeId) return
-    setBusy(true)
-    setError('')
     try {
       if (myOpenShift) {
         await salesApi.closeCashierShift(myOpenShift.cashierShiftId, Number(amount) || 0)
       } else {
         await salesApi.openCashierShift(storeId, Number(amount) || 0, 'TJS')
       }
-      setAmount('')
       await load()
+      setModalOpen(false)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('partner.shift.updateError'))
-    } finally {
-      setBusy(false)
+      throw err instanceof ApiError ? err : new Error(t('partner.shift.updateError'))
     }
   }
 
-  if (collapsed) return null
-
   return (
-    <div className="mt-3 rounded-2xl bg-[color:var(--admin-hover)] p-4">
-      <div className="mb-2.5 flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--admin-text-tertiary)]">
-          {t('partner.shift.title')}
-        </span>
+    <>
+      <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl bg-[color:var(--admin-hover)] px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden
+            className={clsx('h-2 w-2 shrink-0 rounded-full', myOpenShift ? 'bg-[color:var(--admin-success)]' : 'bg-[color:var(--admin-text-tertiary)] opacity-50')}
+          />
+          <span className="truncate text-[12.5px] font-medium text-[color:var(--admin-text-secondary)]">
+            {myOpenShift ? t('partner.shift.onSince', { time: time(myOpenShift.startedAt) }) : t('partner.shift.notOpen')}
+          </span>
+        </div>
         <button
-          onClick={load}
-          aria-label={t('partner.shell.refresh')}
-          className="grid h-7 w-7 place-items-center rounded-lg bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]"
+          onClick={openModal}
+          disabled={!storeId}
+          className={clsx(
+            'shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-opacity disabled:opacity-50',
+            myOpenShift ? 'bg-[color:var(--admin-danger-dim)] text-[color:var(--admin-danger)]' : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
+          )}
         >
-          <RefreshIcon width={14} height={14} />
+          {myOpenShift ? t('partner.shift.close') : t('partner.shift.open')}
         </button>
       </div>
-      <div className="mb-1 truncate text-[13px] font-semibold text-[color:var(--admin-text)]">{user?.email}</div>
-      <div className="mb-3 text-xs text-[color:var(--admin-text-tertiary)]">
-        {myOpenShift ? t('partner.shift.onSince', { time: time(myOpenShift.startedAt) }) : t('partner.shift.notOpen')}
-      </div>
-      <input
-        type="number"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        placeholder={myOpenShift ? t('partner.shift.amountInDrawer') : t('partner.shift.openingAmount')}
-        className="mb-2 w-full rounded-lg border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-2.5 py-1.5 text-[12px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
-      />
-      {error && <div className="mb-2 text-[11px] font-medium text-[color:var(--admin-danger)]">{error}</div>}
-      <button
-        onClick={handleToggleShift}
-        disabled={busy || !storeId}
-        className={clsx(
-          'w-full rounded-lg py-1.5 text-[12px] font-semibold transition-opacity disabled:opacity-50',
-          myOpenShift ? 'bg-[color:var(--admin-danger)] text-[color:var(--admin-danger-fg)]' : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
-        )}
+
+      <FormModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={myOpenShift ? t('partner.shift.close') : t('partner.shift.open')}
+        isDirty={!!amount}
+        onSubmit={handleSubmit}
+        submitLabel={myOpenShift ? t('partner.shift.close') : t('partner.shift.open')}
+        submitBusyLabel={t('common.saving')}
+        scheme="admin"
       >
-        {busy ? t('common.saving') : myOpenShift ? t('partner.shift.close') : t('partner.shift.open')}
-      </button>
-    </div>
+        <FormField label={myOpenShift ? t('partner.shift.amountInDrawer') : t('partner.shift.openingAmount')} scheme="admin">
+          <input
+            type="number"
+            autoFocus
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0"
+            className="w-full rounded-xl border border-[color:var(--admin-border)] bg-[color:var(--admin-card)] px-3.5 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none focus:border-[color:var(--admin-accent)]"
+          />
+        </FormField>
+      </FormModal>
+    </>
   )
 }
 
@@ -172,12 +185,12 @@ export function CashierShell() {
         </div>
       </header>
 
-      {/* Shift open/close — the one thing a cashier must do before selling
-          anything, so it rides along at the top of the scroll area rather
-          than being buried in a menu. Same component/logic StorePartner's
-          sidebar uses, just full-width instead of a narrow column. */}
+      {/* Shift open/close — the one thing a cashier must do before selling anything, so its
+          status rides along at the top of the scroll area rather than being buried in a menu.
+          Compact status strip only; the actual open/close form lives in the modal the button
+          opens, not inline (matches the button->modal convention every other admin form uses). */}
       <div className="shrink-0 border-b border-[color:var(--admin-border)] bg-[color:var(--admin-content)] px-3 pb-3">
-        <ShiftCard collapsed={false} />
+        <ShiftBar />
       </div>
 
       <main className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-3">

@@ -51,6 +51,7 @@ public class RecordCommissionCommandHandlerTests
     {
         _saleTransactionRepository.Setup(r => r.GetByIdAsync(SaleId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateSale());
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new RecordCommissionCommand(SaleId, 5, "TJS", "someone-else"), CancellationToken.None);
@@ -63,6 +64,7 @@ public class RecordCommissionCommandHandlerTests
     {
         _saleTransactionRepository.Setup(r => r.GetByIdAsync(SaleId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateSale());
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _commissionRepository.Setup(r => r.Add(It.IsAny<Commission>())).Callback<Commission>(c => c.Id = 1);
 
         var handler = CreateHandler();

@@ -15,6 +15,9 @@ public sealed class RedeemGiftCardCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new RedeemGiftCardResult(RedeemGiftCardOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new RedeemGiftCardResult(RedeemGiftCardOutcome.SubscriptionInactive, null);
+
         var giftCard = await giftCardRepository.GetByCodeAsync(command.Code, cancellationToken);
         if (giftCard is null)
             return new RedeemGiftCardResult(RedeemGiftCardOutcome.NotFound, null);

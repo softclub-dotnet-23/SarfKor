@@ -20,6 +20,9 @@ public sealed class CreateReorderRuleCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new CreateReorderRuleResult(CreateReorderRuleOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new CreateReorderRuleResult(CreateReorderRuleOutcome.SubscriptionInactive, null);
+
         if (!await productRepository.ExistsAsync(command.ProductId, cancellationToken))
             return new CreateReorderRuleResult(CreateReorderRuleOutcome.ProductNotFound, null);
 

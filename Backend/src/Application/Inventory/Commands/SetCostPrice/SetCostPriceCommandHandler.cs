@@ -20,6 +20,9 @@ public sealed class SetCostPriceCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new SetCostPriceResult(SetCostPriceOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new SetCostPriceResult(SetCostPriceOutcome.SubscriptionInactive, null);
+
         if (!await productRepository.ExistsAsync(command.ProductId, cancellationToken))
             return new SetCostPriceResult(SetCostPriceOutcome.ProductNotFound, null);
 

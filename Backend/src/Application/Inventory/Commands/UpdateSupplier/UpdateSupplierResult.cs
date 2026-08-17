@@ -4,7 +4,8 @@ public enum UpdateSupplierOutcome
 {
     Updated,
     NotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record UpdateSupplierResult(UpdateSupplierOutcome Outcome);

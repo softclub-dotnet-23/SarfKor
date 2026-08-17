@@ -18,6 +18,9 @@ public sealed class CreateLoyaltyProgramCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new CreateLoyaltyProgramResult(CreateLoyaltyProgramOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new CreateLoyaltyProgramResult(CreateLoyaltyProgramOutcome.SubscriptionInactive, null);
+
         if (await loyaltyProgramRepository.GetByStoreIdAsync(command.StoreId, cancellationToken) is not null)
             return new CreateLoyaltyProgramResult(CreateLoyaltyProgramOutcome.AlreadyExists, null);
 

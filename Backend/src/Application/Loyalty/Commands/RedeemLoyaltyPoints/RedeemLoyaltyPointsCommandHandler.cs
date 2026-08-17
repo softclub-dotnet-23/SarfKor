@@ -26,6 +26,9 @@ public sealed class RedeemLoyaltyPointsCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(store.Id, command.PerformedByUserId, cancellationToken))
             return new RedeemLoyaltyPointsResult(RedeemLoyaltyPointsOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(store.Id, cancellationToken))
+            return new RedeemLoyaltyPointsResult(RedeemLoyaltyPointsOutcome.SubscriptionInactive, null);
+
         if (account.PointsBalance < command.Points)
             return new RedeemLoyaltyPointsResult(RedeemLoyaltyPointsOutcome.InsufficientPoints, account.PointsBalance);
 

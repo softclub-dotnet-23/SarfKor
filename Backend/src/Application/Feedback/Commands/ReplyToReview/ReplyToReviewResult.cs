@@ -4,7 +4,8 @@ public enum ReplyToReviewOutcome
 {
     Replied,
     ReviewNotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record ReplyToReviewResult(ReplyToReviewOutcome Outcome, int? ReplyId);

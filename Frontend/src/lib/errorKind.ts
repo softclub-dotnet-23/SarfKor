@@ -10,6 +10,10 @@ export type ErrorKind = 'forbidden' | 'notFound' | 'server' | 'network' | 'unkno
 
 export function classifyError(err: unknown): ErrorKind {
   if (err instanceof ApiError) {
+    // status 0 is fetchWithTimeout's own sentinel for "aborted after DEFAULT_TIMEOUT_MS" — the
+    // request never got a real HTTP response, so it belongs in the same retryable bucket as a
+    // request that never reached the server at all.
+    if (err.status === 0) return 'network'
     if (err.status === 401 || err.status === 403) return 'forbidden'
     if (err.status === 404) return 'notFound'
     if (err.status >= 500) return 'server'

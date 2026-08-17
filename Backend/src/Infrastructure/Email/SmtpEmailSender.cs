@@ -157,7 +157,13 @@ public sealed class SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEm
         message.Subject = subject;
         message.Body = new TextPart(TextFormat.Html) { Text = htmlBody };
 
-        using var client = new SmtpClient();
+        // MailKit's own Timeout (milliseconds, socket-level) is the belt to cancellationToken's
+        // braces: a CT can end up cancelling late depending on exactly where a connect/DNS/TLS
+        // handshake stalls, but SmtpClient.Timeout cuts every blocking socket operation at a fixed
+        // point no matter what. Confirmed live on Railway: SMTP to smtp.gmail.com can hang minutes
+        // with neither of these set (see WORKLOG) — this is the fix, on top of no longer running
+        // inside the HTTP request at all (see QueuedEmailSender/EmailSenderBackgroundService).
+        using var client = new SmtpClient { Timeout = 8000 };
         await client.ConnectAsync(host, port, SecureSocketOptions.StartTls, cancellationToken);
         await client.AuthenticateAsync(username, password, cancellationToken);
         await client.SendAsync(message, cancellationToken);

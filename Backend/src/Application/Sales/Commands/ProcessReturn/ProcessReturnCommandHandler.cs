@@ -22,6 +22,9 @@ public sealed class ProcessReturnCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(sale.StoreId, command.PerformedByUserId, cancellationToken))
             return new ProcessReturnResult(ProcessReturnOutcome.Forbidden, null, null, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(sale.StoreId, cancellationToken))
+            return new ProcessReturnResult(ProcessReturnOutcome.SubscriptionInactive, null, null, null);
+
         if (sale.Status != SaleStatus.Completed)
             return new ProcessReturnResult(ProcessReturnOutcome.SaleNotCompleted, null, null, null);
 

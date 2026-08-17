@@ -57,6 +57,7 @@ public class InitiateStockTransferCommandHandlerTests
     {
         SetupBothStoresExist();
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(FromStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(ToStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var handler = CreateHandler();
@@ -71,7 +72,9 @@ public class InitiateStockTransferCommandHandlerTests
     {
         SetupBothStoresExist();
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(FromStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(ToStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _stockLevelRepository
             .Setup(r => r.TryDecrementAsync(1, FromStoreId, 5, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -88,7 +91,9 @@ public class InitiateStockTransferCommandHandlerTests
     {
         SetupBothStoresExist();
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(FromStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(ToStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _stockLevelRepository
             .Setup(r => r.TryDecrementAsync(1, FromStoreId, 5, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);

@@ -17,10 +17,13 @@ public class RedeemGiftCardCommandHandlerTests
     private readonly Mock<IStoreAccessAuthorizer> _storeAccessAuthorizer = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
-    public RedeemGiftCardCommandHandlerTests() =>
+    public RedeemGiftCardCommandHandlerTests()
+    {
         _storeAccessAuthorizer
             .Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+    }
 
     private RedeemGiftCardCommandHandler CreateHandler() =>
         new(_giftCardRepository.Object, _giftCardRedemptionRepository.Object, _storeAccessAuthorizer.Object, _unitOfWork.Object);

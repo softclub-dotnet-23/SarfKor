@@ -19,6 +19,9 @@ public sealed class CreatePurchaseOrderCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new CreatePurchaseOrderResult(CreatePurchaseOrderOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new CreatePurchaseOrderResult(CreatePurchaseOrderOutcome.SubscriptionInactive, null);
+
         var order = new PurchaseOrder
         {
             StoreId = command.StoreId,

@@ -268,6 +268,14 @@ public sealed class AuthService(
             return new ChangePasswordServiceResult(false, false, incorrectCurrent, result.Errors.Select(e => e.Description).ToList());
         }
 
+        // The whole point of MustChangePassword — a successful change here is exactly what clears
+        // it, whether this was a forced first-login change or an ordinary voluntary one.
+        if (user.MustChangePassword)
+        {
+            user.MustChangePassword = false;
+            await userManager.UpdateAsync(user);
+        }
+
         // Same reasoning as ResetPasswordAsync: a password change is exactly the moment a
         // hijacked session should be killed, even though here it's the legitimate owner
         // triggering it. Their own refresh token dies too — the access token is left to expire
@@ -357,6 +365,50 @@ public sealed class AuthService(
         return true;
     }
 
+    public async Task MarkMustChangePasswordAsync(string userId, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return;
+
+        user.MustChangePassword = true;
+        await userManager.UpdateAsync(user);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<bool> AdminResetPasswordAsync(string userId, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return false;
+
+        // Same RemovePassword+AddPassword pair ResetPasswordAsync uses — no old password needed,
+        // the caller here is the store owner acting on the employee's behalf, not the employee.
+        await userManager.RemovePasswordAsync(user);
+        var addResult = await userManager.AddPasswordAsync(user, newPassword);
+        if (!addResult.Succeeded)
+            return false;
+
+        user.MustChangePassword = true;
+        await userManager.UpdateAsync(user);
+
+        // Same reasoning as every other password-touching path here: whoever had a session open
+        // with the old (now dead) password should not keep it.
+        await refreshTokenRepository.RevokeAllForUserAsync(user.Id, cancellationToken);
+
+        securityEventRepository.Add(new SecurityEvent
+        {
+            UserId = user.Id,
+            Type = SecurityEventType.PasswordChanged,
+            IpAddress = null,
+            UserAgent = null,
+            OccurredAt = DateTimeOffset.UtcNow
+        });
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     private async Task<RegisterAccountResult> ResendConfirmationCodeAsync(ApplicationUser user, CancellationToken cancellationToken) =>
         new(null, false, RequiresEmailConfirmation: true, EmailConfirmationCode: await IssueEmailVerificationCodeAsync(user, cancellationToken));
 
@@ -385,6 +437,6 @@ public sealed class AuthService(
             CreatedAt = DateTimeOffset.UtcNow
         });
 
-        return new AuthResult(user.Id, accessToken, refreshTokenValue, expiresAt);
+        return new AuthResult(user.Id, accessToken, refreshTokenValue, expiresAt, user.MustChangePassword);
     }
 }

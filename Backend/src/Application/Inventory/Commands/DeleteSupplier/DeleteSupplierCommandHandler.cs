@@ -17,6 +17,9 @@ public sealed class DeleteSupplierCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(supplier.StoreId, command.PerformedByUserId, cancellationToken))
             return new DeleteSupplierResult(DeleteSupplierOutcome.Forbidden);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(supplier.StoreId, cancellationToken))
+            return new DeleteSupplierResult(DeleteSupplierOutcome.SubscriptionInactive);
+
         if (await supplierRepository.IsInUseAsync(command.SupplierId, cancellationToken))
             return new DeleteSupplierResult(DeleteSupplierOutcome.InUse);
 

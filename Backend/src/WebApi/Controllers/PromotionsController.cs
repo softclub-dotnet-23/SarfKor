@@ -40,6 +40,7 @@ public sealed class PromotionsController : ControllerBase
             CreatePromotionOutcome.Forbidden => Forbid(),
             CreatePromotionOutcome.ProductNotFound => NotFound("Product not found."),
             CreatePromotionOutcome.CategoryNotFound => NotFound("Category not found."),
+            CreatePromotionOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

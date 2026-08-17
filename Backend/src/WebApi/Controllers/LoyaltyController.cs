@@ -43,6 +43,7 @@ public sealed class LoyaltyController : ControllerBase
             CreateLoyaltyProgramOutcome.StoreNotFound => NotFound("Store not found."),
             CreateLoyaltyProgramOutcome.Forbidden => Forbid(),
             CreateLoyaltyProgramOutcome.AlreadyExists => Conflict("This store already has a loyalty program."),
+            CreateLoyaltyProgramOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -89,6 +90,7 @@ public sealed class LoyaltyController : ControllerBase
             EnrollCustomerInLoyaltyOutcome.CustomerNotFound => NotFound("Customer not found."),
             EnrollCustomerInLoyaltyOutcome.ProgramNotFound => NotFound("Loyalty program not found."),
             EnrollCustomerInLoyaltyOutcome.Forbidden => Forbid(),
+            EnrollCustomerInLoyaltyOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -118,6 +120,7 @@ public sealed class LoyaltyController : ControllerBase
             EarnLoyaltyPointsOutcome.Earned => Ok(result),
             EarnLoyaltyPointsOutcome.AccountNotFound => NotFound(),
             EarnLoyaltyPointsOutcome.Forbidden => Forbid(),
+            EarnLoyaltyPointsOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }
@@ -148,6 +151,7 @@ public sealed class LoyaltyController : ControllerBase
             RedeemLoyaltyPointsOutcome.AccountNotFound => NotFound(),
             RedeemLoyaltyPointsOutcome.Forbidden => Forbid(),
             RedeemLoyaltyPointsOutcome.InsufficientPoints => Conflict("Insufficient points balance."),
+            RedeemLoyaltyPointsOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

@@ -18,6 +18,9 @@ public sealed class SubmitPurchaseOrderCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(order.StoreId, command.PerformedByUserId, cancellationToken))
             return new SubmitPurchaseOrderResult(SubmitPurchaseOrderOutcome.Forbidden);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(order.StoreId, cancellationToken))
+            return new SubmitPurchaseOrderResult(SubmitPurchaseOrderOutcome.SubscriptionInactive);
+
         if (order.Status != PurchaseOrderStatus.Draft)
             return new SubmitPurchaseOrderResult(SubmitPurchaseOrderOutcome.NotDraft);
 

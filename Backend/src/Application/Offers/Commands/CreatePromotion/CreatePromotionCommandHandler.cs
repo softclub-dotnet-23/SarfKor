@@ -20,6 +20,9 @@ public sealed class CreatePromotionCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(command.StoreId, command.PerformedByUserId, cancellationToken))
             return new CreatePromotionResult(CreatePromotionOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(command.StoreId, cancellationToken))
+            return new CreatePromotionResult(CreatePromotionOutcome.SubscriptionInactive, null);
+
         if (command.ProductId.HasValue && !await productRepository.ExistsAsync(command.ProductId.Value, cancellationToken))
             return new CreatePromotionResult(CreatePromotionOutcome.ProductNotFound, null);
 

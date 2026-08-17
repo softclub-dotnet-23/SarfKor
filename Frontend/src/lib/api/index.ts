@@ -1,5 +1,5 @@
 export { apiFetch, apiUpload, apiFetchBlob, ApiError, getTokens, setTokens, clearTokens, refreshTokens } from './client'
-export { decodeJwt, rolesFromToken } from './jwt'
+export { decodeJwt, rolesFromToken, mustChangePasswordFromToken } from './jwt'
 export * as authApi from './auth'
 export type { AuthResult, AcceptStoreEmployeeInvitationOutcome, GetInviteOutcome, InviteInfo } from './auth'
 export * as storesApi from './stores'
@@ -54,6 +54,10 @@ export type {
   StoreEmployeeInvitation,
   StoreEmployeeInvitationStatus,
   CreateStoreEmployeeInvitationOutcome,
+  CreateCashierAccountOutcome,
+  UpdateStoreEmployeeOutcome,
+  ResetCashierPasswordOutcome,
+  SetStoreEmployeeActiveOutcome,
 } from './stores'
 export type {
   StoreStatus,

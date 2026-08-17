@@ -46,6 +46,29 @@ export class ApiError extends Error {
   }
 }
 
+// No request against this backend should ever hang the UI indefinitely — a submit button that
+// never comes back is indistinguishable from a frozen app. 15s is generous for anything actually
+// backed by a DB query (email sends no longer block the request at all, see WORKLOG); past that,
+// something is genuinely stuck and the caller should see a clear, retryable error instead of a
+// spinner forever. `ApiError(0, ...)` is the timeout's own sentinel status — classifyError below
+// maps it to 'network', the same retryable bucket as "request never reached the server".
+const DEFAULT_TIMEOUT_MS = 15000
+
+async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ApiError(0, 'Превышено время ожидания сервера — попробуйте ещё раз', undefined)
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 // The access token expires in 15 minutes (server-side constant) and the
 // refresh token is single-use/rotated on every call. If two requests 401 at
 // the same moment, they must share one refresh attempt — a second call with
@@ -64,7 +87,7 @@ export async function refreshTokens(): Promise<AuthTokens | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken: current.refreshToken }),
@@ -95,6 +118,12 @@ interface ApiFetchOptions {
   auth?: boolean // defaults to true — set false for anonymous endpoints
   /** Skip JSON body parsing/serialization (used for multipart uploads). */
   raw?: RequestInit
+  /** Overrides DEFAULT_TIMEOUT_MS for this one call. Code review 2026-08-10 finding #3: the
+   *  backend's AI assistant client deliberately allows up to 60s for a reply (a real LLM call, not
+   *  a DB-backed request), but every apiFetch call used to inherit the same 15s default regardless
+   *  — silently killing any assistant reply that took longer than that, even though the backend
+   *  would have answered successfully. assistant.ts's chat() is the one caller that sets this. */
+  timeoutMs?: number
 }
 
 function buildUrl(path: string, query?: ApiFetchOptions['query']) {
@@ -118,7 +147,7 @@ function buildUrl(path: string, query?: ApiFetchOptions['query']) {
  * non-2xx response (after the retry, if a retry was attempted).
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { method = 'GET', body, query, auth = true } = options
+  const { method = 'GET', body, query, auth = true, timeoutMs } = options
 
   const doFetch = async (): Promise<Response> => {
     const headers: Record<string, string> = {}
@@ -127,11 +156,15 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
       const tokens = getTokens()
       if (tokens) headers['Authorization'] = `Bearer ${tokens.accessToken}`
     }
-    return fetch(buildUrl(path, query), {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    })
+    return fetchWithTimeout(
+      buildUrl(path, query),
+      {
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      },
+      timeoutMs,
+    )
   }
 
   let res = await doFetch()
@@ -182,7 +215,7 @@ export async function apiFetchBlob(path: string): Promise<Blob | null> {
     const headers: Record<string, string> = {}
     const tokens = getTokens()
     if (tokens) headers['Authorization'] = `Bearer ${tokens.accessToken}`
-    return fetch(buildUrl(path), { headers })
+    return fetchWithTimeout(buildUrl(path), { headers })
   }
 
   let res = await doFetch()
@@ -199,12 +232,15 @@ export async function apiUpload<T>(path: string, formData: FormData): Promise<T>
   const tokens = getTokens()
   if (tokens) headers['Authorization'] = `Bearer ${tokens.accessToken}`
 
-  let res = await fetch(buildUrl(path), { method: 'POST', headers, body: formData })
+  // Longer budget than DEFAULT_TIMEOUT_MS — this carries actual file bytes (product photos,
+  // receipt scans), not just a JSON payload, so 15s is unrealistically tight on a slow connection.
+  const uploadTimeoutMs = 30000
+  let res = await fetchWithTimeout(buildUrl(path), { method: 'POST', headers, body: formData }, uploadTimeoutMs)
   if (res.status === 401 && tokens) {
     const refreshed = await refreshTokens()
     if (refreshed) {
       headers['Authorization'] = `Bearer ${refreshed.accessToken}`
-      res = await fetch(buildUrl(path), { method: 'POST', headers, body: formData })
+      res = await fetchWithTimeout(buildUrl(path), { method: 'POST', headers, body: formData }, uploadTimeoutMs)
     }
   }
   if (!res.ok) {

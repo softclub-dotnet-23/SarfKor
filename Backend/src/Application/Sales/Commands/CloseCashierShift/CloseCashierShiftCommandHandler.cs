@@ -25,6 +25,9 @@ public sealed class CloseCashierShiftCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(shift.StoreId, command.PerformedByUserId, cancellationToken))
             return new CloseCashierShiftResult(CloseCashierShiftOutcome.Forbidden, null, null, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(shift.StoreId, cancellationToken))
+            return new CloseCashierShiftResult(CloseCashierShiftOutcome.SubscriptionInactive, null, null, null);
+
         if (shift.EndedAt is not null)
             return new CloseCashierShiftResult(CloseCashierShiftOutcome.AlreadyClosed, null, null, null);
 
@@ -40,6 +43,9 @@ public sealed class CloseCashierShiftCommandHandler(
         shift.ClosingCash = new Money(command.ClosingCash, shift.OpeningCash.Currency);
         shift.EndedAt = DateTimeOffset.UtcNow;
 
+        // GetByIdAsync returns an untracked instance (see CashierShiftRepository) -- SaveChanges
+        // alone would see no pending changes without this explicit attach-and-mark-modified.
+        cashierShiftRepository.Update(shift);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new CloseCashierShiftResult(CloseCashierShiftOutcome.Closed, expectedCash, command.ClosingCash, command.ClosingCash - expectedCash);

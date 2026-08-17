@@ -98,6 +98,15 @@ export interface StoreEmployee {
   userId: string
   role: StoreEmployeeRole
   addedAt: string
+  firstName?: string
+  lastName?: string
+  email?: string
+  phoneNumber?: string
+  scheduleStart?: string
+  scheduleEnd?: string
+  isActive: boolean
+  monthlySalaryAmount?: number
+  monthlySalaryCurrency?: string
 }
 
 export function removeStoreEmployee(storeEmployeeId: number) {
@@ -106,6 +115,63 @@ export function removeStoreEmployee(storeEmployeeId: number) {
 
 export function getStoreEmployees(storeId: number) {
   return apiFetch<{ outcome: string; employees?: StoreEmployee[] }>(`/api/stores/${storeId}/employees`)
+}
+
+export type UpdateStoreEmployeeOutcome = 'Updated' | 'NotFound' | 'Forbidden' | 'SubscriptionInactive'
+
+// firstName/lastName/phoneNumber: omit a field to leave it unchanged (this is also the "изменить"
+// action on a cashier's card, which only ever edits a subset at once).
+//
+// monthlySalaryAmount/Currency are NOT "omit to leave unchanged" like the three fields above --
+// the backend command treats a null salary pair as "clear the salary" (predates this session, see
+// UpdateStoreEmployeeCommand's own doc comment). Code review 2026-08-10 finding #1: this function
+// used to hardcode both to null on every call, which meant using "Изменить" to fix a cashier's
+// phone number silently erased any salary that had been set through any other means (SQL, a future
+// payroll screen). Callers MUST now explicitly pass the salary they want to end up with --
+// EditCashierModal passes the employee's own current value straight through, so an edit that has
+// nothing to do with salary leaves it exactly as it was.
+export function updateStoreEmployee(
+  storeEmployeeId: number,
+  fields: {
+    firstName?: string
+    lastName?: string
+    phoneNumber?: string
+    scheduleStart?: string | null
+    scheduleEnd?: string | null
+    monthlySalaryAmount?: number | null
+    monthlySalaryCurrency?: string | null
+  },
+) {
+  return apiFetch<{ outcome: UpdateStoreEmployeeOutcome }>(`/api/store-employees/${storeEmployeeId}`, {
+    method: 'PATCH',
+    body: {
+      monthlySalaryAmount: fields.monthlySalaryAmount ?? null,
+      monthlySalaryCurrency: fields.monthlySalaryCurrency ?? null,
+      scheduleStart: fields.scheduleStart,
+      scheduleEnd: fields.scheduleEnd,
+      firstName: fields.firstName,
+      lastName: fields.lastName,
+      phoneNumber: fields.phoneNumber,
+    },
+  })
+}
+
+export type ResetCashierPasswordOutcome = 'Reset' | 'NotFound' | 'Forbidden'
+
+export function resetCashierPassword(storeEmployeeId: number) {
+  return apiFetch<{ outcome: ResetCashierPasswordOutcome; password?: string }>(
+    `/api/store-employees/${storeEmployeeId}/reset-password`,
+    { method: 'POST' },
+  )
+}
+
+export type SetStoreEmployeeActiveOutcome = 'Updated' | 'NotFound' | 'Forbidden'
+
+export function setStoreEmployeeActive(storeEmployeeId: number, isActive: boolean) {
+  return apiFetch<{ outcome: SetStoreEmployeeActiveOutcome }>(`/api/store-employees/${storeEmployeeId}/active`, {
+    method: 'POST',
+    body: { isActive },
+  })
 }
 
 // Every new employee — existing account or not — now goes through an emailed link they click and
@@ -119,6 +185,20 @@ export function createStoreEmployeeInvitation(storeId: number, email: string, ro
   return apiFetch<{ outcome: CreateStoreEmployeeInvitationOutcome; invitationId?: number }>(
     `/api/stores/${storeId}/employee-invitations`,
     { method: 'POST', body: { email, role } },
+  )
+}
+
+// Deliberately separate from createStoreEmployeeInvitation above — no email round-trip, returns a
+// real, immediately-usable password once (never retrievable again after this response).
+export type CreateCashierAccountOutcome = 'Created' | 'StoreNotFound' | 'Forbidden' | 'EmailAlreadyRegistered'
+
+export function createCashierAccount(
+  storeId: number,
+  fields: { firstName: string; lastName: string; email: string; phoneNumber: string; scheduleStart?: string; scheduleEnd?: string },
+) {
+  return apiFetch<{ outcome: CreateCashierAccountOutcome; email?: string; password?: string }>(
+    `/api/stores/${storeId}/cashier-accounts`,
+    { method: 'POST', body: fields },
   )
 }
 

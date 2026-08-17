@@ -38,6 +38,7 @@ public sealed class PricingController : ControllerBase
             SubmitPriceUpdateOutcome.ProductNotFound => NotFound(),
             SubmitPriceUpdateOutcome.StoreNotFound => NotFound(),
             SubmitPriceUpdateOutcome.Forbidden => Forbid(),
+            SubmitPriceUpdateOutcome.SubscriptionInactive => StatusCode(402, "Subscription is not active — the cabinet is closed until the store's subscription is current."),
             _ => Problem()
         };
     }

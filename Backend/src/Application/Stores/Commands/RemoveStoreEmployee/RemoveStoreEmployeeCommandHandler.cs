@@ -21,6 +21,9 @@ public sealed class RemoveStoreEmployeeCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerAsync(employee.StoreId, command.PerformedByUserId, cancellationToken))
             return new RemoveStoreEmployeeResult(RemoveStoreEmployeeOutcome.Forbidden);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(employee.StoreId, cancellationToken))
+            return new RemoveStoreEmployeeResult(RemoveStoreEmployeeOutcome.SubscriptionInactive);
+
         var removedUserId = employee.UserId;
         storeEmployeeRepository.Remove(employee);
         await unitOfWork.SaveChangesAsync(cancellationToken);

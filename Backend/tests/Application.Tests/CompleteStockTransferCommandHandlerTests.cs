@@ -49,6 +49,7 @@ public class CompleteStockTransferCommandHandlerTests
     {
         _stockTransferRepository.Setup(r => r.GetByIdAsync(TransferId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateTransfer(StockTransferStatus.Completed));
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(ToStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new CompleteStockTransferCommand(TransferId, OwnerId), CancellationToken.None);
@@ -61,6 +62,7 @@ public class CompleteStockTransferCommandHandlerTests
     {
         _stockTransferRepository.Setup(r => r.GetByIdAsync(TransferId, It.IsAny<CancellationToken>())).ReturnsAsync(CreateTransfer(StockTransferStatus.InTransit));
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(ToStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new CompleteStockTransferCommand(TransferId, "someone-else"), CancellationToken.None);
@@ -74,6 +76,7 @@ public class CompleteStockTransferCommandHandlerTests
         var transfer = CreateTransfer(StockTransferStatus.InTransit);
         _stockTransferRepository.Setup(r => r.GetByIdAsync(TransferId, It.IsAny<CancellationToken>())).ReturnsAsync(transfer);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerAsync(ToStoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new CompleteStockTransferCommand(TransferId, OwnerId), CancellationToken.None);

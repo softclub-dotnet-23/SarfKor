@@ -10,7 +10,12 @@ public sealed record StoreEmployeeDto(
     decimal? MonthlySalaryAmount,
     string? MonthlySalaryCurrency,
     TimeOnly? ScheduleStart,
-    TimeOnly? ScheduleEnd);
+    TimeOnly? ScheduleEnd,
+    string? FirstName,
+    string? LastName,
+    string? Email,
+    string? PhoneNumber,
+    bool IsActive);
 
 public enum GetStoreEmployeesOutcome
 {

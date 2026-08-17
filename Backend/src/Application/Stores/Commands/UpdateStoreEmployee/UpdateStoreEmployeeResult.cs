@@ -4,7 +4,8 @@ public enum UpdateStoreEmployeeOutcome
 {
     Updated,
     NotFound,
-    Forbidden
+    Forbidden,
+    SubscriptionInactive
 }
 
 public sealed record UpdateStoreEmployeeResult(UpdateStoreEmployeeOutcome Outcome);

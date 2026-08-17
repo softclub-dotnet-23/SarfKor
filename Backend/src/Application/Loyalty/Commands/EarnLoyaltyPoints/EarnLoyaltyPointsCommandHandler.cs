@@ -21,6 +21,9 @@ public sealed class EarnLoyaltyPointsCommandHandler(
         if (program is null || !await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(program.StoreId, command.PerformedByUserId, cancellationToken))
             return new EarnLoyaltyPointsResult(EarnLoyaltyPointsOutcome.Forbidden, null);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(program.StoreId, cancellationToken))
+            return new EarnLoyaltyPointsResult(EarnLoyaltyPointsOutcome.SubscriptionInactive, null);
+
         account.PointsBalance += command.Points;
         loyaltyTransactionRepository.Add(new LoyaltyTransaction
         {

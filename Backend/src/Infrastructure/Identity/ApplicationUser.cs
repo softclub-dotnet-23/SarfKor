@@ -23,4 +23,12 @@ public sealed class ApplicationUser : IdentityUser
     // Not backfillable for accounts created before this column existed (see the migration's data
     // pass, which defaults them to the migration date rather than leaving a misleading year-1 value).
     public DateTimeOffset CreatedAt { get; set; }
+
+    // Set true whenever someone else set this account's password on its behalf without the account
+    // holder ever typing it in themselves -- CreateCashierAccountCommandHandler at creation,
+    // AuthService.AdminResetPasswordAsync on a reset. Checked by IssueTokenPairAsync so every login
+    // response carries it fresh (never trust a stale JWT claim for this); cleared the moment
+    // ChangePasswordCommandHandler succeeds. false for every other account (self-registered,
+    // invite-accepted with their own chosen password).
+    public bool MustChangePassword { get; set; }
 }

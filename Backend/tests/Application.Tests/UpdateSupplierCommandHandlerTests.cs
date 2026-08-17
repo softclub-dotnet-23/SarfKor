@@ -46,6 +46,7 @@ public class UpdateSupplierCommandHandlerTests
         var supplier = new Supplier { StoreId = StoreId, Name = "Old Co", ContactPhone = null, ContactEmail = null };
         _supplierRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(supplier);
         _storeAccessAuthorizer.Setup(a => a.IsOwnerOrEmployeeAsync(StoreId, OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _storeAccessAuthorizer.Setup(a => a.IsOperationalAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var handler = CreateHandler();
         var result = await handler.Handle(new UpdateSupplierCommand(1, OwnerId, "New Co", "+992123456", "new@co.tj"), CancellationToken.None);

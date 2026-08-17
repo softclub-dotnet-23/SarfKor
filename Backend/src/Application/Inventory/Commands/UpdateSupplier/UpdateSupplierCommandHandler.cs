@@ -17,6 +17,9 @@ public sealed class UpdateSupplierCommandHandler(
         if (!await storeAccessAuthorizer.IsOwnerOrEmployeeAsync(supplier.StoreId, command.PerformedByUserId, cancellationToken))
             return new UpdateSupplierResult(UpdateSupplierOutcome.Forbidden);
 
+        if (!await storeAccessAuthorizer.IsOperationalAsync(supplier.StoreId, cancellationToken))
+            return new UpdateSupplierResult(UpdateSupplierOutcome.SubscriptionInactive);
+
         supplier.Name = command.Name;
         supplier.ContactPhone = command.ContactPhone;
         supplier.ContactEmail = command.ContactEmail;

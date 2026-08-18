@@ -1,4 +1,5 @@
 import { apiFetch } from './client'
+import type { SubscriptionStatus } from './admin'
 
 export interface CreateStoreRequest {
   name: string
@@ -42,6 +43,19 @@ export interface StoreDashboard {
 
 export function getStoreDashboard(storeId: number) {
   return apiFetch<StoreDashboard>(`/api/stores/${storeId}/dashboard`)
+}
+
+export interface MyStoreSubscriptionStatus {
+  outcome: 'Found' | 'StoreNotFound' | 'Forbidden'
+  status: SubscriptionStatus | null
+  currentPeriodEndsAt: string | null
+  isOwner: boolean | null
+}
+
+// Backs SubscriptionInactiveBanner (ErrorState.tsx) -- the "когда закончилась подписка, к кому
+// обратиться" detail a 402 on any write action doesn't carry on its own.
+export function getMySubscriptionStatus(storeId: number) {
+  return apiFetch<MyStoreSubscriptionStatus>(`/api/stores/${storeId}/subscription-status`)
 }
 
 export interface DailySalesReport {

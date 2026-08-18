@@ -151,8 +151,10 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
         onVoided()
       } else if (res.outcome === 'AlreadyVoided') {
         setVoidError('Эта продажа уже отменена')
+      } else if (res.outcome === 'NotFound') {
+        setVoidError('Продажа не найдена')
       } else {
-        setVoidError('Не удалось отменить продажу')
+        setVoidError('Нет доступа к этой продаже')
       }
     } catch (err) {
       setVoidError(err instanceof ApiError ? err.message : 'Не удалось отменить продажу')

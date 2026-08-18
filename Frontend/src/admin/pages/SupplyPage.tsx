@@ -10,6 +10,7 @@ import { ProductPicker } from '../components/ProductPicker'
 import { TruckIcon, PlusIcon, TrashIcon, RefreshIcon, PhoneIcon, MailIcon, AlertIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import type { ProductSearchItem } from '../../lib/api'
+import { errorMessage } from '../../lib/errorKind'
 import { createSupplier, getSuppliers, type Supplier } from '../../lib/api/suppliers'
 import {
   createPurchaseOrder,
@@ -445,7 +446,7 @@ function OrdersSection({
       setOrders(res.orders ?? [])
     } catch (err) {
       console.error('Failed to load purchase orders:', err)
-      setError('Не удалось загрузить заказы поставщикам')
+      setError(errorMessage(err, 'Не удалось загрузить заказы поставщикам'))
     } finally {
       setLoading(false)
     }
@@ -646,7 +647,7 @@ function TransfersSection({ storeId, createOpen, onCloseCreate }: { storeId: num
       setTransfers(res.transfers ?? [])
     } catch (err) {
       console.error('Failed to load stock transfers:', err)
-      setError('Не удалось загрузить перемещения')
+      setError(errorMessage(err, 'Не удалось загрузить перемещения'))
     } finally {
       setLoading(false)
     }
@@ -778,7 +779,7 @@ export function SupplyPage() {
       setSuppliers(res.suppliers ?? [])
     } catch (err) {
       console.error('Failed to load suppliers:', err)
-      setSuppliersError('Не удалось загрузить поставщиков')
+      setSuppliersError(errorMessage(err, 'Не удалось загрузить поставщиков'))
     } finally {
       setSuppliersLoading(false)
     }

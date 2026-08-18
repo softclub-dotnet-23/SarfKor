@@ -58,6 +58,7 @@ export type {
   UpdateStoreEmployeeOutcome,
   ResetCashierPasswordOutcome,
   SetStoreEmployeeActiveOutcome,
+  MyStoreSubscriptionStatus,
 } from './stores'
 export type {
   StoreStatus,

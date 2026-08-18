@@ -6,6 +6,7 @@ import { lockBodyScroll, unlockBodyScroll } from '../../lib/scrollLock'
 import { useFloatingPosition } from '../../lib/useFloatingPosition'
 import { Loading } from './Loading'
 import { SearchIcon, XIcon, ChevronDownIcon, AlertIcon } from './icons'
+import { errorMessage } from '../../lib/errorKind'
 
 // Single 'admin' scheme, shared by the StorePartner/Cashier cabinets and the platform Admin
 // console — see Select.tsx, this component's closest sibling, for the pattern this borrows
@@ -124,8 +125,8 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
         if (requestId !== requestIdRef.current) return
         setItems((prev) => (append ? [...prev, ...page.items] : page.items))
         setTotalCount(page.totalCount)
-      } catch {
-        if (requestId === requestIdRef.current) setError('Не удалось загрузить список')
+      } catch (err) {
+        if (requestId === requestIdRef.current) setError(errorMessage(err, 'Не удалось загрузить список'))
       } finally {
         if (requestId === requestIdRef.current) {
           setLoading(false)

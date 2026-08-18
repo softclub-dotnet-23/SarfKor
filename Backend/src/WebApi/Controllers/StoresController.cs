@@ -16,6 +16,7 @@ using Application.Stores.Commands.UpdateStoreEmployee;
 using Application.Stores.Queries.GetStoreDashboard;
 using Application.Stores.Queries.GetStoreEmployeeInvitations;
 using Application.Stores.Queries.GetStoreEmployees;
+using Application.Subscriptions.Queries.GetMyStoreSubscriptionStatus;
 using Domain.Stores;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -414,6 +415,38 @@ public sealed class StoresController : ControllerBase
             GetStoreDashboardOutcome.Found => Ok(result),
             GetStoreDashboardOutcome.StoreNotFound => NotFound("Store not found."),
             GetStoreDashboardOutcome.Forbidden => Forbid(),
+            _ => Problem()
+        };
+    }
+
+    // Deliberately available to Cashier too (not owner-only like most of this controller) --
+    // a cashier hitting a 402 on ProcessSale needs to know why just as much as the owner does,
+    // it's the frontend's SubscriptionInactiveBanner (see ErrorState.tsx) that decides whether to
+    // additionally show the "go fix it" link based on IsOwner in the response.
+    [HttpGet("stores/{storeId:int}/subscription-status")]
+    [Authorize("StorePartner")]
+    public async Task<IActionResult> GetSubscriptionStatus(
+        int storeId,
+        [FromServices] IQueryHandler<GetMyStoreSubscriptionStatusQuery, GetMyStoreSubscriptionStatusResult> handler,
+        [FromServices] IValidator<GetMyStoreSubscriptionStatusQuery> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var query = new GetMyStoreSubscriptionStatusQuery(storeId, userId);
+
+        var validationResult = await validator.ValidateAsync(query, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        var result = await handler.Handle(query, cancellationToken);
+        return result.Outcome switch
+        {
+            GetMyStoreSubscriptionStatusOutcome.Found => Ok(result),
+            GetMyStoreSubscriptionStatusOutcome.StoreNotFound => NotFound("Store not found."),
+            GetMyStoreSubscriptionStatusOutcome.Forbidden => Forbid(),
             _ => Problem()
         };
     }

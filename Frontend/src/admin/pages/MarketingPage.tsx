@@ -13,6 +13,7 @@ import { TagIcon, PercentIcon, ClockIcon, AlertIcon, CheckIcon, PlusIcon, TrashI
 import { StarIcon } from '../../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { ApiError, type Category, type ProductSearchItem } from '../../lib/api'
+import { errorMessage } from '../../lib/errorKind'
 import {
   createPromotion,
   getActivePromotions,
@@ -330,7 +331,7 @@ function PromotionsSection({ storeId, createOpen, onCloseCreate }: { storeId: nu
       setPromotions(res.promotions ?? [])
     } catch (err) {
       console.error('Failed to load promotions:', err)
-      setError('Не удалось загрузить акции')
+      setError(errorMessage(err, 'Не удалось загрузить акции'))
     } finally {
       setLoading(false)
     }
@@ -560,7 +561,7 @@ function BundlesSection({ storeId, createOpen, onCloseCreate }: { storeId: numbe
       setBundles(res.bundles ?? [])
     } catch (err) {
       console.error('Failed to load product bundles:', err)
-      setError('Не удалось загрузить наборы товаров')
+      setError(errorMessage(err, 'Не удалось загрузить наборы товаров'))
     } finally {
       setLoading(false)
     }
@@ -757,7 +758,7 @@ function OffersSection({ storeId, createOpen, onCloseCreate }: { storeId: number
       setOffers(res.offers ?? [])
     } catch (err) {
       console.error('Failed to load expiring offers:', err)
-      setError('Не удалось загрузить предложения')
+      setError(errorMessage(err, 'Не удалось загрузить предложения'))
     } finally {
       setLoading(false)
     }
@@ -848,7 +849,7 @@ function RepliesSection() {
       setReviews(res.reviews ?? [])
     } catch (err) {
       console.error('Failed to load reviews:', err)
-      setError('Не удалось загрузить отзывы')
+      setError(errorMessage(err, 'Не удалось загрузить отзывы'))
       setReviews(null)
     } finally {
       setLoading(false)

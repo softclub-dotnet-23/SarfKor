@@ -1,13 +1,15 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Panel, SectionHeader, PrimaryButton } from '../cabinet/components/primitives'
 import { useTheme } from '../../theme/ThemeProvider'
 import { useThemeTransition } from '../../theme/useThemeTransition'
 import { useAuth } from '../../auth/AuthContext'
+import { useLocaleFormat } from '../../i18n/format'
 import { SunIcon, MoonIcon } from '../../components/icons'
 import { CheckIcon } from '../components/icons'
+import { SubscriptionStatusBadge } from '../components/StatusBadge'
 import { SuppliersSection } from './SuppliersSection'
-import { storesApi, meApi, ApiError } from '../../lib/api'
+import { storesApi, meApi, ApiError, type MyStoreSubscriptionStatus } from '../../lib/api'
 import { useProfile } from '../../lib/useProfile'
 import { useAvatarUrl } from '../../lib/useAvatarUrl'
 
@@ -239,6 +241,50 @@ function StoreSection({ storeId }: { storeId: number | null }) {
   )
 }
 
+// Read-only -- plan changes/payments are recorded by platform Admin (AdminSubscriptionsController),
+// not self-service here. This exists so a 402 error's "Перейти к разделу подписки" link (see
+// ErrorState.tsx's SubscriptionInactiveHint) actually lands somewhere with real content, and so an
+// owner can check the renewal date without first triggering a write action that fails.
+function SubscriptionSection({ storeId }: { storeId: number | null }) {
+  const { date } = useLocaleFormat()
+  const [info, setInfo] = useState<MyStoreSubscriptionStatus | null>(null)
+
+  useEffect(() => {
+    if (!storeId) return
+    let cancelled = false
+    storesApi.getMySubscriptionStatus(storeId).then((res) => { if (!cancelled) setInfo(res) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [storeId])
+
+  if (!storeId || !info || info.outcome !== 'Found') return null
+
+  return (
+    <Panel>
+      <SectionHeader title="Подписка" />
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          {info.status ? (
+            <SubscriptionStatusBadge status={info.status} />
+          ) : (
+            <span className="text-[13px] text-[color:var(--admin-text-tertiary)]">Подписка не оформлена</span>
+          )}
+          {info.currentPeriodEndsAt && (
+            <div className="mt-2 text-[12px] text-[color:var(--admin-text-tertiary)]">
+              {info.status === 'Active' || info.status === 'Trial' ? 'Действует до ' : 'Истекла '}
+              {date(info.currentPeriodEndsAt)}
+            </div>
+          )}
+        </div>
+      </div>
+      {info.status !== 'Active' && (
+        <p className="mt-3 text-[12px] leading-relaxed text-[color:var(--admin-text-tertiary)]">
+          Для продления обратитесь к администратору платформы.
+        </p>
+      )}
+    </Panel>
+  )
+}
+
 function PasswordSection() {
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
@@ -319,6 +365,7 @@ export function SettingsPage() {
     <div className="mx-auto flex max-w-[820px] flex-col gap-5">
       <AvatarSection />
       <StoreSection storeId={storeId} />
+      <SubscriptionSection storeId={storeId} />
 
       <Panel>
         <SectionHeader title="Оформление" />

@@ -177,25 +177,41 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   }
 
   if (!res.ok) {
+    // Two distinct shapes come back from the backend for a non-2xx response, and they are NOT
+    // both JSON -- verified against the real running backend, not assumed. FluentValidation
+    // failures serialize as ASP.NET ProblemDetails (application/problem+json, an object with
+    // `.title`, via ToValidationProblem). But a plain `NotFound("...")`/`Conflict("...")`/
+    // `BadRequest("...")`/`StatusCode(n, "...")` -- used all over the controllers for every
+    // outcome-mapped error, including every "Subscription is not active..." 402 -- is written by
+    // ASP.NET Core's built-in StringOutputFormatter as bare `text/plain`, not JSON at all. Calling
+    // res.json() on that throws a SyntaxError (it's not valid JSON, no surrounding quotes), which
+    // silently swallowed the real message and fell back to the generic "404 Not Found"/"402
+    // Payment Required" text for every one of these -- across the entire app, not just one place.
+    const contentType = res.headers.get('content-type') ?? ''
     let parsedBody: unknown
-    try {
-      parsedBody = await res.json()
-    } catch {
-      // no JSON body
+    let rawText: string | undefined
+    if (contentType.includes('json')) {
+      try {
+        parsedBody = await res.json()
+      } catch {
+        // no parseable JSON body
+      }
+    } else {
+      try {
+        rawText = await res.text()
+      } catch {
+        // no body at all
+      }
     }
-    // Two distinct shapes come back from the backend for a non-2xx response:
-    // FluentValidation failures serialize as ASP.NET ProblemDetails (an object with `.title`,
-    // via ToValidationProblem), while a plain `NotFound("...")`/`Conflict("...")`/`BadRequest("...")`
-    // — used all over the controllers for outcome-mapped errors — serializes as a bare JSON string.
-    // Missing the second case meant every one of those (e.g. "Store not found.") silently fell back
-    // to the generic "404 Not Found"/"409 Conflict" text instead of the real backend message.
     let message: string | undefined
     if (parsedBody && typeof parsedBody === 'object' && 'title' in parsedBody) {
       message = String((parsedBody as { title?: unknown }).title)
     } else if (typeof parsedBody === 'string' && parsedBody.trim()) {
       message = parsedBody
+    } else if (rawText && rawText.trim()) {
+      message = rawText.trim()
     }
-    throw new ApiError(res.status, message ?? `${res.status} ${res.statusText}`, parsedBody)
+    throw new ApiError(res.status, message ?? `${res.status} ${res.statusText}`, parsedBody ?? rawText)
   }
 
   if (res.status === 204) return undefined as T

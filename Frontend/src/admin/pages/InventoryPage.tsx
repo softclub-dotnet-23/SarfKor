@@ -5,10 +5,11 @@ import { Select } from '../components/Select'
 import { Badge } from '../components/Badge'
 import { Loading } from '../components/Loading'
 import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
+import { errorMessage } from '../../lib/errorKind'
 import { Reveal } from '../components/Reveal'
 import { BarcodeScannerView } from '../components/BarcodeScannerView'
 import { ProductPicker } from '../components/ProductPicker'
-import { SearchIcon, PlusIcon, AlertIcon, TruckIcon, BarcodeIcon, CameraIcon } from '../components/icons'
+import { SearchIcon, PlusIcon, TruckIcon, BarcodeIcon, CameraIcon, PackageIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner'
 import {
@@ -28,9 +29,17 @@ import {
 } from '../../lib/api'
 import { createReorderRule } from '../../lib/api/reorderRules'
 
-const NAME_CACHE_KEY = 'sarfkor-product-names'
+// Bumped key (was 'sarfkor-product-names', name-only) -- now caches barcode alongside the name so
+// rows/modals can show a real, scan-verified identifier instead of the raw database id ("ID 7"),
+// which a customer/cashier has no way to act on and shouldn't see (numeric ids are internal).
+const NAME_CACHE_KEY = 'sarfkor-product-info'
 
-function loadNameCache(): Record<number, string> {
+interface ProductInfo {
+  name: string
+  barcode: string
+}
+
+function loadNameCache(): Record<number, ProductInfo> {
   try {
     return JSON.parse(localStorage.getItem(NAME_CACHE_KEY) ?? '{}')
   } catch {
@@ -38,7 +47,7 @@ function loadNameCache(): Record<number, string> {
   }
 }
 
-function saveNameCache(cache: Record<number, string>) {
+function saveNameCache(cache: Record<number, ProductInfo>) {
   localStorage.setItem(NAME_CACHE_KEY, JSON.stringify(cache))
 }
 
@@ -49,11 +58,12 @@ function fmt(n: number) {
 interface ReceiptTarget {
   productId: number
   productName?: string
+  productBarcode?: string
 }
 
 export function InventoryPage() {
   const { storeId } = useAuth()
-  const [nameCache, setNameCache] = useState<Record<number, string>>(loadNameCache)
+  const [nameCache, setNameCache] = useState<Record<number, ProductInfo>>(loadNameCache)
   const [stock, setStock] = useState<StockLevel[] | null>(null)
   const [alerts, setAlerts] = useState<ReorderAlert[]>([])
   const [loading, setLoading] = useState(true)
@@ -135,9 +145,9 @@ export function InventoryPage() {
       const missing = stockRes.filter((s) => !cached[s.productId]).map((s) => s.productId)
       if (missing.length > 0) {
         const results = await Promise.allSettled(missing.map((id) => productsApi.getProductById(id)))
-        const updates: Record<number, string> = {}
+        const updates: Record<number, ProductInfo> = {}
         results.forEach((r, i) => {
-          if (r.status === 'fulfilled') updates[missing[i]] = r.value.productName
+          if (r.status === 'fulfilled') updates[missing[i]] = { name: r.value.productName, barcode: r.value.barcode }
         })
         if (Object.keys(updates).length > 0) {
           setNameCache((c) => {
@@ -177,16 +187,16 @@ export function InventoryPage() {
     const q = query.trim().toLowerCase()
     if (!q) return stock
     return stock.filter((s) => {
-      const name = nameCache[s.productId]?.toLowerCase() ?? ''
-      return String(s.productId).includes(q) || name.includes(q)
+      const info = nameCache[s.productId]
+      return (info?.barcode ?? '').includes(q) || (info?.name.toLowerCase() ?? '').includes(q)
     })
   }, [stock, query, nameCache])
 
   const totalUnits = stock?.reduce((sum, s) => sum + s.quantity, 0) ?? 0
 
-  function rememberName(productId: number, name: string) {
+  function rememberName(productId: number, name: string, barcode: string) {
     setNameCache((c) => {
-      const next = { ...c, [productId]: name }
+      const next = { ...c, [productId]: { name, barcode } }
       saveNameCache(next)
       return next
     })
@@ -208,10 +218,10 @@ export function InventoryPage() {
     setNotFoundBarcode('')
     try {
       const result = await productsApi.scanBarcode(code)
-      rememberName(result.productId, result.productName)
+      rememberName(result.productId, result.productName, code)
       closeScanModal()
       setScanBarcode('')
-      setReceiptFor({ productId: result.productId, productName: result.productName })
+      setReceiptFor({ productId: result.productId, productName: result.productName, productBarcode: code })
       setReceiptQty(10)
       setReceiptPrice('')
       setReceiptError('')
@@ -221,7 +231,7 @@ export function InventoryPage() {
         setNotFoundBarcode(code)
       } else {
         console.error('Failed to look up barcode:', err)
-        setScanError('Не удалось выполнить поиск')
+        setScanError(errorMessage(err, 'Не удалось выполнить поиск'))
       }
     } finally {
       setScanBusy(false)
@@ -287,8 +297,8 @@ export function InventoryPage() {
         // existing product found by scanBarcode does above, or it silently stays at zero stock
         // with no obvious next step (this was previously a dead end).
         if (newProductId) {
-          rememberName(newProductId, submitName.trim())
-          setReceiptFor({ productId: newProductId, productName: submitName.trim() })
+          rememberName(newProductId, submitName.trim(), notFoundBarcode)
+          setReceiptFor({ productId: newProductId, productName: submitName.trim(), productBarcode: notFoundBarcode })
           setReceiptQty(10)
           setReceiptPrice('')
           setReceiptError('')
@@ -296,7 +306,7 @@ export function InventoryPage() {
       }, 1500)
     } catch (err) {
       console.error('Failed to submit new product:', err)
-      setSubmitError('Не удалось отправить заявку')
+      setSubmitError(errorMessage(err, 'Не удалось отправить заявку'))
     } finally {
       setSubmitBusy(false)
     }
@@ -315,7 +325,7 @@ export function InventoryPage() {
         setNewCategoryOpen(false)
         setNewCategoryName('')
       } else {
-        setNewCategoryError('Не удалось создать категорию')
+        setNewCategoryError('Категория не создана — попробуйте ещё раз')
       }
     } catch (err) {
       console.error('Failed to create category:', err)
@@ -338,7 +348,7 @@ export function InventoryPage() {
       setNewBrandName('')
     } catch (err) {
       console.error('Failed to create brand:', err)
-      setNewBrandError('Не удалось создать бренд')
+      setNewBrandError(errorMessage(err, 'Не удалось создать бренд'))
     } finally {
       setNewBrandBusy(false)
     }
@@ -368,7 +378,7 @@ export function InventoryPage() {
       await load()
     } catch (err) {
       console.error('Failed to record stock receipt:', err)
-      setReceiptError('Не удалось оприходовать поставку')
+      setReceiptError(errorMessage(err, 'Не удалось оприходовать поставку'))
     } finally {
       setReceiptBusy(false)
     }
@@ -390,7 +400,7 @@ export function InventoryPage() {
       }, 1200)
     } catch (err) {
       console.error('Failed to save cost price:', err)
-      setCostError('Не удалось сохранить себестоимость')
+      setCostError(errorMessage(err, 'Не удалось сохранить себестоимость'))
     } finally {
       setCostBusy(false)
     }
@@ -412,7 +422,7 @@ export function InventoryPage() {
       }, 1200)
     } catch (err) {
       console.error('Failed to save price:', err)
-      setPriceError('Не удалось сохранить цену')
+      setPriceError(errorMessage(err, 'Не удалось сохранить цену'))
     } finally {
       setPriceBusy(false)
     }
@@ -444,7 +454,7 @@ export function InventoryPage() {
       await load()
     } catch (err) {
       console.error('Failed to create reorder rule:', err)
-      setRuleError('Не удалось создать правило пополнения')
+      setRuleError(errorMessage(err, 'Не удалось создать правило пополнения'))
     } finally {
       setRuleBusy(false)
     }
@@ -520,14 +530,19 @@ export function InventoryPage() {
         <div className="flex flex-col">
           {filtered.map((s, i) => {
             const alert = alertMap.get(s.productId)
-            const name = nameCache[s.productId]
+            const info = nameCache[s.productId]
             return (
               <div key={s.productId}>
                 {i > 0 && <RowDivider />}
                 <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">{name ?? `Товар #${s.productId}`}</div>
-                    <div className="mt-0.5 text-[11px] text-[color:var(--admin-text-tertiary)]">ID {s.productId}</div>
+                    <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">{info?.name ?? 'Товар без названия'}</div>
+                    {/* Barcode, never the internal numeric id -- a cashier/owner can act on a
+                        barcode (scan it, quote it to a supplier); the database id means nothing
+                        to them. Omitted entirely, not "ID —", when even that isn't known yet. */}
+                    {info?.barcode && (
+                      <div className="mt-0.5 font-[JetBrains_Mono,monospace] text-[11px] text-[color:var(--admin-text-tertiary)]">{info.barcode}</div>
+                    )}
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
                     {alert ? (
@@ -538,20 +553,20 @@ export function InventoryPage() {
                       <Badge variant="success">{s.quantity}</Badge>
                     )}
                     <button
-                      onClick={() => { setReceiptFor({ productId: s.productId, productName: name }); setReceiptQty(10); setReceiptPrice(''); setReceiptError('') }}
+                      onClick={() => { setReceiptFor({ productId: s.productId, productName: info?.name, productBarcode: info?.barcode }); setReceiptQty(10); setReceiptPrice(''); setReceiptError('') }}
                       className="inline-flex items-center gap-1.5 rounded-[6px] bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[12px] font-[500] text-[color:var(--admin-accent)] transition-opacity hover:opacity-80"
                     >
                       <TruckIcon width={12} height={12} />
                       Приход
                     </button>
                     <button
-                      onClick={() => { setPriceFor({ productId: s.productId, productName: name }); setPriceAmount(''); setPriceDone(false); setPriceError('') }}
+                      onClick={() => { setPriceFor({ productId: s.productId, productName: info?.name, productBarcode: info?.barcode }); setPriceAmount(''); setPriceDone(false); setPriceError('') }}
                       className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color:var(--admin-border)] px-3 py-1.5 text-[12px] font-[400] text-[color:var(--admin-text-secondary)] transition-colors hover:text-[color:var(--admin-text)]"
                     >
                       Цена
                     </button>
                     <button
-                      onClick={() => { setCostFor({ productId: s.productId, productName: name }); setCostAmount(''); setCostDone(false); setCostError('') }}
+                      onClick={() => { setCostFor({ productId: s.productId, productName: info?.name, productBarcode: info?.barcode }); setCostAmount(''); setCostDone(false); setCostError('') }}
                       className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color:var(--admin-border)] px-3 py-1.5 text-[12px] font-[400] text-[color:var(--admin-text-secondary)] transition-colors hover:text-[color:var(--admin-text)]"
                     >
                       Себест.
@@ -740,14 +755,18 @@ export function InventoryPage() {
         {receiptFor && (
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3 rounded-xl bg-[color:var(--admin-hover)] p-3">
+              {/* PackageIcon (no photo yet), not AlertIcon -- a triangle-and-exclamation mark next
+                  to a product name reads as "something's wrong with this item", not "no photo". */}
               <span className="grid h-10 w-10 place-items-center rounded-[10px] bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-accent)]">
-                <AlertIcon width={17} height={17} />
+                <PackageIcon width={17} height={17} />
               </span>
               <div>
                 <div className="text-[13px] font-semibold text-[color:var(--admin-text)]">
-                  {receiptFor.productName ?? `Товар #${receiptFor.productId}`}
+                  {receiptFor.productName ?? 'Товар без названия'}
                 </div>
-                <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">ID {receiptFor.productId}</div>
+                {receiptFor.productBarcode && (
+                  <div className="font-[JetBrains_Mono,monospace] text-[11px] text-[color:var(--admin-text-tertiary)]">{receiptFor.productBarcode}</div>
+                )}
               </div>
             </div>
 
@@ -808,8 +827,13 @@ export function InventoryPage() {
       <AdminModal open={!!costFor} onClose={() => setCostFor(null)} title="Установить себестоимость">
         {costFor && (
           <div className="flex flex-col gap-4">
-            <div className="text-[13px] font-semibold text-[color:var(--admin-text)]">
-              {costFor.productName ?? `Товар #${costFor.productId}`}
+            <div>
+              <div className="text-[13px] font-semibold text-[color:var(--admin-text)]">
+                {costFor.productName ?? 'Товар без названия'}
+              </div>
+              {costFor.productBarcode && (
+                <div className="mt-0.5 font-[JetBrains_Mono,monospace] text-[11px] text-[color:var(--admin-text-tertiary)]">{costFor.productBarcode}</div>
+              )}
             </div>
             <p className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">
               Эндпоинт для чтения текущей себестоимости отсутствует в бэкенде — можно только задать новое значение.
@@ -841,8 +865,13 @@ export function InventoryPage() {
       <AdminModal open={!!priceFor} onClose={() => setPriceFor(null)} title="Установить цену продажи">
         {priceFor && (
           <div className="flex flex-col gap-4">
-            <div className="text-[13px] font-semibold text-[color:var(--admin-text)]">
-              {priceFor.productName ?? `Товар #${priceFor.productId}`}
+            <div>
+              <div className="text-[13px] font-semibold text-[color:var(--admin-text)]">
+                {priceFor.productName ?? 'Товар без названия'}
+              </div>
+              {priceFor.productBarcode && (
+                <div className="mt-0.5 font-[JetBrains_Mono,monospace] text-[11px] text-[color:var(--admin-text-tertiary)]">{priceFor.productBarcode}</div>
+              )}
             </div>
             <p className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">
               Эта цена — то, что видит касса при сканировании и что сравнивается с другими магазинами. Отличается от

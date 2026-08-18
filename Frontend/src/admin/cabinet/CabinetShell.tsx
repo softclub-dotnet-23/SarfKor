@@ -387,8 +387,13 @@ export function CabinetShell() {
   const { runThemeTransition } = useThemeTransition()
   const isDark = theme === 'dark'
   const location = useLocation()
-  const { user, logout, storeId, currentStoreRole } = useAuth()
+  const { user, logout, storeId, currentStoreRole, myStores } = useAuth()
   const bottomTabLayoutId = useId()
+  // The real store name (myStores is already fetched for the store switcher/onboarding picker --
+  // no extra request) -- "Магазин #3" told the owner nothing they didn't already know from the
+  // URL and is exactly the kind of database id a user should never see (CLAUDE.md: names, not
+  // numbers). Falls back to nothing, not the id, while myStores is still loading.
+  const currentStoreName = myStores?.find((s) => s.storeId === storeId)?.name
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
@@ -570,16 +575,16 @@ export function CabinetShell() {
                 'mb-2 flex items-center gap-2.5 rounded-[6px]',
                 collapsed ? 'h-9 w-9 justify-center' : 'px-2 py-2',
               )}
-              onMouseEnter={collapsed ? (e) => {
+              onMouseEnter={collapsed && currentStoreName ? (e) => {
                 const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                showTooltip(`Магазин #${storeId}`, r.top + r.height / 2)
+                showTooltip(currentStoreName, r.top + r.height / 2)
               } : undefined}
               onMouseLeave={collapsed ? hideTooltip : undefined}
             >
               <span className="shrink-0 text-[color:var(--admin-text-tertiary)]" aria-hidden><StoreIcon /></span>
-              {!collapsed && (
+              {!collapsed && currentStoreName && (
                 <div className="min-w-0">
-                  <div className="truncate text-[12px] font-[500] text-[color:var(--admin-text)]">Магазин #{storeId}</div>
+                  <div className="truncate text-[12px] font-[500] text-[color:var(--admin-text)]">{currentStoreName}</div>
                   <div className="text-[11px] font-[400] text-[color:var(--admin-text-tertiary)]">{roleLabel}</div>
                 </div>
               )}

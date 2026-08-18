@@ -110,7 +110,8 @@ function KpiStat({
 }
 
 export function DashboardPage() {
-  const { storeId } = useAuth()
+  const { storeId, myStores } = useAuth()
+  const currentStoreName = myStores?.find((s) => s.storeId === storeId)?.name
   const { data, loading, error, errorKind, reload } = useDashboardData(storeId!)
   const [dailyGoal] = useState(() => Number(localStorage.getItem(DAILY_GOAL_KEY)) || 150)
 
@@ -219,7 +220,7 @@ export function DashboardPage() {
         {/* Store KPI */}
         <Panel>
           <div className="text-[12px] font-[400] text-[color:var(--admin-text-tertiary)]">
-            Магазин #{storeId} · склад
+            {currentStoreName ? `${currentStoreName} · склад` : 'Склад'}
           </div>
           <div className="mt-2 text-[32px] font-[500] tabular-nums leading-none text-[color:var(--admin-text)]">
             {fmt(dashboard.productsInStockCount)}

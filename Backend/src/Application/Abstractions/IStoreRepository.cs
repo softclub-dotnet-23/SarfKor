@@ -31,6 +31,14 @@ public interface IStoreRepository
     Task<Store?> GetByIdAsync(int storeId, CancellationToken cancellationToken);
     Task<bool> OwnsAnyStoreAsync(string userId, CancellationToken cancellationToken);
     Task<IReadOnlyList<Store>> GetOwnedByUserIdAsync(string userId, CancellationToken cancellationToken);
+
+    /// <summary>Case-insensitive substring match on Name/Address, scoped to stores this one user
+    /// owns (never another owner's) -- backs a searchable store picker (e.g. "which of my other
+    /// stores is this stock transfer going to") without ever surfacing a raw store id for someone
+    /// to type in by hand. Exact name match ranked first, same convention as
+    /// ProductRepository.SearchAsync's exact-barcode ranking.</summary>
+    Task<(IReadOnlyList<Store> Items, int TotalCount)> SearchOwnedByUserIdAsync(
+        string userId, string? search, int skip, int take, CancellationToken cancellationToken);
     Task<IReadOnlyList<Store>> GetAllAsync(int skip, int take, CancellationToken cancellationToken);
     Task<int> CountAllAsync(CancellationToken cancellationToken);
 

@@ -25,8 +25,6 @@ export function StoreOnboardingPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [storesLoading, setStoresLoading] = useState(false)
-  const [manualStoreId, setManualStoreId] = useState('')
-  const [showManualEntry, setShowManualEntry] = useState(false)
 
   useEffect(() => {
     if (!hasRole('StorePartner') || myStores !== null) return
@@ -70,14 +68,6 @@ export function StoreOnboardingPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  function handleUseManualId(e: FormEvent) {
-    e.preventDefault()
-    const id = Number(manualStoreId)
-    if (!Number.isFinite(id) || id <= 0) { setError('Введите корректный ID магазина'); return }
-    setStoreId(id)
-    navigate('/admin', { replace: true })
   }
 
   const alreadyPartnerWithoutStore = hasRole('StorePartner') && storeId === null
@@ -145,7 +135,6 @@ export function StoreOnboardingPage() {
                   >
                     <div>
                       <div className="text-[14px] font-bold text-[color:var(--admin-text)]">{s.name}</div>
-                      <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">ID #{s.storeId}</div>
                     </div>
                     <span className="shrink-0 rounded-full border border-[color:var(--admin-border)] px-2.5 py-1 text-[10.5px] font-semibold text-[color:var(--admin-text-secondary)]">
                       {s.role === 'Owner' ? 'Владелец' : 'Кассир'}
@@ -168,35 +157,8 @@ export function StoreOnboardingPage() {
 
           {alreadyPartnerWithoutStore && !hasPickableStores && !storesLoading && (
             <div className="mb-6 rounded-2xl border border-[color:var(--admin-warning-dim)] bg-[color:var(--admin-warning-dim)] px-4 py-3 text-[12.5px] leading-relaxed text-[color:var(--admin-text-secondary)]">
-              У аккаунта есть права партнёра, но магазин не найден.{' '}
-              {!showManualEntry && (
-                <button
-                  type="button"
-                  onClick={() => setShowManualEntry(true)}
-                  className="font-semibold text-[color:var(--admin-text)] underline underline-offset-2"
-                >
-                  Ввести ID вручную
-                </button>
-              )}
+              У аккаунта есть права партнёра, но магазин не найден — создайте новый ниже.
             </div>
-          )}
-
-          {showManualEntry && (
-            <form onSubmit={handleUseManualId} className="mb-6 flex gap-2">
-              <input
-                value={manualStoreId}
-                onChange={(e) => setManualStoreId(e.target.value)}
-                placeholder="ID магазина"
-                inputMode="numeric"
-                className="flex-1 rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-4 py-3 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]"
-              />
-              <button
-                type="submit"
-                className="shrink-0 rounded-2xl border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-4 py-3 text-[13px] font-semibold text-[color:var(--admin-text)] hover:bg-[color:var(--admin-card)] transition-colors"
-              >
-                →
-              </button>
-            </form>
           )}
 
           {/* Create form */}

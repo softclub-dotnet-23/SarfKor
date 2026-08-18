@@ -12,7 +12,7 @@ import { CategoryPicker } from '../components/CategoryPicker'
 import { TagIcon, PercentIcon, ClockIcon, AlertIcon, CheckIcon, PlusIcon, TrashIcon } from '../components/icons'
 import { StarIcon } from '../../components/icons'
 import { useAuth } from '../../auth/AuthContext'
-import { ApiError, type Category, type ProductSearchItem } from '../../lib/api'
+import { productsApi, catalogApi, ApiError, type Category, type ProductSearchItem } from '../../lib/api'
 import { errorMessage } from '../../lib/errorKind'
 import {
   createPromotion,
@@ -321,6 +321,8 @@ function CreatePromotionModal({ open, onClose, storeId, onCreated }: { open: boo
 
 function PromotionsSection({ storeId, createOpen, onCloseCreate }: { storeId: number; createOpen: boolean; onCloseCreate: () => void }) {
   const [promotions, setPromotions] = useState<Promotion[] | null>(null)
+  const [productNames, setProductNames] = useState<Record<number, string>>({})
+  const [categoryNames, setCategoryNames] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -328,7 +330,25 @@ function PromotionsSection({ storeId, createOpen, onCloseCreate }: { storeId: nu
     setError('')
     try {
       const res = await getActivePromotions(storeId)
-      setPromotions(res.promotions ?? [])
+      const list = res.promotions ?? []
+      setPromotions(list)
+      // Promotion only carries bare productId/categoryId -- batch-resolve names once so a
+      // promotion row never renders as "Товар #7"/"Категория #3".
+      const productIds = [...new Set(list.flatMap((p) => (p.productId ? [p.productId] : [])))]
+      const categoryIds = [...new Set(list.flatMap((p) => (p.categoryId ? [p.categoryId] : [])))]
+      const [productResults, categoriesRes] = await Promise.all([
+        Promise.allSettled(productIds.map((id) => productsApi.getProductById(id))),
+        categoryIds.length > 0 ? catalogApi.getCategories() : Promise.resolve(null),
+      ])
+      const pNames: Record<number, string> = {}
+      productResults.forEach((r, i) => { if (r.status === 'fulfilled') pNames[productIds[i]] = r.value.productName })
+      setProductNames(pNames)
+      if (categoriesRes) {
+        const byId = new Map(categoriesRes.categories.map((c) => [c.categoryId, c.name]))
+        const cNames: Record<number, string> = {}
+        for (const id of categoryIds) { const name = byId.get(id); if (name) cNames[id] = name }
+        setCategoryNames(cNames)
+      }
     } catch (err) {
       console.error('Failed to load promotions:', err)
       setError(errorMessage(err, 'Не удалось загрузить акции'))
@@ -366,7 +386,7 @@ function PromotionsSection({ storeId, createOpen, onCloseCreate }: { storeId: nu
                       {DISCOUNT_TYPE_LABELS[p.discountType] ?? p.discountType}: {discountValueLabel(p)}
                     </div>
                     <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
-                      {p.productId ? `Товар #${p.productId}` : p.categoryId ? `Категория #${p.categoryId}` : '—'} ·{' '}
+                      {p.productId ? (productNames[p.productId] ?? 'Товар') : p.categoryId ? (categoryNames[p.categoryId] ?? 'Категория') : 'Все товары'} ·{' '}
                       {fmtDate(p.startsAt)} — {fmtDate(p.endsAt)}
                     </div>
                   </div>
@@ -551,6 +571,7 @@ function CreateBundleModal({ open, onClose, storeId, onCreated }: { open: boolea
 
 function BundlesSection({ storeId, createOpen, onCloseCreate }: { storeId: number; createOpen: boolean; onCloseCreate: () => void }) {
   const [bundles, setBundles] = useState<ProductBundle[] | null>(null)
+  const [productNames, setProductNames] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -558,7 +579,15 @@ function BundlesSection({ storeId, createOpen, onCloseCreate }: { storeId: numbe
     setError('')
     try {
       const res = await getProductBundles(storeId)
-      setBundles(res.bundles ?? [])
+      const list = res.bundles ?? []
+      setBundles(list)
+      // BundleItem only carries a bare productId -- batch-resolve names once so bundle contents
+      // never render as "Товар #7".
+      const uniqueIds = [...new Set(list.flatMap((b) => b.items.map((it) => it.productId)))]
+      const results = await Promise.allSettled(uniqueIds.map((id) => productsApi.getProductById(id)))
+      const names: Record<number, string> = {}
+      results.forEach((r, i) => { if (r.status === 'fulfilled') names[uniqueIds[i]] = r.value.productName })
+      setProductNames(names)
     } catch (err) {
       console.error('Failed to load product bundles:', err)
       setError(errorMessage(err, 'Не удалось загрузить наборы товаров'))
@@ -598,7 +627,7 @@ function BundlesSection({ storeId, createOpen, onCloseCreate }: { storeId: numbe
                       key={idx}
                       className="rounded-[4px] bg-[color:var(--admin-border)] px-2 py-0.5 text-[11px] font-[400] text-[color:var(--admin-text-secondary)]"
                     >
-                      Товар #{it.productId} × {it.quantity}
+                      {productNames[it.productId] ?? 'Товар'} × {it.quantity}
                     </span>
                   ))}
                 </div>
@@ -790,7 +819,7 @@ function OffersSection({ storeId, createOpen, onCloseCreate }: { storeId: number
                 >
                   <div>
                     <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">
-                      {o.productName || `Товар #${o.productId}`}
+                      {o.productName || 'Товар'}
                     </div>
                     <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
                       <span className="line-through">{fmt(o.originalPrice)}</span>{' '}
@@ -896,7 +925,7 @@ function RepliesSection() {
           <span className="text-[18px] font-[500] text-[color:var(--admin-text)]">Найти отзывы по товару</span>
         </div>
         <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-          В бэкенде нет эндпоинта «все отзывы моего магазина» — отзывы можно посмотреть только по конкретному товару.
+          Отзывы можно посмотреть только по конкретному товару — выберите его ниже.
         </p>
         <ProductPicker value={product} onChange={handleLookup} scheme="admin" className="sm:max-w-[360px]" />
         {loading && <p className="mt-2 text-[12px] text-[color:var(--admin-text-tertiary)]">Ищем отзывы…</p>}

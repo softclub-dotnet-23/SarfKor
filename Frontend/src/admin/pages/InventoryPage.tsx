@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Panel, RowDivider } from '../cabinet/components/primitives'
 import { AdminModal } from '../components/AdminModal'
 import { Select } from '../components/Select'
+import { SupplierPicker } from '../components/SupplierPicker'
 import { Badge } from '../components/Badge'
 import { Loading } from '../components/Loading'
 import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
@@ -18,7 +19,6 @@ import {
   storesApi,
   catalogApi,
   pricingApi,
-  suppliersApi,
   ApiError,
   type StockLevel,
   type ReorderAlert,
@@ -124,10 +124,9 @@ export function InventoryPage() {
   const [ruleProduct, setRuleProduct] = useState<ProductSearchItem | null>(null)
   const [ruleThreshold, setRuleThreshold] = useState('5')
   const [ruleReorderQty, setRuleReorderQty] = useState('20')
-  const [ruleSupplierId, setRuleSupplierId] = useState('')
+  const [ruleSupplier, setRuleSupplier] = useState<Supplier | null>(null)
   const [ruleBusy, setRuleBusy] = useState(false)
   const [ruleError, setRuleError] = useState('')
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
 
   const load = useCallback(async () => {
     if (!storeId) return
@@ -174,11 +173,6 @@ export function InventoryPage() {
     catalogApi.getCategories().then((res) => setCategories(res.categories)).catch(() => {})
     catalogApi.getBrands().then((res) => setBrands(res.brands)).catch(() => {})
   }, [])
-
-  useEffect(() => {
-    if (!storeId) return
-    suppliersApi.getSuppliers(storeId).then((res) => setSuppliers(res.suppliers)).catch(() => {})
-  }, [storeId])
 
   const alertMap = useMemo(() => new Map(alerts.map((a) => [a.productId, a])), [alerts])
 
@@ -437,7 +431,7 @@ export function InventoryPage() {
       setRuleError('Проверьте товар, порог и количество пополнения')
       return
     }
-    const preferredSupplierId = ruleSupplierId.trim() ? Number(ruleSupplierId) : undefined
+    const preferredSupplierId = ruleSupplier?.supplierId
     setRuleBusy(true)
     setRuleError('')
     try {
@@ -450,7 +444,7 @@ export function InventoryPage() {
       setRuleProduct(null)
       setRuleThreshold('5')
       setRuleReorderQty('20')
-      setRuleSupplierId('')
+      setRuleSupplier(null)
       await load()
     } catch (err) {
       console.error('Failed to create reorder rule:', err)
@@ -507,7 +501,7 @@ export function InventoryPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Поиск по ID товара или названию (если уже распознано)"
+              placeholder="Поиск по штрихкоду или названию (если уже распознано)"
               className="w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] py-2.5 pl-9 pr-3 text-[14px] font-[400] text-[color:var(--admin-text)] outline-none transition-colors placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]"
             />
           </div>
@@ -836,7 +830,7 @@ export function InventoryPage() {
               )}
             </div>
             <p className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-              Эндпоинт для чтения текущей себестоимости отсутствует в бэкенде — можно только задать новое значение.
+              Текущая себестоимость нигде не показывается — можно только задать новое значение.
             </p>
             <label className="flex flex-col gap-1.5">
               <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Себестоимость, TJS</span>
@@ -938,11 +932,11 @@ export function InventoryPage() {
 
           <label className="flex flex-col gap-1.5">
             <span className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">Предпочитаемый поставщик (необязательно)</span>
-            <Select
-              value={ruleSupplierId}
-              onChange={setRuleSupplierId}
+            <SupplierPicker
+              storeId={storeId!}
+              value={ruleSupplier}
+              onChange={setRuleSupplier}
               placeholder="Без предпочтения"
-              options={suppliers.map((s) => ({ value: String(s.supplierId), label: s.name }))}
             />
           </label>
 

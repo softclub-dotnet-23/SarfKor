@@ -73,3 +73,16 @@ export interface MyStore {
 export function getMyStores() {
   return apiFetch<{ stores: MyStore[] }>('/api/me/stores')
 }
+
+export interface MyStoreSearchItem {
+  storeId: number
+  name: string
+  address: string
+}
+
+// Owner-only (not the owned+employed union above) -- backs StorePicker.tsx, e.g. "which of my
+// other stores is this stock transfer going to". Was previously missing entirely, which is why
+// SupplyPage's transfer form used to ask for a destination store id typed in by hand.
+export function searchMyStores(params: { search?: string; skip?: number; take?: number }) {
+  return apiFetch<{ stores: MyStoreSearchItem[]; totalCount: number }>('/api/me/stores/search', { query: params })
+}

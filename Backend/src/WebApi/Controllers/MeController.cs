@@ -8,6 +8,7 @@ using Application.Identity.Queries.GetSecurityEvents;
 using Application.Identity.Queries.GetUserConsents;
 using Application.Identity.Queries.GetUserProfile;
 using Application.Stores.Queries.GetMyStores;
+using Application.Stores.Queries.SearchMyStores;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -246,6 +247,30 @@ public sealed class MeController : ControllerBase
             return Unauthorized();
 
         var query = new GetMyStoresQuery(userId);
+        var validationResult = await validator.ValidateAsync(query, cancellationToken);
+        if (!validationResult.IsValid)
+            return this.ToValidationProblem(validationResult);
+
+        return Ok(await handler.Handle(query, cancellationToken));
+    }
+
+    // Owner-only (not GetMyStores' owned+employed union -- see handler remarks), searchable,
+    // paginated -- backs StorePicker.tsx. This is the endpoint whose absence previously meant
+    // SupplyPage's stock-transfer form asked the owner to type a destination store id by hand.
+    [HttpGet("stores/search")]
+    public async Task<IActionResult> SearchMyStores(
+        [FromQuery] string? search,
+        [FromQuery] int skip,
+        [FromQuery] int take,
+        [FromServices] IQueryHandler<SearchMyStoresQuery, SearchMyStoresResult> handler,
+        [FromServices] IValidator<SearchMyStoresQuery> validator,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return Unauthorized();
+
+        var query = new SearchMyStoresQuery(userId, search, skip, take == 0 ? 20 : take);
         var validationResult = await validator.ValidateAsync(query, cancellationToken);
         if (!validationResult.IsValid)
             return this.ToValidationProblem(validationResult);

@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState, type SVGProps } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Panel } from '../cabinet/components/primitives'
-import { Select } from '../components/Select'
 import { SectionSelect } from '../components/SectionSelect'
 import { Loading } from '../components/Loading'
 import { AddButton } from '../components/Button'
 import { FormModal, FormField } from '../components/FormModal'
 import { ProductPicker } from '../components/ProductPicker'
+import { SupplierPicker } from '../components/SupplierPicker'
+import { StorePicker } from '../components/StorePicker'
 import { TruckIcon, PlusIcon, TrashIcon, RefreshIcon, PhoneIcon, MailIcon, AlertIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
-import type { ProductSearchItem } from '../../lib/api'
+import { productsApi, type ProductSearchItem, type MyStoreSearchItem } from '../../lib/api'
 import { errorMessage } from '../../lib/errorKind'
 import { createSupplier, getSuppliers, type Supplier } from '../../lib/api/suppliers'
 import {
@@ -292,7 +293,7 @@ function emptyLine(): DraftLine {
 }
 
 function CreateOrderModal({ open, onClose, storeId, suppliers, onCreated }: { open: boolean; onClose: () => void; storeId: number; suppliers: Supplier[]; onCreated: () => Promise<void> }) {
-  const [supplierId, setSupplierId] = useState('')
+  const [supplier, setSupplier] = useState<Supplier | null>(null)
   const [lines, setLines] = useState<DraftLine[]>([emptyLine()])
   const [linesError, setLinesError] = useState('')
 
@@ -307,14 +308,14 @@ function CreateOrderModal({ open, onClose, storeId, suppliers, onCreated }: { op
   }
 
   function handleClose() {
-    setSupplierId('')
+    setSupplier(null)
     setLines([emptyLine()])
     setLinesError('')
     onClose()
   }
 
   async function submit() {
-    if (!supplierId) throw new Error('Выберите поставщика')
+    if (!supplier) throw new Error('Выберите поставщика')
 
     const parsedLines: PurchaseOrderLine[] = []
     for (const l of lines) {
@@ -329,7 +330,7 @@ function CreateOrderModal({ open, onClose, storeId, suppliers, onCreated }: { op
     }
     setLinesError('')
 
-    const result = await createPurchaseOrder(storeId, Number(supplierId), parsedLines)
+    const result = await createPurchaseOrder(storeId, supplier.supplierId, parsedLines)
     if (result.outcome !== 'Created') {
       throw new Error(result.outcome === 'Forbidden' ? 'Нет доступа к этому магазину' : 'Магазин не найден')
     }
@@ -338,7 +339,7 @@ function CreateOrderModal({ open, onClose, storeId, suppliers, onCreated }: { op
   }
 
   return (
-    <FormModal open={open} onClose={handleClose} title="Новый заказ поставщику" isDirty={!!supplierId} onSubmit={submit} submitLabel="Создать заказ" scheme="admin" size="lg">
+    <FormModal open={open} onClose={handleClose} title="Новый заказ поставщику" isDirty={!!supplier} onSubmit={submit} submitLabel="Создать заказ" scheme="admin" size="lg">
       {suppliers.length === 0 ? (
         <p className="text-[12.5px] text-[color:var(--admin-text-tertiary)]">
           Сначала добавьте хотя бы одного поставщика на вкладке «Поставщики».
@@ -346,13 +347,7 @@ function CreateOrderModal({ open, onClose, storeId, suppliers, onCreated }: { op
       ) : (
         <>
           <FormField label="Поставщик" required scheme="admin">
-            <Select
-              scheme="admin"
-              value={supplierId}
-              onChange={setSupplierId}
-              placeholder="Выберите поставщика"
-              options={suppliers.map((s) => ({ value: String(s.supplierId), label: s.name }))}
-            />
+            <SupplierPicker storeId={storeId} value={supplier} onChange={setSupplier} scheme="admin" />
           </FormField>
 
           <FormField label="Позиции" error={linesError} scheme="admin">
@@ -524,9 +519,11 @@ function OrdersSection({
             {(orders ?? []).map((o) => (
               <div key={o.purchaseOrderId} className="flex flex-col gap-2.5 rounded-[16px] bg-[color:var(--admin-hover)] p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">Заказ #{o.purchaseOrderId}</div>
+                  <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">
+                    {supplierNameById.get(o.supplierId) ?? 'Поставщик удалён'}
+                  </div>
                   <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
-                    Поставщик: {supplierNameById.get(o.supplierId) ?? `#${o.supplierId}`} · создан {fmtDateTime(o.createdAt)}
+                    Создан {fmtDateTime(o.createdAt)}
                     {o.receivedAt ? ` · оприходован ${fmtDateTime(o.receivedAt)}` : ''}
                   </div>
                   {rowError?.id === o.purchaseOrderId && (
@@ -573,16 +570,22 @@ function OrdersSection({
 /* ---------- Stock transfers ---------- */
 
 function CreateTransferModal({ open, onClose, storeId, onCreated }: { open: boolean; onClose: () => void; storeId: number; onCreated: () => Promise<void> }) {
+  const { myStores } = useAuth()
+  const currentStore = myStores?.find((s) => s.storeId === storeId)
   const [product, setProduct] = useState<ProductSearchItem | null>(null)
-  const [fromStoreId, setFromStoreId] = useState(String(storeId))
-  const [toStoreId, setToStoreId] = useState('')
+  // "From" defaults to the store this page is already open on -- a transfer almost always starts
+  // there, and the owner shouldn't have to re-pick the store they're already looking at.
+  const [fromStore, setFromStore] = useState<MyStoreSearchItem | null>(
+    currentStore ? { storeId: currentStore.storeId, name: currentStore.name, address: '' } : null,
+  )
+  const [toStore, setToStore] = useState<MyStoreSearchItem | null>(null)
   const [quantity, setQuantity] = useState('1')
   const [fieldError, setFieldError] = useState('')
 
   function handleClose() {
     setProduct(null)
-    setFromStoreId(String(storeId))
-    setToStoreId('')
+    setFromStore(currentStore ? { storeId: currentStore.storeId, name: currentStore.name, address: '' } : null)
+    setToStore(null)
     setQuantity('1')
     setFieldError('')
     onClose()
@@ -590,34 +593,29 @@ function CreateTransferModal({ open, onClose, storeId, onCreated }: { open: bool
 
   async function submit() {
     const pid = product?.productId
-    const from = Number(fromStoreId)
-    const to = Number(toStoreId)
     const qty = Number(quantity)
-    if (!pid || !from || from <= 0 || !to || to <= 0 || !qty || qty <= 0) {
-      setFieldError('Заполните товар, оба магазина и количество (числами больше нуля)')
+    if (!pid || !fromStore || !toStore || !qty || qty <= 0) {
+      setFieldError('Заполните товар, оба магазина и количество (числом больше нуля)')
       throw new Error('Проверьте поля формы')
     }
     setFieldError('')
-    const result = await initiateStockTransfer(pid, from, to, qty)
+    const result = await initiateStockTransfer(pid, fromStore.storeId, toStore.storeId, qty)
     if (result.outcome !== 'Initiated') throw new Error(describeInitiateTransferOutcome(result.outcome))
     await onCreated()
     handleClose()
   }
 
   return (
-    <FormModal open={open} onClose={handleClose} title="Новое перемещение" isDirty={!!(product || toStoreId)} onSubmit={submit} submitLabel="Инициировать перемещение" scheme="admin">
-      <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-        В бэкенде нет эндпоинта со списком ваших магазинов — если у вас несколько магазинов, введите ID магазина назначения вручную.
-      </p>
+    <FormModal open={open} onClose={handleClose} title="Новое перемещение" isDirty={!!(product || toStore)} onSubmit={submit} submitLabel="Инициировать перемещение" scheme="admin">
       <FormField label="Товар" required scheme="admin">
         <ProductPicker value={product} onChange={setProduct} storeId={storeId} scheme="admin" scanEnabled />
       </FormField>
       <div className="grid grid-cols-2 gap-2.5">
         <FormField label="Из магазина" required scheme="admin">
-          <input value={fromStoreId} onChange={(e) => setFromStoreId(e.target.value)} placeholder="ID" type="number" min={1} className={inputClass} />
+          <StorePicker value={fromStore} onChange={setFromStore} excludeStoreId={toStore?.storeId} scheme="admin" />
         </FormField>
         <FormField label="В магазин" required scheme="admin">
-          <input value={toStoreId} onChange={(e) => setToStoreId(e.target.value)} placeholder="ID" type="number" min={1} className={inputClass} />
+          <StorePicker value={toStore} onChange={setToStore} excludeStoreId={fromStore?.storeId} scheme="admin" />
         </FormField>
       </div>
       <FormField label="Количество" required error={fieldError} scheme="admin">
@@ -628,7 +626,10 @@ function CreateTransferModal({ open, onClose, storeId, onCreated }: { open: bool
 }
 
 function TransfersSection({ storeId, createOpen, onCloseCreate }: { storeId: number; createOpen: boolean; onCloseCreate: () => void }) {
+  const { myStores } = useAuth()
+  const storeNameById = new Map((myStores ?? []).map((s) => [s.storeId, s.name]))
   const [transfers, setTransfers] = useState<StockTransfer[] | null>(null)
+  const [productNames, setProductNames] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -644,7 +645,15 @@ function TransfersSection({ storeId, createOpen, onCloseCreate }: { storeId: num
         setTransfers([])
         return
       }
-      setTransfers(res.transfers ?? [])
+      const list = res.transfers ?? []
+      setTransfers(list)
+      // Batch-resolve product names for display -- StockTransfer only carries a bare productId,
+      // and a raw "товар #7" is exactly the kind of database id this screen must never show.
+      const uniqueIds = [...new Set(list.map((t) => t.productId))]
+      const results = await Promise.allSettled(uniqueIds.map((id) => productsApi.getProductById(id)))
+      const names: Record<number, string> = {}
+      results.forEach((r, i) => { if (r.status === 'fulfilled') names[uniqueIds[i]] = r.value.productName })
+      setProductNames(names)
     } catch (err) {
       console.error('Failed to load stock transfers:', err)
       setError(errorMessage(err, 'Не удалось загрузить перемещения'))
@@ -706,10 +715,10 @@ function TransfersSection({ storeId, createOpen, onCloseCreate }: { storeId: num
               <div key={t.stockTransferId} className="flex flex-col gap-2.5 rounded-[16px] bg-[color:var(--admin-hover)] p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">
-                    Перемещение #{t.stockTransferId} · товар #{t.productId}
+                    {productNames[t.productId] ?? 'Товар без названия'}
                   </div>
                   <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
-                    Магазин #{t.fromStoreId} → #{t.toStoreId} · {t.quantity} ед. · создано {fmtDateTime(t.createdAt)}
+                    {storeNameById.get(t.fromStoreId) ?? 'Магазин'} → {storeNameById.get(t.toStoreId) ?? 'Магазин'} · {t.quantity} ед. · создано {fmtDateTime(t.createdAt)}
                     {t.completedAt ? ` · завершено ${fmtDateTime(t.completedAt)}` : ''}
                   </div>
                   {rowError?.id === t.stockTransferId && (

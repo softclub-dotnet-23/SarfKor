@@ -25,6 +25,35 @@ public sealed class StoreRepository(AppDbContext dbContext) : IStoreRepository
     public async Task<IReadOnlyList<Store>> GetOwnedByUserIdAsync(string userId, CancellationToken cancellationToken) =>
         await dbContext.Stores.Where(s => s.OwnerUserId == userId).ToListAsync(cancellationToken);
 
+    public async Task<(IReadOnlyList<Store> Items, int TotalCount)> SearchOwnedByUserIdAsync(
+        string userId, string? search, int skip, int take, CancellationToken cancellationToken)
+    {
+        // OwnerUserId already has an index from the FK relationship (StoreConfiguration), so this
+        // starts from a handful of rows at most for any real owner -- a leading-wildcard ILIKE over
+        // Name/Address doesn't need (and a B-tree index couldn't accelerate) a dedicated index on
+        // top of that, unlike ProductRepository.SearchAsync's platform-wide search.
+        var query = dbContext.Stores.Where(s => s.OwnerUserId == userId);
+
+        var term = search?.Trim();
+        if (!string.IsNullOrEmpty(term))
+        {
+            query = query.Where(s =>
+                EF.Functions.ILike(s.Name, $"%{term}%") ||
+                EF.Functions.ILike(s.Address, $"%{term}%"));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderByDescending(s => term != null && s.Name == term)
+            .ThenBy(s => s.Name)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public async Task<IReadOnlyList<Store>> GetAllAsync(int skip, int take, CancellationToken cancellationToken) =>
         await dbContext.Stores.OrderBy(s => s.Id).Skip(skip).Take(take).ToListAsync(cancellationToken);
 

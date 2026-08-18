@@ -614,7 +614,7 @@ export function StoreDetailPanel({ storeId, onClose, onNavigateToStore }: { stor
       title={
         <span className="flex items-center gap-2">
           <ShieldIcon width={16} height={16} className="shrink-0 text-[color:var(--admin-text-tertiary)]" />
-          {detail?.name ?? `Магазин #${storeId}`}
+          {detail?.name ?? 'Магазин'}
         </span>
       }
       subtitle={detail?.address}

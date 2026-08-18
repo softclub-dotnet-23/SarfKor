@@ -40,12 +40,20 @@ import {
 const CURRENCY = 'TJS'
 const RECENT_SALES_KEY = 'sarfkor-recent-sales'
 
+// Names the cart already knew at the moment of sale, carried through so the receipt/void/return
+// UI never has to fall back to a raw product id -- ProcessSaleResultLine itself only has
+// productId, and there is no "look up a product's name" step worth adding just to label a local
+// receipt cache.
+interface RecentSaleLine extends ProcessSaleResultLine {
+  productName?: string
+}
+
 interface RecentSale {
   saleTransactionId: number
   totalAmount: number
   currency: string
   completedAt: string
-  lines: ProcessSaleResultLine[]
+  lines: RecentSaleLine[]
   voided: boolean
 }
 
@@ -94,18 +102,22 @@ function fmt(n: number) {
   return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function describeOutcome(result: ProcessSaleResult): string {
+// cart is the checkout attempt's own line list -- still in scope at the point this runs (cleared
+// only after a successful sale), so a failing productId can always be named from it instead of
+// shown as a bare database id.
+function describeOutcome(result: ProcessSaleResult, cart: CartLine[]): string {
+  const failedName = cart.find((l) => l.productId === result.failedProductId)?.productName ?? 'Товар'
   switch (result.outcome) {
     case 'StoreNotFound':
       return 'Магазин не найден'
     case 'Forbidden':
       return 'Нет доступа к этому магазину'
     case 'ProductNotFound':
-      return `Товар #${result.failedProductId} не найден`
+      return `${failedName} не найден`
     case 'PriceNotFound':
-      return `Нет цены на товар #${result.failedProductId} в вашем магазине`
+      return `Нет цены на «${failedName}» в вашем магазине`
     case 'InsufficientStock':
-      return `Недостаточно товара #${result.failedProductId} на складе`
+      return `Недостаточно товара «${failedName}» на складе`
     case 'GiftCardNotFound':
       return 'Подарочная карта с таким кодом не найдена'
     case 'GiftCardNotUsable':
@@ -238,10 +250,10 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
       <button onClick={() => setExpanded((v) => !v)} className="flex w-full items-center justify-between gap-3 text-left">
         <div>
           <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">
-            Продажа #{sale.saleTransactionId} {sale.voided && <span className="text-[color:var(--admin-danger)]">· отменена</span>}
+            {fmt(sale.totalAmount)} {sale.currency} {sale.voided && <span className="text-[color:var(--admin-danger)]">· отменена</span>}
           </div>
           <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
-            {fmt(sale.totalAmount)} {sale.currency} · {new Date(sale.completedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+            {new Date(sale.completedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
         <ChevronDownIcon width={16} height={16} className={`shrink-0 text-[color:var(--admin-text-tertiary)] transition-transform ${expanded ? 'rotate-180' : ''}`} />
@@ -252,7 +264,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
           <div className="flex flex-wrap gap-2 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
             {sale.lines.map((l) => (
               <span key={l.saleLineItemId} className="rounded-full bg-[color:var(--admin-card)] px-2.5 py-1">
-                #{l.saleLineItemId} · товар {l.productId} × {l.quantity}
+                {l.productName ?? 'Товар'} × {l.quantity}
               </span>
             ))}
           </div>
@@ -353,7 +365,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
                     placeholder="Позиция"
                     options={sale.lines.map((l) => ({
                       value: String(l.saleLineItemId),
-                      label: `Товар ${l.productId} (продано ${l.quantity})`,
+                      label: `${l.productName ?? 'Товар'} (продано ${l.quantity})`,
                     }))}
                   />
                   <input
@@ -383,7 +395,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
                 <div className="mt-2 flex flex-col gap-1">
                   {returns.map((r) => (
                     <div key={r.saleReturnId} className="text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-                      Возврат #{r.saleReturnId} · {r.reason} · {new Date(r.createdAt).toLocaleString('ru-RU')}
+                      {r.reason} · {new Date(r.createdAt).toLocaleString('ru-RU')}
                     </div>
                   ))}
                 </div>
@@ -623,13 +635,14 @@ export function PosPage() {
           completedTotal: { amount: result.totalAmount ?? total, currency: result.currency ?? CURRENCY },
         })
         if (result.saleTransactionId != null) {
+          const nameByProductId = new Map(cart.map((l) => [l.productId, l.productName]))
           const next = [
             {
               saleTransactionId: result.saleTransactionId,
               totalAmount: result.totalAmount ?? total,
               currency: result.currency ?? CURRENCY,
               completedAt: new Date().toISOString(),
-              lines: result.lines ?? [],
+              lines: (result.lines ?? []).map((l) => ({ ...l, productName: nameByProductId.get(l.productId) })),
               voided: false,
             },
             ...recentSales,
@@ -647,7 +660,7 @@ export function PosPage() {
         // attempt is a different sale once the cashier fixes the cart — reuse
         // of this key would then incorrectly dedupe against the fix.
         idempotencyKeyRef.current = null
-        setCheckoutError(describeOutcome(result))
+        setCheckoutError(describeOutcome(result, cart))
       }
     } catch (err) {
       // Network/5xx failure: the request may or may not have landed, so keep
@@ -906,8 +919,8 @@ export function PosPage() {
             <span className="text-[15px] font-bold text-[color:var(--admin-text)]">Недавние продажи</span>
           </div>
           <p className="mb-4 text-[11.5px] text-[color:var(--admin-text-tertiary)]">
-            Список продаж, оформленных в этом браузере — бэкенд не отдаёт историю продаж списком, поэтому отменить,
-            добавить комиссию или оформить возврат можно только по продажам из этого списка.
+            Продажи, оформленные в этом браузере — отменить, добавить комиссию или оформить возврат можно
+            только по продажам из этого списка.
           </p>
           <div className="flex flex-col gap-2.5">
             {recentSales.map((sale) => (

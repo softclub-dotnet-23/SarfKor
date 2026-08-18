@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
-import { meApi, ApiError } from '../../lib/api'
+import { meApi } from '../../lib/api'
+import { describeErrorRu } from '../../lib/errorKind'
 import { useAuth } from '../../auth/AuthContext'
 import { useProfile as useSharedProfile } from '../../lib/useProfile'
 import { useAvatarUrl } from '../../lib/useAvatarUrl'
@@ -46,7 +47,7 @@ function AvatarEditor({ hasAvatar, onUploaded }: { hasAvatar: boolean; onUploade
       setVersion((v) => v + 1)
       onUploaded()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить фото')
+      setError(describeErrorRu(err))
     } finally {
       setBusy(false)
     }
@@ -100,7 +101,7 @@ function ChangePasswordSection() {
       setConfirmPassword('')
       setMsg('Пароль изменён. Другие сессии выйдут из аккаунта.')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось сменить пароль')
+      setError(describeErrorRu(err))
     } finally {
       setBusy(false)
     }

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Card } from '../components/Card'
 import { Loading } from '../components/Loading'
 import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
-import { errorMessage } from '../../lib/errorKind'
+import { describeErrorRu } from '../../lib/errorKind'
 import { EmptyState } from '../components/EmptyState'
 import { Select } from '../components/Select'
 import { SectionSelect } from '../components/SectionSelect'
@@ -431,7 +431,7 @@ function DuplicateGroupRow({ group, onMerged }: { group: DuplicateBrandGroup; on
       onMerged()
     } catch (err) {
       console.error('Failed to merge brands:', err)
-      setError(errorMessage(err, 'Не удалось объединить бренды'))
+      setError(describeErrorRu(err))
     } finally {
       setBusy(false)
     }
@@ -598,7 +598,7 @@ function TaxRatesSection({ createOpen, onCloseCreate }: { createOpen: boolean; o
       await load()
     } catch (err) {
       console.error('Failed to delete tax rate:', err)
-      setDeleteError(errorMessage(err, 'Не удалось удалить ставку'))
+      setDeleteError(describeErrorRu(err))
     }
   }
 

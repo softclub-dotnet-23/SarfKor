@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Panel, SectionHeader } from '../cabinet/components/primitives'
 import { PlusIcon, EditIcon, TrashIcon, CheckIcon, XIcon } from '../components/icons'
-import { suppliersApi, ApiError, type Supplier } from '../../lib/api'
+import { suppliersApi, type Supplier } from '../../lib/api'
+import { describeError, classifyError } from '../../lib/errorKind'
+import { useT } from '../../i18n/translations'
+import { useSubscriptionGate } from '../../lib/subscriptionGate'
 
 export function SuppliersSection({ storeId }: { storeId: number | null }) {
+  const t = useT()
+  const gate = useSubscriptionGate()
+  const blockedTitle = gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')
   const [suppliers, setSuppliers] = useState<Supplier[] | null>(null)
   const [error, setError] = useState('')
 
@@ -24,9 +30,9 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
       const res = await suppliersApi.getSuppliers(storeId)
       setSuppliers(res.suppliers)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось загрузить поставщиков')
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     }
-  }, [storeId])
+  }, [storeId, t, gate.isOwner])
 
   useEffect(() => {
     load()
@@ -43,7 +49,7 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
       setNewEmail('')
       await load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось добавить поставщика')
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setBusyId(null)
     }
@@ -58,7 +64,7 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
       setEditingId(null)
       await load()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось сохранить поставщика')
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setBusyId(null)
     }
@@ -71,8 +77,14 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
       await suppliersApi.deleteSupplier(id)
       await load()
     } catch (err) {
+      // Conflict specifically gets a more useful hint than the generic dictionary line -- a 409
+      // here is always DeleteSupplierOutcome.InUse, so naming the likely cause (still referenced by
+      // stock movements/orders/reorder rules) beats "конфликтует с текущим состоянием" for the one
+      // case where we actually know more than the generic bucket does.
       setError(
-        err instanceof ApiError ? err.message : 'Не удалось удалить поставщика — возможно, он используется в поставках или заказах',
+        classifyError(err) === 'conflict'
+          ? 'Не удалось удалить поставщика — он ещё используется в поставках или заказах'
+          : describeError(err, t, { isOwner: gate.isOwner }),
       )
     } finally {
       setBusyId(null)
@@ -111,8 +123,9 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
                 />
                 <button
                   onClick={() => handleSaveEdit(s.supplierId)}
-                  disabled={busyId === s.supplierId}
-                  className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-success)] hover:bg-[color:var(--admin-success-dim)]"
+                  disabled={busyId === s.supplierId || (!gate.loading && !gate.isOperational)}
+                  title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
+                  className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-success)] hover:bg-[color:var(--admin-success-dim)] disabled:opacity-50"
                 >
                   <CheckIcon width={14} height={14} />
                 </button>
@@ -139,7 +152,8 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
                       setEditingPhone(s.contactPhone ?? '')
                       setEditingEmail(s.contactEmail ?? '')
                     }}
-                    disabled={busyId === s.supplierId}
+                    disabled={busyId === s.supplierId || (!gate.loading && !gate.isOperational)}
+                    title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
                     aria-label="Изменить"
                     className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-text-secondary)] hover:bg-[color:var(--admin-card)] disabled:opacity-50"
                   >
@@ -147,7 +161,8 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
                   </button>
                   <button
                     onClick={() => handleDelete(s.supplierId)}
-                    disabled={busyId === s.supplierId}
+                    disabled={busyId === s.supplierId || (!gate.loading && !gate.isOperational)}
+                    title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
                     aria-label="Удалить"
                     className="grid h-8 w-8 place-items-center rounded-lg text-[color:var(--admin-danger)] hover:bg-[color:var(--admin-danger-dim)] disabled:opacity-50"
                   >
@@ -184,7 +199,8 @@ export function SuppliersSection({ storeId }: { storeId: number | null }) {
         />
         <button
           onClick={handleCreate}
-          disabled={busyId === 'new' || !newName.trim()}
+          disabled={busyId === 'new' || !newName.trim() || (!gate.loading && !gate.isOperational)}
+          title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
           className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent)] px-4 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] disabled:opacity-50"
         >
           <PlusIcon width={13} height={13} />

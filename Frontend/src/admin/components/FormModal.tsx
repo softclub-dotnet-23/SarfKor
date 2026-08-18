@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { lockBodyScroll, unlockBodyScroll } from '../../lib/scrollLock'
 import { useT } from '../../i18n/translations'
+import { useAuth } from '../../auth/AuthContext'
+import { describeError } from '../../lib/errorKind'
 import { XIcon } from './icons'
 
 // Same 'admin' scheme as every other shared component here — the StorePartner cabinet and
@@ -63,6 +65,7 @@ export function FormModal({
 }: FormModalProps) {
   const c = SCHEMES[scheme]
   const t = useT()
+  const { currentStoreRole } = useAuth()
   const [busy, setBusy] = useState(false)
   const [serverError, setServerError] = useState('')
   const panelRef = useRef<HTMLDivElement>(null)
@@ -131,7 +134,7 @@ export function FormModal({
       await onSubmit()
       onClose()
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Не удалось выполнить действие')
+      setServerError(describeError(err, t, { isOwner: currentStoreRole !== 'Cashier' }))
     } finally {
       setBusy(false)
     }

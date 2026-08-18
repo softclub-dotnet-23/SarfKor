@@ -5,7 +5,7 @@ import { ReasonModal } from './ReasonModal'
 import { StoreStatusBadge, SubscriptionStatusBadge } from './StatusBadge'
 import { Loading } from './Loading'
 import { ErrorState, classifyError, type ErrorKind } from './ErrorState'
-import { errorMessage } from '../../lib/errorKind'
+import { describeErrorRu } from '../../lib/errorKind'
 import { EmptyState } from './EmptyState'
 import { Select } from './Select'
 import { DateField } from './DateField'
@@ -85,7 +85,7 @@ function ProfileTab({ detail, onChanged }: { detail: AdminStoreDetail; onChanged
       onChanged()
     } catch (err) {
       console.error('Не удалось одобрить магазин:', err)
-      setApproveError(errorMessage(err, 'Не удалось одобрить магазин'))
+      setApproveError(describeErrorRu(err))
     } finally {
       setApproveBusy(false)
     }
@@ -101,7 +101,7 @@ function ProfileTab({ detail, onChanged }: { detail: AdminStoreDetail; onChanged
       onChanged()
     } catch (err) {
       console.error('Не удалось сохранить настройки налогов:', err)
-      setTaxError(errorMessage(err, 'Не удалось сохранить настройки налогов'))
+      setTaxError(describeErrorRu(err))
     } finally {
       setTaxBusy(false)
     }
@@ -270,7 +270,7 @@ function SubscriptionTab({ detail, onChanged }: { detail: AdminStoreDetail; onCh
       onChanged()
     } catch (err) {
       console.error('Не удалось записать платёж:', err)
-      setPayError(errorMessage(err, 'Не удалось записать платёж'))
+      setPayError(describeErrorRu(err))
     } finally {
       setPayBusy(false)
     }

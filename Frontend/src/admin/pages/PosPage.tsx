@@ -22,6 +22,9 @@ import {
 import { useAuth } from '../../auth/AuthContext'
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner'
 import { publishCustomerDisplayState } from '../lib/customerDisplay'
+import { useT } from '../../i18n/translations'
+import { describeError } from '../../lib/errorKind'
+import { useSubscriptionGate, gateButtonProps } from '../../lib/subscriptionGate'
 import {
   productsApi,
   salesApi,
@@ -132,6 +135,9 @@ function describeOutcome(result: ProcessSaleResult, cart: CartLine[]): string {
 }
 
 function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }) {
+  const t = useT()
+  const gate = useSubscriptionGate()
+  const blockedTitle = gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')
   const [expanded, setExpanded] = useState(false)
   const [voidBusy, setVoidBusy] = useState(false)
   const [voidReason, setVoidReason] = useState('')
@@ -169,7 +175,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
         setVoidError('Нет доступа к этой продаже')
       }
     } catch (err) {
-      setVoidError(err instanceof ApiError ? err.message : 'Не удалось отменить продажу')
+      setVoidError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setVoidBusy(false)
     }
@@ -191,7 +197,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
         setCommissionStatus(res.outcome === 'Forbidden' ? 'Нет доступа' : 'Продажа не найдена')
       }
     } catch (err) {
-      setCommissionStatus(err instanceof ApiError ? err.message : 'Не удалось записать комиссию')
+      setCommissionStatus(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setCommissionBusy(false)
     }
@@ -239,7 +245,7 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
         setReturnStatus('Нет доступа')
       }
     } catch (err) {
-      setReturnStatus(err instanceof ApiError ? err.message : 'Не удалось оформить возврат')
+      setReturnStatus(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setReturnBusy(false)
     }
@@ -273,7 +279,8 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setVoidOpen((v) => !v)}
-                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-danger-dim)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-danger)] hover:opacity-80"
+                {...gateButtonProps(gate, blockedTitle)}
+                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-danger-dim)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-danger)] hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <AlertIcon width={12} height={12} />
                 Отменить продажу
@@ -283,7 +290,8 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
                   setCommissionOpen((v) => !v)
                   if (!commissions) loadCommissions()
                 }}
-                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+                {...gateButtonProps(gate, blockedTitle)}
+                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ReceiptPercentIcon />
                 Комиссия
@@ -293,7 +301,8 @@ function SaleCard({ sale, onVoided }: { sale: RecentSale; onVoided: () => void }
                   setReturnOpen((v) => !v)
                   if (!returns) loadReturns()
                 }}
-                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)]"
+                {...gateButtonProps(gate, blockedTitle)}
+                className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ReturnIcon />
                 Возврат
@@ -458,6 +467,9 @@ function BundlePicker({ storeId, onAdd }: { storeId: number; onAdd: (bundle: Pro
 
 export function PosPage() {
   const { storeId } = useAuth()
+  const t = useT()
+  const gate = useSubscriptionGate()
+  const blockedTitle = gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')
   const inputRef = useRef<HTMLInputElement>(null)
   const idempotencyKeyRef = useRef<string | null>(null)
 
@@ -534,7 +546,7 @@ export function PosPage() {
       } else if (err instanceof ApiError && err.status === 429) {
         setScanError('Слишком много запросов — подождите немного')
       } else {
-        setScanError(err instanceof ApiError ? err.message : 'Не удалось выполнить поиск')
+        setScanError(describeError(err, t, { isOwner: gate.isOwner }))
       }
       setLastScan(null)
     } finally {
@@ -609,6 +621,7 @@ export function PosPage() {
 
   async function completeSale() {
     if ((cart.length === 0 && cartBundles.length === 0) || checkoutBusy || !storeId) return
+    if (!gate.loading && !gate.isOperational) return
     setCheckoutBusy(true)
     setCheckoutError('')
     const key = idempotencyKeyRef.current ?? crypto.randomUUID()
@@ -665,7 +678,7 @@ export function PosPage() {
     } catch (err) {
       // Network/5xx failure: the request may or may not have landed, so keep
       // the same idempotency key — retrying with it is safe by construction.
-      setCheckoutError(err instanceof ApiError ? err.message : 'Не удалось провести продажу — проверьте соединение')
+      setCheckoutError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setCheckoutBusy(false)
     }
@@ -905,7 +918,8 @@ export function PosPage() {
 
         <button
           onClick={completeSale}
-          disabled={(cart.length === 0 && cartBundles.length === 0) || checkoutBusy}
+          disabled={(cart.length === 0 && cartBundles.length === 0) || checkoutBusy || (!gate.loading && !gate.isOperational)}
+          title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
           className="rounded-[8px] bg-[color:var(--admin-accent)] py-3.5 text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 disabled:hover:shadow-none"
         >
           {checkoutBusy ? 'Проводим продажу…' : 'Оформить продажу'}

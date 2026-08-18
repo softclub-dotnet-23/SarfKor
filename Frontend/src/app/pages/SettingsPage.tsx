@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { meApi, ApiError, type ConsentType } from '../../lib/api'
+import { meApi, type ConsentType } from '../../lib/api'
+import { describeErrorRu } from '../../lib/errorKind'
 import { Button, EmptyState, ErrorState, LINE, Reveal, SectionTitle, Skeleton, Spinner, TXT, useAsync } from '../ui'
 
 /* Exactly the four the backend defines (ConsentType in lib/api/me.ts) — no more,
@@ -44,7 +45,7 @@ function ChangePasswordSection() {
       setCurrent('')
       setNext('')
     } catch (err) {
-      setMsg({ text: err instanceof ApiError ? err.message : 'Не удалось связаться с сервером', ok: false })
+      setMsg({ text: describeErrorRu(err), ok: false })
     } finally {
       setSaving(false)
     }

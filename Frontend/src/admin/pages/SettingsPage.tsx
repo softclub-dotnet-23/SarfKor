@@ -9,9 +9,12 @@ import { SunIcon, MoonIcon } from '../../components/icons'
 import { CheckIcon } from '../components/icons'
 import { SubscriptionStatusBadge } from '../components/StatusBadge'
 import { SuppliersSection } from './SuppliersSection'
-import { storesApi, meApi, ApiError, type MyStoreSubscriptionStatus } from '../../lib/api'
+import { storesApi, meApi, type MyStoreSubscriptionStatus } from '../../lib/api'
 import { useProfile } from '../../lib/useProfile'
 import { useAvatarUrl } from '../../lib/useAvatarUrl'
+import { useT } from '../../i18n/translations'
+import { describeError } from '../../lib/errorKind'
+import { useSubscriptionGate } from '../../lib/subscriptionGate'
 
 const DAILY_GOAL_KEY = 'sarfkor-daily-goal'
 
@@ -54,6 +57,7 @@ function EyeToggle({ shown, onClick }: { shown: boolean; onClick: () => void }) 
 
 function AvatarSection() {
   const { user } = useAuth()
+  const t = useT()
   const { profile, reload } = useProfile()
   const [avatarVersion, setAvatarVersion] = useState(0)
   // GET /api/me/avatar requires a Bearer token (it's access-controlled, not a public static
@@ -84,7 +88,7 @@ function AvatarSection() {
       setStatus('saved')
       setTimeout(() => setStatus('idle'), 2200)
     } catch (err) {
-      setErrMsg(err instanceof ApiError ? err.message : 'Не удалось загрузить')
+      setErrMsg(describeError(err, t))
       setStatus('error')
       setPreview(null)
     } finally {
@@ -138,6 +142,9 @@ function AvatarSection() {
 function StoreSection({ storeId }: { storeId: number | null }) {
   const { myStores, refreshRoles } = useAuth()
   const navigate = useNavigate()
+  const t = useT()
+  const gate = useSubscriptionGate()
+  const blockedTitle = gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')
   const currentStore = (myStores ?? []).find((s) => s.storeId === storeId)
 
   const [name, setName] = useState(currentStore?.name ?? '')
@@ -177,7 +184,7 @@ function StoreSection({ storeId }: { storeId: number | null }) {
       else if (res.outcome === 'Forbidden') { setErrMsg('Нет доступа к редактированию этого магазина'); setStatus('error') }
       else { setErrMsg('Магазин не найден'); setStatus('error') }
     } catch (err) {
-      setErrMsg(err instanceof ApiError ? err.message : 'Не удалось сохранить')
+      setErrMsg(describeError(err, t, { isOwner: gate.isOwner }))
       setStatus('error')
     } finally { setBusy(false) }
   }
@@ -224,7 +231,11 @@ function StoreSection({ storeId }: { storeId: number | null }) {
         )}
 
         <div className="flex items-center gap-3">
-          <PrimaryButton type="submit" disabled={busy}>
+          <PrimaryButton
+            type="submit"
+            disabled={busy || (!gate.loading && !gate.isOperational)}
+            title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
+          >
             {status === 'saved' && <CheckIcon width={14} height={14} />}
             {busy ? 'Сохраняем…' : status === 'saved' ? 'Сохранено' : 'Сохранить'}
           </PrimaryButton>
@@ -286,6 +297,7 @@ function SubscriptionSection({ storeId }: { storeId: number | null }) {
 }
 
 function PasswordSection() {
+  const t = useT()
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -305,7 +317,7 @@ function PasswordSection() {
       setCurrent(''); setNext(''); setConfirm('')
       setStatus('saved'); setTimeout(() => setStatus('idle'), 2500)
     } catch (err) {
-      setErrMsg(err instanceof ApiError ? err.message : 'Не удалось сменить пароль')
+      setErrMsg(describeError(err, t))
       setStatus('error')
     } finally { setBusy(false) }
   }

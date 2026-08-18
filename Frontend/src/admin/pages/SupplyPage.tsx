@@ -11,7 +11,9 @@ import { StorePicker } from '../components/StorePicker'
 import { TruckIcon, PlusIcon, TrashIcon, RefreshIcon, PhoneIcon, MailIcon, AlertIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { productsApi, type ProductSearchItem, type MyStoreSearchItem } from '../../lib/api'
-import { errorMessage } from '../../lib/errorKind'
+import { describeError } from '../../lib/errorKind'
+import { useT } from '../../i18n/translations'
+import { useSubscriptionGate, gateButtonProps } from '../../lib/subscriptionGate'
 import { createSupplier, getSuppliers, type Supplier } from '../../lib/api/suppliers'
 import {
   createPurchaseOrder,
@@ -422,6 +424,9 @@ function OrdersSection({
   createOpen: boolean
   onCloseCreate: () => void
 }) {
+  const t = useT()
+  const gate = useSubscriptionGate()
+  const blockedTitle = gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')
   const [orders, setOrders] = useState<PurchaseOrder[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -441,11 +446,11 @@ function OrdersSection({
       setOrders(res.orders ?? [])
     } catch (err) {
       console.error('Failed to load purchase orders:', err)
-      setError(errorMessage(err, 'Не удалось загрузить заказы поставщикам'))
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setLoading(false)
     }
-  }, [storeId])
+  }, [storeId, t, gate.isOwner])
 
   useEffect(() => {
     load()
@@ -463,7 +468,7 @@ function OrdersSection({
       await load()
     } catch (err) {
       console.error('Failed to submit purchase order:', err)
-      setRowError({ id, message: 'Не удалось отправить заказ поставщику' })
+      setRowError({ id, message: describeError(err, t, { isOwner: gate.isOwner }) })
     } finally {
       setBusyId(null)
     }
@@ -481,7 +486,7 @@ function OrdersSection({
       await load()
     } catch (err) {
       console.error('Failed to receive purchase order:', err)
-      setRowError({ id, message: 'Не удалось оприходовать заказ' })
+      setRowError({ id, message: describeError(err, t, { isOwner: gate.isOwner }) })
     } finally {
       setBusyId(null)
     }
@@ -537,7 +542,8 @@ function OrdersSection({
                   {o.status === 'Draft' && (
                     <button
                       onClick={() => handleSubmitOrder(o.purchaseOrderId)}
-                      disabled={busyId === o.purchaseOrderId}
+                      disabled={busyId === o.purchaseOrderId || (!gate.loading && !gate.isOperational)}
+                      title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
                       className="rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80 disabled:opacity-50"
                     >
                       {busyId === o.purchaseOrderId ? 'Отправляем…' : 'Отправить поставщику'}
@@ -546,7 +552,8 @@ function OrdersSection({
                   {o.status === 'Submitted' && (
                     <button
                       onClick={() => handleReceiveOrder(o.purchaseOrderId)}
-                      disabled={busyId === o.purchaseOrderId}
+                      disabled={busyId === o.purchaseOrderId || (!gate.loading && !gate.isOperational)}
+                      title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
                       className="rounded-lg bg-[color:var(--admin-accent)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90 disabled:opacity-50"
                     >
                       {busyId === o.purchaseOrderId ? 'Оприходуем…' : 'Оприходовать'}
@@ -627,6 +634,9 @@ function CreateTransferModal({ open, onClose, storeId, onCreated }: { open: bool
 
 function TransfersSection({ storeId, createOpen, onCloseCreate }: { storeId: number; createOpen: boolean; onCloseCreate: () => void }) {
   const { myStores } = useAuth()
+  const t = useT()
+  const gate = useSubscriptionGate()
+  const blockedTitle = gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')
   const storeNameById = new Map((myStores ?? []).map((s) => [s.storeId, s.name]))
   const [transfers, setTransfers] = useState<StockTransfer[] | null>(null)
   const [productNames, setProductNames] = useState<Record<number, string>>({})
@@ -656,11 +666,11 @@ function TransfersSection({ storeId, createOpen, onCloseCreate }: { storeId: num
       setProductNames(names)
     } catch (err) {
       console.error('Failed to load stock transfers:', err)
-      setError(errorMessage(err, 'Не удалось загрузить перемещения'))
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setLoading(false)
     }
-  }, [storeId])
+  }, [storeId, t, gate.isOwner])
 
   useEffect(() => {
     load()
@@ -678,7 +688,7 @@ function TransfersSection({ storeId, createOpen, onCloseCreate }: { storeId: num
       await load()
     } catch (err) {
       console.error('Failed to complete stock transfer:', err)
-      setRowError({ id, message: 'Не удалось завершить перемещение' })
+      setRowError({ id, message: describeError(err, t, { isOwner: gate.isOwner }) })
     } finally {
       setBusyId(null)
     }
@@ -711,31 +721,32 @@ function TransfersSection({ storeId, createOpen, onCloseCreate }: { storeId: num
 
         {!loading && !error && (
           <div className="flex flex-col gap-3">
-            {(transfers ?? []).map((t) => (
-              <div key={t.stockTransferId} className="flex flex-col gap-2.5 rounded-[16px] bg-[color:var(--admin-hover)] p-4 sm:flex-row sm:items-center sm:justify-between">
+            {(transfers ?? []).map((tr) => (
+              <div key={tr.stockTransferId} className="flex flex-col gap-2.5 rounded-[16px] bg-[color:var(--admin-hover)] p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="text-[13.5px] font-semibold text-[color:var(--admin-text)]">
-                    {productNames[t.productId] ?? 'Товар без названия'}
+                    {productNames[tr.productId] ?? 'Товар без названия'}
                   </div>
                   <div className="text-[11px] text-[color:var(--admin-text-tertiary)]">
-                    {storeNameById.get(t.fromStoreId) ?? 'Магазин'} → {storeNameById.get(t.toStoreId) ?? 'Магазин'} · {t.quantity} ед. · создано {fmtDateTime(t.createdAt)}
-                    {t.completedAt ? ` · завершено ${fmtDateTime(t.completedAt)}` : ''}
+                    {storeNameById.get(tr.fromStoreId) ?? 'Магазин'} → {storeNameById.get(tr.toStoreId) ?? 'Магазин'} · {tr.quantity} ед. · создано {fmtDateTime(tr.createdAt)}
+                    {tr.completedAt ? ` · завершено ${fmtDateTime(tr.completedAt)}` : ''}
                   </div>
-                  {rowError?.id === t.stockTransferId && (
+                  {rowError?.id === tr.stockTransferId && (
                     <div className="mt-1.5">
                       <FieldError message={rowError.message} />
                     </div>
                   )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <StatusBadge label={TRANSFER_STATUS_LABEL[t.status]} className={TRANSFER_STATUS_STYLE[t.status]} />
-                  {t.status === 'InTransit' && (
+                  <StatusBadge label={TRANSFER_STATUS_LABEL[tr.status]} className={TRANSFER_STATUS_STYLE[tr.status]} />
+                  {tr.status === 'InTransit' && (
                     <button
-                      onClick={() => handleComplete(t.stockTransferId)}
-                      disabled={busyId === t.stockTransferId}
+                      onClick={() => handleComplete(tr.stockTransferId)}
+                      disabled={busyId === tr.stockTransferId || (!gate.loading && !gate.isOperational)}
+                      title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
                       className="rounded-lg bg-[color:var(--admin-accent)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90 disabled:opacity-50"
                     >
-                      {busyId === t.stockTransferId ? 'Завершаем…' : 'Завершить перемещение'}
+                      {busyId === tr.stockTransferId ? 'Завершаем…' : 'Завершить перемещение'}
                     </button>
                   )}
                 </div>
@@ -771,6 +782,9 @@ const SUPPLY_ADD_LABEL: Record<SupplyTab, string> = {
 
 export function SupplyPage() {
   const { storeId } = useAuth()
+  const t = useT()
+  const gate = useSubscriptionGate()
+  const blockedTitle = gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')
   const [params, setParams] = useSearchParams()
   const tabParam = params.get('tab')
   const tab: SupplyTab = tabParam === 'orders' || tabParam === 'transfers' ? tabParam : 'suppliers'
@@ -788,11 +802,11 @@ export function SupplyPage() {
       setSuppliers(res.suppliers ?? [])
     } catch (err) {
       console.error('Failed to load suppliers:', err)
-      setSuppliersError(errorMessage(err, 'Не удалось загрузить поставщиков'))
+      setSuppliersError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setSuppliersLoading(false)
     }
-  }, [storeId])
+  }, [storeId, t, gate.isOwner])
 
   useEffect(() => {
     loadSuppliers()
@@ -817,7 +831,7 @@ export function SupplyPage() {
           options={SUPPLY_TAB_OPTIONS}
           ariaLabel="Раздел поставок"
         />
-        <AddButton onClick={() => setCreateOpen(true)}>{SUPPLY_ADD_LABEL[tab]}</AddButton>
+        <AddButton onClick={() => setCreateOpen(true)} {...gateButtonProps(gate, blockedTitle)}>{SUPPLY_ADD_LABEL[tab]}</AddButton>
       </div>
 
       {tab === 'suppliers' && (

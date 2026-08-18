@@ -13,10 +13,10 @@ import { Select } from '../components/Select'
 import { EntityPicker } from '../components/EntityPicker'
 import { Toast } from '../components/Toast'
 import { SearchIcon, UsersIcon, RefreshIcon } from '../components/icons'
+import { describeErrorRu } from '../../lib/errorKind'
 import {
   adminUsersApi,
   adminApi,
-  ApiError,
   type AdminUserListItem,
   type AdminStoreListItem,
   type InvitedRole,
@@ -184,7 +184,7 @@ function InvitationTableRow({ invitation, onChanged, showActionsColumn }: { invi
       setTimeout(() => setJustResent(false), 2500)
       onChanged()
     } catch (err) {
-      setRowError(err instanceof ApiError ? err.message : 'Не удалось отправить повторно')
+      setRowError(describeErrorRu(err))
     } finally {
       setBusy(null)
     }
@@ -198,7 +198,7 @@ function InvitationTableRow({ invitation, onChanged, showActionsColumn }: { invi
       await adminUsersApi.revokeUserInvitation(invitation.invitationId)
       onChanged()
     } catch (err) {
-      setRowError(err instanceof ApiError ? err.message : 'Не удалось отозвать приглашение')
+      setRowError(describeErrorRu(err))
       setBusy(null)
     }
   }

@@ -6,7 +6,8 @@ import { lockBodyScroll, unlockBodyScroll } from '../../lib/scrollLock'
 import { useFloatingPosition } from '../../lib/useFloatingPosition'
 import { Loading } from './Loading'
 import { SearchIcon, XIcon, ChevronDownIcon, AlertIcon } from './icons'
-import { errorMessage } from '../../lib/errorKind'
+import { describeError } from '../../lib/errorKind'
+import { useT } from '../../i18n/translations'
 
 // Single 'admin' scheme, shared by the StorePartner/Cashier cabinets and the platform Admin
 // console — see Select.tsx, this component's closest sibling, for the pattern this borrows
@@ -85,6 +86,7 @@ const FOCUSABLE_ROW = 'min-h-11'
 export function EntityPicker<T>(props: EntityPickerProps<T>) {
   const { fetchPage, getId, getLabel, renderOption, placeholder = 'Найти…', scheme = 'admin', disabled, ariaLabel, headerAction, pageSize = 20, searchDebounceMs = 300, className = '', emptyHint } = props
   const c = SCHEMES[scheme]
+  const t = useT()
   const isMobile = useIsMobile()
   const listId = useId()
 
@@ -126,7 +128,7 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
         setItems((prev) => (append ? [...prev, ...page.items] : page.items))
         setTotalCount(page.totalCount)
       } catch (err) {
-        if (requestId === requestIdRef.current) setError(errorMessage(err, 'Не удалось загрузить список'))
+        if (requestId === requestIdRef.current) setError(describeError(err, t))
       } finally {
         if (requestId === requestIdRef.current) {
           setLoading(false)
@@ -134,7 +136,7 @@ export function EntityPicker<T>(props: EntityPickerProps<T>) {
         }
       }
     },
-    [fetchPage, pageSize],
+    [fetchPage, pageSize, t],
   )
 
   // Open -> first page. Debounced re-search on every keystroke while open.

@@ -10,6 +10,8 @@ import { ClockIcon, ShieldIcon, AlertIcon, PlusIcon, RefreshIcon, KeyIcon, Check
 import { useAuth } from '../../auth/AuthContext'
 import { useT } from '../../i18n/translations'
 import { useLocaleFormat } from '../../i18n/format'
+import { describeError } from '../../lib/errorKind'
+import { useSubscriptionGate, gateButtonProps } from '../../lib/subscriptionGate'
 import {
   storesApi,
   salesApi,
@@ -501,6 +503,7 @@ function EditCashierModal({
 
 function InvitationRow({ invitation, onChanged }: { invitation: StoreEmployeeInvitation; onChanged: () => Promise<void> }) {
   const t = useT()
+  const gate = useSubscriptionGate()
   const { date } = useLocaleFormat()
   const [busy, setBusy] = useState<'resend' | 'revoke' | null>(null)
   const [error, setError] = useState('')
@@ -515,7 +518,7 @@ function InvitationRow({ invitation, onChanged }: { invitation: StoreEmployeeInv
       setTimeout(() => setResent(false), 2500)
       await onChanged()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('partner.staff.resendError'))
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setBusy(null)
     }
@@ -529,7 +532,7 @@ function InvitationRow({ invitation, onChanged }: { invitation: StoreEmployeeInv
       await storesApi.revokeStoreEmployeeInvitation(invitation.invitationId)
       await onChanged()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('partner.staff.revokeError'))
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
       setBusy(null)
     }
   }
@@ -592,6 +595,8 @@ function EmployeeRow({
   onPasswordReset: (result: { email: string; password: string; title: string; hint: string }) => void
 }) {
   const t = useT()
+  const gate = useSubscriptionGate()
+  const blockedTitle = gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')
   const { date } = useLocaleFormat()
   const [busy, setBusy] = useState<'reset' | 'toggle' | 'remove' | null>(null)
   const [error, setError] = useState('')
@@ -623,7 +628,7 @@ function EmployeeRow({
         setError(t('partner.staff.employeeNotFound'))
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('partner.staff.resetPasswordError'))
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setBusy(null)
     }
@@ -644,7 +649,7 @@ function EmployeeRow({
         setError(t('partner.staff.employeeNotFound'))
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('partner.staff.toggleActiveError'))
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setBusy(null)
     }
@@ -670,7 +675,7 @@ function EmployeeRow({
         setError(t('partner.staff.employeeNotFound'))
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('partner.staff.removeError'))
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setBusy(null)
     }
@@ -698,7 +703,8 @@ function EmployeeRow({
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           <button
             onClick={onEdit}
-            disabled={busy !== null}
+            disabled={busy !== null || (!gate.loading && !gate.isOperational)}
+            title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
             aria-label={t('partner.staff.editEmployee')}
             className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)] disabled:opacity-50"
           >
@@ -707,7 +713,8 @@ function EmployeeRow({
           </button>
           <button
             onClick={handleResetPassword}
-            disabled={busy !== null}
+            disabled={busy !== null || (!gate.loading && !gate.isOperational)}
+            title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
             className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-card)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-text-secondary)] hover:text-[color:var(--admin-text)] disabled:opacity-50"
           >
             <KeyIcon width={13} height={13} />
@@ -715,7 +722,8 @@ function EmployeeRow({
           </button>
           <button
             onClick={handleToggleActive}
-            disabled={busy !== null}
+            disabled={busy !== null || (!gate.loading && !gate.isOperational)}
+            title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
             className={`rounded-lg px-3 py-1.5 text-[11.5px] font-semibold disabled:opacity-50 ${
               employee.isActive
                 ? 'bg-[color:var(--admin-danger-dim)] text-[color:var(--admin-danger)] hover:opacity-80'
@@ -730,7 +738,8 @@ function EmployeeRow({
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           <button
             onClick={handleRemoveOwner}
-            disabled={busy !== null}
+            disabled={busy !== null || (!gate.loading && !gate.isOperational)}
+            title={!gate.loading && !gate.isOperational ? blockedTitle : undefined}
             aria-label={t('partner.staff.removeEmployee')}
             className="flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-danger-dim)] px-3 py-1.5 text-[11.5px] font-semibold text-[color:var(--admin-danger)] hover:opacity-80 disabled:opacity-50"
           >
@@ -746,6 +755,8 @@ function EmployeeRow({
 function EmployeesSection() {
   const { storeId, user } = useAuth()
   const t = useT()
+  const gate = useSubscriptionGate()
+  const blockedTitle = gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')
   const [employees, setEmployees] = useState<StoreEmployee[] | null>(null)
   const [invitations, setInvitations] = useState<StoreEmployeeInvitation[]>([])
   const [error, setError] = useState('')
@@ -820,14 +831,16 @@ function EmployeesSection() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setCreateCashierOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90"
+            {...gateButtonProps(gate, blockedTitle)}
+            className="flex items-center gap-1.5 rounded-xl bg-[color:var(--admin-accent)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-accent-fg)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <PlusIcon width={14} height={14} />
             {t('partner.staff.createCashierButton')}
           </button>
           <button
             onClick={() => setInviteOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-[color:var(--admin-border)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-text)] hover:bg-[color:var(--admin-hover)]"
+            {...gateButtonProps(gate, blockedTitle)}
+            className="flex items-center gap-1.5 rounded-xl border border-[color:var(--admin-border)] px-3.5 py-2 text-[12.5px] font-semibold text-[color:var(--admin-text)] hover:bg-[color:var(--admin-hover)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {t('partner.staff.inviteButton')}
           </button>

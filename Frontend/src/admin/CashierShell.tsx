@@ -14,6 +14,8 @@ import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
 import { FormModal, FormField } from './components/FormModal'
 import { useT } from '../i18n/translations'
 import { useLocaleFormat } from '../i18n/format'
+import { SubscriptionGateProvider, useSubscriptionGate, gateButtonProps } from '../lib/subscriptionGate'
+import { SubscriptionGateBanner } from './components/SubscriptionGateBanner'
 
 // Cashier's own shell — deliberately NOT a restyle of the desktop
 // StorePartner sidebar. Same tokens/typography/status palette as the rest of
@@ -36,6 +38,7 @@ function ShiftBar() {
   const { storeId, user } = useAuth()
   const t = useT()
   const { time } = useLocaleFormat()
+  const gate = useSubscriptionGate()
   const [shifts, setShifts] = useState<CashierShift[] | null>(null)
   // Distinct from "loaded, no open shift" -- a cashier standing at the register reads this
   // strip as ground truth about the drawer. Defaulting to "не открыта" on a failed request
@@ -98,7 +101,8 @@ function ShiftBar() {
         </div>
         <button
           onClick={loadError ? load : openModal}
-          disabled={!storeId}
+          disabled={!storeId || (!loadError && !gate.loading && !gate.isOperational)}
+          {...(!loadError ? gateButtonProps(gate, gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')) : {})}
           className={clsx(
             'shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-opacity disabled:opacity-50',
             loadError
@@ -165,6 +169,7 @@ export function CashierShell() {
   const page = TABS.find((tab) => location.pathname.startsWith(tab.to)) ?? TABS[0]
 
   return (
+    <SubscriptionGateProvider>
     <div className="admin-shell flex h-screen w-full flex-col overflow-hidden bg-[color:var(--admin-content)] text-[color:var(--admin-text)]">
       {/* Top bar — identity + language + theme + logout only. No menu button:
           there is nothing to open. */}
@@ -206,6 +211,7 @@ export function CashierShell() {
       </div>
 
       <main className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-3">
+        <SubscriptionGateBanner />
         <PageTransition pathKey={location.pathname}>
           <RouteErrorBoundary key={location.pathname} sectionLabel={t(page.key)}>
             <Outlet />
@@ -249,5 +255,6 @@ export function CashierShell() {
         ))}
       </nav>
     </div>
+    </SubscriptionGateProvider>
   )
 }

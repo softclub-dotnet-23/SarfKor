@@ -1,7 +1,9 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../../auth/AuthContext'
-import { assistantApi, ApiError, type AssistantChatMessage, type ProposedAction } from '../../lib/api'
+import { assistantApi, type AssistantChatMessage, type ProposedAction } from '../../lib/api'
+import { describeError } from '../../lib/errorKind'
+import { useT } from '../../i18n/translations'
 import { ChatIcon, SendIcon, XIcon, CheckIcon, AlertIcon } from './icons'
 
 interface DisplayMessage extends AssistantChatMessage {
@@ -16,6 +18,7 @@ interface DisplayMessage extends AssistantChatMessage {
  */
 export function AssistantPanel() {
   const { user, storeId, currentStoreRole } = useAuth()
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<DisplayMessage[]>([])
   const [input, setInput] = useState('')
@@ -59,7 +62,7 @@ export function AssistantPanel() {
         setError('Нет доступа к ассистенту.')
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось связаться с ассистентом')
+      setError(describeError(err, t, { isOwner: currentStoreRole !== 'Cashier' }))
     } finally {
       setBusy(false)
       scrollToBottom()
@@ -85,7 +88,7 @@ export function AssistantPanel() {
         setConfirmStatus(result.summary ?? 'Не удалось выполнить действие.')
       }
     } catch (err) {
-      setConfirmStatus(err instanceof ApiError ? err.message : 'Не удалось подтвердить действие')
+      setConfirmStatus(describeError(err, t, { isOwner: currentStoreRole !== 'Cashier' }))
     } finally {
       setConfirmBusy(false)
     }

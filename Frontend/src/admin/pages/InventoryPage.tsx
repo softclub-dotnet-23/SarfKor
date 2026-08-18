@@ -6,13 +6,15 @@ import { SupplierPicker } from '../components/SupplierPicker'
 import { Badge } from '../components/Badge'
 import { Loading } from '../components/Loading'
 import { ErrorState, classifyError, type ErrorKind } from '../components/ErrorState'
-import { errorMessage } from '../../lib/errorKind'
+import { describeError } from '../../lib/errorKind'
 import { Reveal } from '../components/Reveal'
 import { BarcodeScannerView } from '../components/BarcodeScannerView'
 import { ProductPicker } from '../components/ProductPicker'
 import { SearchIcon, PlusIcon, TruckIcon, BarcodeIcon, CameraIcon, PackageIcon } from '../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner'
+import { useT } from '../../i18n/translations'
+import { useSubscriptionGate, gateButtonProps } from '../../lib/subscriptionGate'
 import {
   inventoryApi,
   productsApi,
@@ -63,6 +65,9 @@ interface ReceiptTarget {
 
 export function InventoryPage() {
   const { storeId } = useAuth()
+  const t = useT()
+  const gate = useSubscriptionGate()
+  const blockedTitle = gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')
   const [nameCache, setNameCache] = useState<Record<number, ProductInfo>>(loadNameCache)
   const [stock, setStock] = useState<StockLevel[] | null>(null)
   const [alerts, setAlerts] = useState<ReorderAlert[]>([])
@@ -225,7 +230,7 @@ export function InventoryPage() {
         setNotFoundBarcode(code)
       } else {
         console.error('Failed to look up barcode:', err)
-        setScanError(errorMessage(err, 'Не удалось выполнить поиск'))
+        setScanError(describeError(err, t, { isOwner: gate.isOwner }))
       }
     } finally {
       setScanBusy(false)
@@ -300,7 +305,7 @@ export function InventoryPage() {
       }, 1500)
     } catch (err) {
       console.error('Failed to submit new product:', err)
-      setSubmitError(errorMessage(err, 'Не удалось отправить заявку'))
+      setSubmitError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setSubmitBusy(false)
     }
@@ -342,7 +347,7 @@ export function InventoryPage() {
       setNewBrandName('')
     } catch (err) {
       console.error('Failed to create brand:', err)
-      setNewBrandError(errorMessage(err, 'Не удалось создать бренд'))
+      setNewBrandError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setNewBrandBusy(false)
     }
@@ -372,7 +377,7 @@ export function InventoryPage() {
       await load()
     } catch (err) {
       console.error('Failed to record stock receipt:', err)
-      setReceiptError(errorMessage(err, 'Не удалось оприходовать поставку'))
+      setReceiptError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setReceiptBusy(false)
     }
@@ -394,7 +399,7 @@ export function InventoryPage() {
       }, 1200)
     } catch (err) {
       console.error('Failed to save cost price:', err)
-      setCostError(errorMessage(err, 'Не удалось сохранить себестоимость'))
+      setCostError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setCostBusy(false)
     }
@@ -416,7 +421,7 @@ export function InventoryPage() {
       }, 1200)
     } catch (err) {
       console.error('Failed to save price:', err)
-      setPriceError(errorMessage(err, 'Не удалось сохранить цену'))
+      setPriceError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setPriceBusy(false)
     }
@@ -448,7 +453,7 @@ export function InventoryPage() {
       await load()
     } catch (err) {
       console.error('Failed to create reorder rule:', err)
-      setRuleError(errorMessage(err, 'Не удалось создать правило пополнения'))
+      setRuleError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setRuleBusy(false)
     }
@@ -481,7 +486,8 @@ export function InventoryPage() {
             </div>
             <button
               onClick={() => { setRuleOpen(true); setRuleError('') }}
-              className="mt-1 shrink-0 rounded-[6px] bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[12px] font-[500] text-[color:var(--admin-accent)] transition-opacity hover:opacity-80"
+              {...gateButtonProps(gate, blockedTitle)}
+              className="mt-1 shrink-0 rounded-[6px] bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[12px] font-[500] text-[color:var(--admin-accent)] transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
             >
               + Правило
             </button>
@@ -510,7 +516,8 @@ export function InventoryPage() {
               setScanOpen(true)
               setScanError('')
             }}
-            className="flex shrink-0 items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
+            {...gateButtonProps(gate, blockedTitle)}
+            className="flex shrink-0 items-center justify-center gap-2 rounded-[8px] bg-[color:var(--admin-accent)] px-5 py-[10px] text-[14px] font-[500] text-[color:var(--admin-accent-fg)] transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-[0_4px_16px_rgba(0,0,0,0.18)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none"
           >
             <BarcodeIcon width={15} height={15} />
             Приход по штрихкоду
@@ -548,20 +555,23 @@ export function InventoryPage() {
                     )}
                     <button
                       onClick={() => { setReceiptFor({ productId: s.productId, productName: info?.name, productBarcode: info?.barcode }); setReceiptQty(10); setReceiptPrice(''); setReceiptError('') }}
-                      className="inline-flex items-center gap-1.5 rounded-[6px] bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[12px] font-[500] text-[color:var(--admin-accent)] transition-opacity hover:opacity-80"
+                      {...gateButtonProps(gate, blockedTitle)}
+                      className="inline-flex items-center gap-1.5 rounded-[6px] bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[12px] font-[500] text-[color:var(--admin-accent)] transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <TruckIcon width={12} height={12} />
                       Приход
                     </button>
                     <button
                       onClick={() => { setPriceFor({ productId: s.productId, productName: info?.name, productBarcode: info?.barcode }); setPriceAmount(''); setPriceDone(false); setPriceError('') }}
-                      className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color:var(--admin-border)] px-3 py-1.5 text-[12px] font-[400] text-[color:var(--admin-text-secondary)] transition-colors hover:text-[color:var(--admin-text)]"
+                      {...gateButtonProps(gate, blockedTitle)}
+                      className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color:var(--admin-border)] px-3 py-1.5 text-[12px] font-[400] text-[color:var(--admin-text-secondary)] transition-colors hover:text-[color:var(--admin-text)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Цена
                     </button>
                     <button
                       onClick={() => { setCostFor({ productId: s.productId, productName: info?.name, productBarcode: info?.barcode }); setCostAmount(''); setCostDone(false); setCostError('') }}
-                      className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color:var(--admin-border)] px-3 py-1.5 text-[12px] font-[400] text-[color:var(--admin-text-secondary)] transition-colors hover:text-[color:var(--admin-text)]"
+                      {...gateButtonProps(gate, blockedTitle)}
+                      className="inline-flex items-center gap-1.5 rounded-[6px] border border-[color:var(--admin-border)] px-3 py-1.5 text-[12px] font-[400] text-[color:var(--admin-text-secondary)] transition-colors hover:text-[color:var(--admin-text)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Себест.
                     </button>

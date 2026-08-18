@@ -7,7 +7,8 @@ import { useTheme } from '../theme/ThemeProvider'
 import { useThemeTransition } from '../theme/useThemeTransition'
 import { LanguageSwitcher } from '../admin/components/LanguageSwitcher'
 import { useT } from '../i18n/translations'
-import { meApi, ApiError } from '../lib/api'
+import { meApi } from '../lib/api'
+import { describeError } from '../lib/errorKind'
 import { useAuth } from './AuthContext'
 
 const inputCls =
@@ -57,7 +58,7 @@ export function ForceChangePasswordPage() {
       if (user) await login(user.email, newPassword)
       setDone(true)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('changePassword.genericError'))
+      setError(describeError(err, t))
     } finally {
       setLoading(false)
     }

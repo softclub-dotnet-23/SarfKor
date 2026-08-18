@@ -60,7 +60,7 @@ function SubscriptionInactiveHint({ storeId }: { storeId: number | null }) {
 
   return (
     <div className="mt-1 flex flex-col items-center gap-1.5">
-      {info.currentPeriodEndsAt && (
+      {info.isOwner && info.currentPeriodEndsAt && (
         <p className="text-[12px] font-medium text-[color:var(--admin-text-secondary)]">
           {t('common.subscriptionExpiredOn', { date: date(info.currentPeriodEndsAt) })}
         </p>
@@ -73,8 +73,10 @@ function SubscriptionInactiveHint({ storeId }: { storeId: number | null }) {
           {t('common.subscriptionGoToSettings')}
         </Link>
       ) : (
+        // No financial detail here on purpose (ADMIN_PROMPT follow-up) -- a cashier is told to go
+        // through the store owner, not the platform, and never sees the period-end date above.
         <p className="max-w-xs text-[12px] leading-relaxed text-[color:var(--admin-text-tertiary)]">
-          {t('common.subscriptionContactAdmin')}
+          {t('common.subscriptionContactOwner')}
         </p>
       )}
     </div>
@@ -95,18 +97,25 @@ export function ErrorState({
   scheme?: string
 }) {
   const t = useT()
-  const { storeId } = useAuth()
+  const { storeId, currentStoreRole } = useAuth()
   const Icon = ICONS[kind]
-  const detail = {
-    forbidden: t('common.errorForbidden'),
-    notFound: t('common.errorNotFound'),
-    server: t('common.errorServer'),
-    network: t('common.errorNetwork'),
-    subscriptionInactive: t('common.errorSubscriptionInactive'),
-    conflict: t('common.errorConflict'),
-    validation: t('common.errorValidation'),
-    unknown: t('common.errorUnknown'),
-  }[kind]
+  // Role-differentiated for 'subscriptionInactive' specifically (ADMIN_PROMPT follow-up) -- an
+  // owner gets the billing-specific line, a cashier gets a no-financial-detail "ask the owner"
+  // line instead, same split SubscriptionInactiveHint below already made for the date/link.
+  const detail =
+    kind === 'subscriptionInactive'
+      ? currentStoreRole === 'Cashier'
+        ? t('common.errorSubscriptionInactiveCashier')
+        : t('common.errorSubscriptionInactiveOwner')
+      : {
+          forbidden: t('common.errorForbidden'),
+          notFound: t('common.errorNotFound'),
+          server: t('common.errorServer'),
+          network: t('common.errorNetwork'),
+          conflict: t('common.errorConflict'),
+          validation: t('common.errorValidation'),
+          unknown: t('common.errorUnknown'),
+        }[kind]
   // Retrying "no access", "not found", or "subscription inactive" reruns the exact same request
   // with the exact same outcome -- only offer the button for kinds that are plausibly transient
   // (plus 'unknown', so every pre-existing call site that doesn't pass `kind` keeps its button).

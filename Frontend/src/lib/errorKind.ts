@@ -1,4 +1,5 @@
 import { ApiError } from './api/client'
+import type { useT } from '../i18n/translations'
 
 /**
  * One classification for every failed data-load across the project, instead of each page
@@ -33,16 +34,83 @@ export function classifyError(err: unknown): ErrorKind {
   return 'unknown'
 }
 
+type TFunc = ReturnType<typeof useT>
+
 /**
- * The one rule this file exists to enforce project-wide: never show a made-up generic phrase when
- * the server already sent a specific reason. Every ApiError's `.message` already IS that specific
- * reason (see client.ts's ProblemDetails/plain-string parsing) -- controllers write real sentences
- * ("Subscription is not active — inventory operations are closed until the store's subscription
- * is current.", "This email is already registered", ...), not codes. `fallback` only fires for a
- * genuinely-unlabelled failure (network drop, an unparsed 500) where there is no server text to
- * show at all.
+ * The one function every catch block in the project should call to put an error on screen.
+ *
+ * Deliberately never shows `ApiError.message` -- every backend controller writes its outcome text
+ * in English (`Conflict("This email is already registered")`, `StatusCode(402, "Subscription is
+ * not active — ...")`, ...), because it's meant for the API contract/Swagger, not a RU/TG-speaking
+ * store owner. Printing that text verbatim was found leaking onto multiple screens in a row (the
+ * "Новое перемещение" modal, cashier shift errors, staff management, ...) -- for an `ApiError`
+ * specifically, this function is the fix at the root instead of translating each occurrence as
+ * it's noticed: it looks up a translated, kind-specific line from the i18n dictionaries instead,
+ * unconditionally.
+ *
+ * A plain (non-`ApiError`) `Error` is a different case and IS shown via `.message` -- that's not
+ * raw server text, it's a message the frontend itself authored (client-side field validation, or
+ * an already-translated outcome-specific line built by the caller, e.g.
+ * `describeInitiateTransferOutcome(result.outcome)`). FormModal's whole "throw to show a server
+ * error" contract depends on that distinction: collapsing "Укажите название"/"Проверьте строки
+ * заказа" into the same generic fallback as an actual backend failure would be a regression in the
+ * exact opposite direction -- replacing a specific, correct message with a vague one.
+ *
+ * `err.message`/`err.status` are still logged to the console by the caller (or captured by
+ * RouteErrorBoundary for render crashes) for actual debugging -- this function only decides what
+ * the *screen* shows for a real ApiError.
+ *
+ * `isOwner` only matters for the 402 case: an owner sees the billing-specific line (they're the
+ * only one who can act on it), a cashier/employee sees a no-financial-detail "ask the owner"
+ * line instead. Defaults to the owner copy so a call site that hasn't threaded role through yet
+ * still gets a correct, translated (if slightly over-informative) message rather than raw text.
  */
-export function errorMessage(err: unknown, fallback: string): string {
-  if (err instanceof ApiError && err.message && !/^\d{3} /.test(err.message)) return err.message
-  return fallback
+export function describeError(err: unknown, t: TFunc, opts?: { isOwner?: boolean }): string {
+  if (err instanceof ApiError) {
+    const kind = classifyError(err)
+    if (kind === 'subscriptionInactive') {
+      return opts?.isOwner === false ? t('common.errorSubscriptionInactiveCashier') : t('common.errorSubscriptionInactiveOwner')
+    }
+    const dict: Record<Exclude<ErrorKind, 'subscriptionInactive'>, string> = {
+      forbidden: t('common.errorForbidden'),
+      notFound: t('common.errorNotFound'),
+      server: t('common.errorServer'),
+      network: t('common.errorNetwork'),
+      conflict: t('common.errorConflict'),
+      validation: t('common.errorValidation'),
+      unknown: t('common.errorUnknown'),
+    }
+    return dict[kind]
+  }
+  if (err instanceof Error && err.message) return err.message
+  return t('common.errorUnknown')
+}
+
+const RU_KIND_TEXT: Record<Exclude<ErrorKind, 'subscriptionInactive'>, string> = {
+  forbidden: 'Нет доступа',
+  notFound: 'Не найдено',
+  server: 'Ошибка сервера. Мы уже знаем и разбираемся.',
+  network: 'Нет соединения с сервером. Проверьте интернет.',
+  conflict: 'Действие конфликтует с текущим состоянием.',
+  validation: 'Проверьте введённые данные.',
+  unknown: 'Что-то пошло не так',
+}
+
+/**
+ * Same fix as {@link describeError}, for the platform-Admin console specifically -- those screens
+ * are deliberately plain-Russian, not run through useT() (see AdminUsersPage.tsx's own comment:
+ * "unlike the bilingual (ru/tg) StorePartner cabinet ... follows the same hardcoded-Russian
+ * convention as the rest of the page instead of introducing a bilingual island here"). Pulling in
+ * useT() just for this would be exactly that bilingual island, so this hardcodes the same RU text
+ * describeError's dictionary lookup would produce, without a language dependency. Admin-only
+ * actions never actually hit 'subscriptionInactive' (store subscription checks don't gate the
+ * platform console), so there's no owner/cashier split to carry here.
+ */
+export function describeErrorRu(err: unknown): string {
+  if (err instanceof ApiError) {
+    const kind = classifyError(err)
+    return kind === 'subscriptionInactive' ? RU_KIND_TEXT.conflict : RU_KIND_TEXT[kind]
+  }
+  if (err instanceof Error && err.message) return err.message
+  return RU_KIND_TEXT.unknown
 }

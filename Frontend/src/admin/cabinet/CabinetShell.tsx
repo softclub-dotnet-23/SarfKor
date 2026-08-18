@@ -9,7 +9,10 @@ import { SunIcon, MoonIcon } from '../../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { ProfileProvider } from '../../lib/useProfile'
 import { RouteErrorBoundary } from '../../components/RouteErrorBoundary'
-import { salesApi, ApiError, type CashierShift } from '../../lib/api'
+import { salesApi, type CashierShift } from '../../lib/api'
+import { useT } from '../../i18n/translations'
+import { describeError } from '../../lib/errorKind'
+import { SubscriptionGateProvider, useSubscriptionGate } from '../../lib/subscriptionGate'
 import {
   GridIcon,
   RegisterIcon,
@@ -24,6 +27,7 @@ import {
 import { CommandPalette } from '../components/CommandPalette'
 import { NotificationBell } from '../components/NotificationBell'
 import { AssistantPanel } from '../components/AssistantPanel'
+import { SubscriptionGateBanner } from '../components/SubscriptionGateBanner'
 
 // ─── collapsed-state persistence ─────────────────────────────────────────────
 const COLLAPSED_KEY = 'sarfkor-sidebar-collapsed'
@@ -121,6 +125,8 @@ const TOOLTIP_LEFT = W_COLLAPSED + 12
 // ─── ShiftBadge ───────────────────────────────────────────────────────────────
 function ShiftBadge({ collapsed }: { collapsed: boolean }) {
   const { storeId, user } = useAuth()
+  const t = useT()
+  const gate = useSubscriptionGate()
   const [open, setOpen] = useState(false)
   const [shifts, setShifts] = useState<CashierShift[] | null>(null)
   // Distinct from "shifts loaded and empty" -- a failed request must never collapse into
@@ -171,7 +177,7 @@ function ShiftBadge({ collapsed }: { collapsed: boolean }) {
       }
       setAmount(''); await load(); setOpen(false)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось обновить смену')
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally { setBusy(false) }
   }
 
@@ -245,10 +251,15 @@ function ShiftBadge({ collapsed }: { collapsed: boolean }) {
                   placeholder={isOpen ? 'Итоговая сумма в кассе' : 'Начальная сумма, TJS'}
                   className="mb-3 w-full rounded-[8px] border border-[color:var(--admin-border)] bg-[color:var(--admin-hover)] px-3 py-2.5 text-[13px] text-[color:var(--admin-text)] outline-none placeholder:text-[color:var(--admin-text-tertiary)] focus:border-[color:var(--admin-border-strong)]"
                 />
+                {!gate.loading && !gate.isOperational && (
+                  <div className="mb-2 text-[11px] font-[500] text-[color:var(--admin-danger)]">
+                    {gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')}
+                  </div>
+                )}
                 {error && <div className="mb-2 text-[11px] font-[500] text-[color:var(--admin-danger)]">{error}</div>}
                 <button
                   onClick={handleToggle}
-                  disabled={busy}
+                  disabled={busy || (!gate.loading && !gate.isOperational)}
                   className={clsx(
                     'w-full rounded-[8px] py-2.5 text-[13px] font-[500] transition-opacity disabled:opacity-40',
                     isOpen ? 'bg-[color:var(--admin-danger)] text-[color:var(--admin-danger-fg)]' : 'bg-[color:var(--admin-accent)] text-[color:var(--admin-accent-fg)]',
@@ -431,6 +442,7 @@ export function CabinetShell() {
     // error boundary in the tree that unmounts this entire shell -- menu, header, everything --
     // which is exactly the "/admin/settings renders a blank page" bug this fixes.
     <ProfileProvider>
+    <SubscriptionGateProvider>
     <div className="cabinet-shell admin-shell flex h-screen w-full overflow-hidden bg-[color:var(--admin-content)] text-[color:var(--admin-text)]">
       <CommandPalette />
 
@@ -673,6 +685,7 @@ export function CabinetShell() {
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 py-5 pb-20 sm:px-6 sm:py-6 md:pb-6 lg:px-8 lg:py-7">
+          <SubscriptionGateBanner />
           <PageTransition pathKey={location.pathname}>
             <RouteErrorBoundary key={location.pathname} sectionLabel={sectionLabelFor(location.pathname)}>
               <Outlet />
@@ -724,6 +737,7 @@ export function CabinetShell() {
 
       <AssistantPanel />
     </div>
+    </SubscriptionGateProvider>
     </ProfileProvider>
   )
 }

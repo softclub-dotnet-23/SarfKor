@@ -50,6 +50,10 @@ export interface MyStoreSubscriptionStatus {
   status: SubscriptionStatus | null
   currentPeriodEndsAt: string | null
   isOwner: boolean | null
+  /** Computed backend-side via the exact same authorizer check every write endpoint gates on --
+   *  never re-derive this from `status` (a null status can still be operational; see the backend
+   *  result's own doc comment). This is what SubscriptionGateProvider disables write actions on. */
+  isOperational: boolean
 }
 
 // Backs SubscriptionInactiveBanner (ErrorState.tsx) -- the "когда закончилась подписка, к кому

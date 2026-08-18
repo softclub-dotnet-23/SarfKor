@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
-import { storesApi, ApiError } from '../../lib/api'
+import { storesApi } from '../../lib/api'
+import { describeError } from '../../lib/errorKind'
+import { useT } from '../../i18n/translations'
 import { LogoMark } from '../../components/Logo'
 import { useTheme } from '../../theme/ThemeProvider'
 import { useThemeTransition } from '../../theme/useThemeTransition'
@@ -13,6 +15,7 @@ const DEFAULT_LNG = 68.787
 export function StoreOnboardingPage() {
   const { hasRole, storeId, myStores, setStoreId, refreshRoles, refreshMyStores, logout } = useAuth()
   const navigate = useNavigate()
+  const t = useT()
   const { theme, toggleTheme } = useTheme()
   const { runThemeTransition } = useThemeTransition()
   const isDark = theme === 'dark'
@@ -64,7 +67,7 @@ export function StoreOnboardingPage() {
       await refreshMyStores()
       navigate('/admin', { replace: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось создать магазин')
+      setError(describeError(err, t))
     } finally {
       setLoading(false)
     }

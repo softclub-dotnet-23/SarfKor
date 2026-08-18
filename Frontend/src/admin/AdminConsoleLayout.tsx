@@ -14,7 +14,8 @@ import { AssistantPanel } from './components/AssistantPanel'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
 import { useAuth } from '../auth/AuthContext'
-import { adminApi, ApiError } from '../lib/api'
+import { adminApi } from '../lib/api'
+import { describeError } from '../lib/errorKind'
 
 const NAV_ITEMS = [
   { to: '/admin/overview', num: '01', key: 'nav.overview', icon: GridIcon },
@@ -58,7 +59,7 @@ function InviteAdminModal({ open, onClose }: { open: boolean; onClose: () => voi
       await adminApi.inviteAdmin(email.trim())
       setDone(true)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось отправить приглашение')
+      setError(describeError(err, t))
     } finally {
       setBusy(false)
     }

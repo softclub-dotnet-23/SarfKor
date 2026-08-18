@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { AdminModal } from './AdminModal'
 import { Textarea } from './Input'
+import { useT } from '../../i18n/translations'
+import { describeError } from '../../lib/errorKind'
 
 // Every admin action that disables/blocks/suspends/blocks something requires a mandatory
 // written reason (ADMIN_PROMPT.md §2) -- one shared confirm dialog instead of six hand-rolled
@@ -22,6 +24,7 @@ export function ReasonModal({
   danger?: boolean
   onConfirm: (reason: string) => Promise<void>
 }) {
+  const t = useT()
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -42,7 +45,7 @@ export function ReasonModal({
       setReason('')
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось выполнить действие')
+      setError(describeError(err, t))
     } finally {
       setBusy(false)
     }

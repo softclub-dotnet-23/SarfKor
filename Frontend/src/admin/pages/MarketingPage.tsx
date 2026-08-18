@@ -13,7 +13,9 @@ import { TagIcon, PercentIcon, ClockIcon, AlertIcon, CheckIcon, PlusIcon, TrashI
 import { StarIcon } from '../../components/icons'
 import { useAuth } from '../../auth/AuthContext'
 import { productsApi, catalogApi, ApiError, type Category, type ProductSearchItem } from '../../lib/api'
-import { errorMessage } from '../../lib/errorKind'
+import { describeError } from '../../lib/errorKind'
+import { useT } from '../../i18n/translations'
+import { useSubscriptionGate, gateButtonProps } from '../../lib/subscriptionGate'
 import {
   createPromotion,
   getActivePromotions,
@@ -92,6 +94,9 @@ function outcomeMessage(outcome: string): string | null {
 
 export function MarketingPage() {
   const { storeId } = useAuth()
+  const t = useT()
+  const gate = useSubscriptionGate()
+  const blockedTitle = gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')
   const [params, setParams] = useSearchParams()
   const tabParam = params.get('tab')
   const tab: Tab = tabParam === 'bundles' || tabParam === 'offers' || tabParam === 'replies' ? tabParam : 'promotions'
@@ -102,7 +107,7 @@ export function MarketingPage() {
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
         <SectionSelect value={tab} onChange={(v) => setParams(v === 'promotions' ? {} : { tab: v })} options={TAB_OPTIONS} ariaLabel="Раздел маркетинга" />
-        {addLabel && <AddButton onClick={() => setCreateOpen(true)}>{addLabel}</AddButton>}
+        {addLabel && <AddButton onClick={() => setCreateOpen(true)} {...gateButtonProps(gate, blockedTitle)}>{addLabel}</AddButton>}
       </div>
 
       {!storeId ? (
@@ -320,6 +325,8 @@ function CreatePromotionModal({ open, onClose, storeId, onCreated }: { open: boo
 }
 
 function PromotionsSection({ storeId, createOpen, onCloseCreate }: { storeId: number; createOpen: boolean; onCloseCreate: () => void }) {
+  const t = useT()
+  const gate = useSubscriptionGate()
   const [promotions, setPromotions] = useState<Promotion[] | null>(null)
   const [productNames, setProductNames] = useState<Record<number, string>>({})
   const [categoryNames, setCategoryNames] = useState<Record<number, string>>({})
@@ -351,11 +358,11 @@ function PromotionsSection({ storeId, createOpen, onCloseCreate }: { storeId: nu
       }
     } catch (err) {
       console.error('Failed to load promotions:', err)
-      setError(errorMessage(err, 'Не удалось загрузить акции'))
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setLoading(false)
     }
-  }, [storeId])
+  }, [storeId, t, gate.isOwner])
 
   useEffect(() => {
     load()
@@ -570,6 +577,8 @@ function CreateBundleModal({ open, onClose, storeId, onCreated }: { open: boolea
 }
 
 function BundlesSection({ storeId, createOpen, onCloseCreate }: { storeId: number; createOpen: boolean; onCloseCreate: () => void }) {
+  const t = useT()
+  const gate = useSubscriptionGate()
   const [bundles, setBundles] = useState<ProductBundle[] | null>(null)
   const [productNames, setProductNames] = useState<Record<number, string>>({})
   const [loading, setLoading] = useState(true)
@@ -590,11 +599,11 @@ function BundlesSection({ storeId, createOpen, onCloseCreate }: { storeId: numbe
       setProductNames(names)
     } catch (err) {
       console.error('Failed to load product bundles:', err)
-      setError(errorMessage(err, 'Не удалось загрузить наборы товаров'))
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setLoading(false)
     }
-  }, [storeId])
+  }, [storeId, t, gate.isOwner])
 
   useEffect(() => {
     load()
@@ -776,6 +785,8 @@ function PublishOfferModal({ open, onClose, storeId, onCreated }: { open: boolea
 }
 
 function OffersSection({ storeId, createOpen, onCloseCreate }: { storeId: number; createOpen: boolean; onCloseCreate: () => void }) {
+  const t = useT()
+  const gate = useSubscriptionGate()
   const [offers, setOffers] = useState<ExpiringOffer[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -787,11 +798,11 @@ function OffersSection({ storeId, createOpen, onCloseCreate }: { storeId: number
       setOffers(res.offers ?? [])
     } catch (err) {
       console.error('Failed to load expiring offers:', err)
-      setError(errorMessage(err, 'Не удалось загрузить предложения'))
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
     } finally {
       setLoading(false)
     }
-  }, [storeId])
+  }, [storeId, t, gate.isOwner])
 
   useEffect(() => {
     load()
@@ -853,6 +864,9 @@ function OffersSection({ storeId, createOpen, onCloseCreate }: { storeId: number
 // ---------------------------------------------------------------------------
 
 function RepliesSection() {
+  const t = useT()
+  const gate = useSubscriptionGate()
+  const blockedTitle = gate.isOwner ? t('common.errorSubscriptionInactiveOwner') : t('common.errorSubscriptionInactiveCashier')
   const [product, setProduct] = useState<ProductSearchItem | null>(null)
   const [reviews, setReviews] = useState<Review[] | null>(null)
   const [loading, setLoading] = useState(false)
@@ -878,7 +892,7 @@ function RepliesSection() {
       setReviews(res.reviews ?? [])
     } catch (err) {
       console.error('Failed to load reviews:', err)
-      setError(errorMessage(err, 'Не удалось загрузить отзывы'))
+      setError(describeError(err, t, { isOwner: gate.isOwner }))
       setReviews(null)
     } finally {
       setLoading(false)
@@ -904,13 +918,9 @@ function RepliesSection() {
     } catch (err) {
       console.error('Failed to submit review reply:', err)
       setReplyError(
-        err instanceof ApiError
-          ? err.status === 404
-            ? 'Отзыв не найден'
-            : err.status === 403
-              ? 'Нет доступа, чтобы отвечать на этот отзыв'
-              : 'Не удалось отправить ответ'
-          : 'Не удалось отправить ответ',
+        err instanceof ApiError && err.status === 404
+          ? 'Отзыв не найден'
+          : describeError(err, t, { isOwner: gate.isOwner }),
       )
     } finally {
       setReplyBusy(false)
@@ -994,7 +1004,8 @@ function RepliesSection() {
                   ) : (
                     <button
                       onClick={() => openReply(r.reviewId)}
-                      className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80"
+                      {...gateButtonProps(gate, blockedTitle)}
+                      className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--admin-accent-soft)] px-3 py-1.5 text-[11px] font-semibold text-[color:var(--admin-accent)] hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <ReplyIcon width={13} height={13} />
                       Ответить

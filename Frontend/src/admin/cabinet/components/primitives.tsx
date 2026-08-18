@@ -166,12 +166,15 @@ export function PrimaryButton({
   onClick,
   type = 'button',
   disabled,
+  title,
   className,
 }: {
   children: ReactNode
   onClick?: () => void
   type?: 'button' | 'submit'
   disabled?: boolean
+  /** e.g. explaining why a disabled button is disabled -- native tooltip on hover. */
+  title?: string
   className?: string
 }) {
   return (
@@ -179,6 +182,7 @@ export function PrimaryButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
+      title={title}
       className={clsx(
         'inline-flex items-center justify-center gap-2',
         'rounded-[8px] px-5 py-[10px] text-[14px] font-[500]',
